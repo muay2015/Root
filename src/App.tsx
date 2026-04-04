@@ -31,6 +31,7 @@ import {
   type SelectionFormat,
   type SubjectKey,
 } from './lib/question/subjectConfig.ts';
+import { getApiUrl } from './lib/api.ts';
 import { ExamHeader } from './components/exam/ExamHeader';
 import { ExamQuestionList } from './components/exam/ExamQuestionList';
 import { ExamNavigation } from './components/exam/ExamNavigation';
@@ -353,7 +354,7 @@ export default function App() {
       let resolvedTitle = nextTitle;
 
       if (mode === 'ai') {
-        const response = await fetch('/api/ai/generate-exam', {
+        const response = await fetch(getApiUrl('/api/ai/generate-exam'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
