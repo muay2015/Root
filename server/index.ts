@@ -1,8 +1,24 @@
-import express from 'express';
 import dotenv from 'dotenv';
+import express from 'express';
 import OpenAI from 'openai';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import {
+  generateValidatedQuestions,
+  QuestionGenerationError,
+  type GeneratedQuestion,
+} from '../src/lib/question/generator.ts';
+import type {
+  DifficultyLevel,
+  SchoolLevel,
+} from '../src/lib/question/generationRules.ts';
+import {
+  SUBJECT_CONFIG,
+  getSubjectSelectionDefaults,
+  usesFormat,
+  usesQuestionType,
+  type SubjectKey,
+} from '../src/lib/question/subjectConfig.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,186 +36,84 @@ const openAiModel = process.env.OPENAI_MODEL?.trim() || 'gpt-5.4-mini';
 const hasOpenAiKey = openAiApiKey.length > 0;
 const openai = hasOpenAiKey ? new OpenAI({ apiKey: openAiApiKey }) : null;
 
-console.log('[env] .env path:', envPath);
-console.log('[env] .env.local path:', envLocalPath);
-console.log('[env] OPENAI_API_KEY:', hasOpenAiKey ? '있음' : '없음');
-console.log('[env] OPENAI_MODEL:', openAiModel);
-
 app.use(express.json({ limit: '2mb' }));
+
+type LegacyDifficulty = '\uae30\ubcf8' | '\ub3c4\uc804' | '\uc2e4\uc804';
+type LegacySchoolLevel =
+  | '\uc911\ud559\uad50 \ub0b4\uc2e0\ud615'
+  | '\uace0\ub4f1\ud559\uad50 \ub0b4\uc2e0\ud615'
+  | '\uc218\ub2a5\ud615';
 
 type GenerateExamRequest = {
   materialText: string;
-  questionType: string;
-  difficulty: string;
-  format: string;
   count: number;
-};
-
-type QuestionKind = '객관식' | '주관식';
-
-type GeneratedQuestion = {
-  id: number;
-  topic: string;
-  type: QuestionKind;
-  stem: string;
-  choices?: string[];
-  answer: string;
-  explanation: string;
+  subject?: SubjectKey;
+  questionType?: string;
+  format?: string;
+  difficulty?: DifficultyLevel | LegacyDifficulty;
+  schoolLevel?: SchoolLevel | LegacySchoolLevel;
+  title?: string;
+  topic?: string;
 };
 
 type GeneratedExamResponse = {
   title: string;
   questions: GeneratedQuestion[];
   source: 'ai' | 'mock';
-};
-
-type ExamGenerationSchema = {
-  title: string;
-  questions: Array<{
-    topic: string;
-    type: QuestionKind;
-    stem: string;
-    choices: string[] | null;
-    answer: string;
-    explanation: string;
-  }>;
-};
-
-function inferQuestionTypeLabel(value: string) {
-  if (value.includes('multiple')) return '객관식';
-  if (value.includes('subjective')) return '주관식';
-  if (value.includes('mixed')) return '혼합형';
-  if (value.includes('객')) return '객관식';
-  if (value.includes('주')) return '주관식';
-  return '혼합형';
-}
-
-function isMultipleChoice(questionType: string, index: number) {
-  const normalized = inferQuestionTypeLabel(questionType);
-  if (normalized === '객관식') return true;
-  if (normalized === '주관식') return false;
-  return index % 2 === 0;
-}
-
-function resolveQuestionKind(questionType: string, requestedQuestionType: string, index: number): QuestionKind {
-  const requested = inferQuestionTypeLabel(requestedQuestionType);
-
-  if (requested === '객관식') {
-    return '객관식';
-  }
-
-  if (requested === '주관식') {
-    return '주관식';
-  }
-
-  return questionType === '주관식' && index % 2 === 1 ? '주관식' : '객관식';
-}
-
-function normalizeMultipleChoiceChoices(choices?: string[] | null) {
-  const normalized = Array.isArray(choices)
-    ? choices.map((choice) => choice.trim()).filter((choice) => choice.length > 0).slice(0, 5)
-    : [];
-
-  while (normalized.length < 5) {
-    normalized.push(`보기 ${normalized.length + 1}`);
-  }
-
-  return normalized;
-}
-
-function fallbackResponse(payload: GenerateExamRequest): GeneratedExamResponse {
-  const questions = Array.from({ length: payload.count }, (_, index) => {
-    const id = index + 1;
-    const multipleChoice = isMultipleChoice(payload.questionType, index);
-
-    return {
-      id,
-      topic: `${payload.format} 단원 개념 ${Math.floor(index / 3) + 1}`,
-      type: multipleChoice ? '객관식' : '주관식',
-      stem: `${payload.difficulty} 난이도의 ${payload.format} 대비문제 ${id}`,
-      choices: multipleChoice ? ['보기 1', '보기 2', '보기 3', '보기 4', '보기 5'] : undefined,
-      answer: multipleChoice ? '보기 2' : '단원 개념을 정확히 설명한 답안',
-      explanation: 'OpenAI 호출에 실패해 기본 문제 세트를 반환했습니다.',
-    } satisfies GeneratedQuestion;
-  });
-
-  return {
-    title: `AI 생성 ${payload.format} ${payload.difficulty} ${payload.count}문항`,
-    questions,
-    source: 'mock',
+  attempts: number;
+  validation: {
+    isValid: boolean;
+    reasons: string[];
+    warnings: string[];
+    issueCounts: Record<string, number>;
   };
+};
+
+function normalizeDifficulty(value?: GenerateExamRequest['difficulty']): DifficultyLevel {
+  if (value === 'easy' || value === 'medium' || value === 'hard') {
+    return value;
+  }
+
+  if (value === '\uae30\ubcf8') return 'easy';
+  if (value === '\ub3c4\uc804') return 'medium';
+  return 'hard';
 }
 
-const examJsonSchema = {
-  name: 'exam_generation',
-  strict: true,
-  schema: {
-    type: 'object',
-    additionalProperties: false,
-    required: ['title', 'questions'],
-    properties: {
-      title: { type: 'string' },
-      questions: {
-        type: 'array',
-        minItems: 1,
-        items: {
-          type: 'object',
-          additionalProperties: false,
-          required: ['topic', 'type', 'stem', 'choices', 'answer', 'explanation'],
-          properties: {
-            topic: { type: 'string' },
-            type: { type: 'string', enum: ['객관식', '주관식'] },
-            stem: { type: 'string' },
-            choices: {
-              anyOf: [
-                {
-                  type: 'array',
-                  items: { type: 'string' },
-                },
-                {
-                  type: 'null',
-                },
-              ],
-            },
-            answer: { type: 'string' },
-            explanation: { type: 'string' },
-          },
-        },
-      },
-    },
-  },
-} as const;
+function normalizeSchoolLevel(value?: GenerateExamRequest['schoolLevel']): SchoolLevel {
+  if (value === 'middle' || value === 'high' || value === 'csat') {
+    return value;
+  }
 
-function buildPrompt(payload: GenerateExamRequest) {
-  return [
-    'You generate CBT-ready Korean exam sets.',
-    'Return only JSON that matches the schema.',
-    `Question type: ${payload.questionType}`,
-    `Difficulty: ${payload.difficulty}`,
-    `Exam format: ${payload.format}`,
-    `Question count: ${payload.count}`,
-    'Rules:',
-    '- If the question type is mixed, include both 객관식 and 주관식.',
-    '- 객관식 questions must contain exactly 5 choices.',
-    '- 객관식 choices should be concise and plausible distractors.',
-    '- 주관식 questions must set choices to null.',
-    '- Keep answers concise and explanations clear.',
-    '- Base the questions on the supplied material text.',
-    '',
-    'Material text:',
-    payload.materialText,
-  ].join('\n');
+  if (value === '\uc911\ud559\uad50 \ub0b4\uc2e0\ud615') return 'middle';
+  if (value === '\uace0\ub4f1\ud559\uad50 \ub0b4\uc2e0\ud615') return 'high';
+  return 'csat';
+}
+
+function normalizeSubject(value?: string): SubjectKey {
+  if (value && value in SUBJECT_CONFIG) {
+    return value as SubjectKey;
+  }
+
+  return 'english';
+}
+
+function buildResponseTitle(
+  payload: GenerateExamRequest,
+  subject: SubjectKey,
+  selectionValue: string | null,
+  schoolLevel: SchoolLevel,
+  difficulty: DifficultyLevel,
+) {
+  if (payload.title?.trim()) {
+    return payload.title.trim();
+  }
+
+  return [subject, selectionValue, schoolLevel, difficulty, 'cbt'].filter(Boolean).join('-');
 }
 
 function getOpenAiErrorMessage(error: unknown) {
-  if (error instanceof OpenAI.APIError) {
-    return error.message;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
+  if (error instanceof OpenAI.APIError) return error.message;
+  if (error instanceof Error) return error.message;
   return 'Unknown OpenAI error';
 }
 
@@ -209,10 +123,6 @@ app.get('/api/health', (_req, res) => {
     provider: hasOpenAiKey ? 'openai' : 'mock',
     model: openAiModel,
     keyLoaded: hasOpenAiKey,
-    envFiles: {
-      env: envPath,
-      envLocal: envLocalPath,
-    },
   });
 });
 
@@ -220,59 +130,56 @@ app.post('/api/ai/generate-exam', async (req, res) => {
   const payload = req.body as GenerateExamRequest;
 
   if (!payload.materialText || payload.materialText.trim().length < 20) {
-    res.status(400).json({ error: '학습 자료 텍스트가 너무 짧습니다.' });
-    return;
-  }
-
-  if (!openai) {
-    res.json(fallbackResponse(payload));
+    res.status(400).json({ error: 'Study material must be at least 20 characters.' });
     return;
   }
 
   try {
-    const response = await openai.responses.create({
+    const subject = normalizeSubject(payload.subject);
+    const selectionDefaults = getSubjectSelectionDefaults(subject);
+    const difficulty = normalizeDifficulty(payload.difficulty);
+    const schoolLevel = normalizeSchoolLevel(payload.schoolLevel);
+    const questionType = usesQuestionType(subject)
+      ? (payload.questionType?.trim() || selectionDefaults.questionType)
+      : undefined;
+    const format = usesFormat(subject)
+      ? (payload.format?.trim() || selectionDefaults.format)
+      : undefined;
+    const selectionValue = questionType ?? format ?? null;
+
+    const generated = await generateValidatedQuestions({
+      openai,
       model: openAiModel,
-      input: [
-        {
-          role: 'system',
-          content: 'Generate an exam set from study materials and respond with valid JSON matching the provided schema.',
-        },
-        {
-          role: 'user',
-          content: buildPrompt(payload),
-        },
-      ],
-      text: {
-        format: {
-          type: 'json_schema',
-          ...examJsonSchema,
-        },
-      },
+      materialText: payload.materialText,
+      count: payload.count,
+      subject,
+      questionType,
+      format,
+      difficulty,
+      schoolLevel,
+      title: buildResponseTitle(payload, subject, selectionValue, schoolLevel, difficulty),
+      topic: payload.topic,
     });
 
-    const parsed = JSON.parse(response.output_text) as ExamGenerationSchema;
-    const questions: GeneratedQuestion[] = Array.isArray(parsed.questions)
-      ? parsed.questions.slice(0, payload.count).map((question, index) => {
-          const type = resolveQuestionKind(question.type, payload.questionType, index);
-
-          return {
-            id: index + 1,
-            topic: question.topic,
-            type,
-            stem: question.stem,
-            choices: type === '객관식' ? normalizeMultipleChoiceChoices(question.choices) : undefined,
-            answer: question.answer,
-            explanation: question.explanation,
-          };
-        })
-      : [];
-
     res.json({
-      title: parsed.title || `AI 생성 ${payload.format} ${payload.difficulty} ${payload.count}문항`,
-      questions,
-      source: 'ai',
+      title: generated.title,
+      questions: generated.questions,
+      source: generated.source,
+      attempts: generated.attempts,
+      validation: generated.validation,
     } satisfies GeneratedExamResponse);
   } catch (error) {
+    if (error instanceof QuestionGenerationError) {
+      console.error('Question validation failed:', error.message, error.reasons);
+      res.status(422).json({
+        error: error.message,
+        reasons: error.reasons,
+        source: 'openai',
+        model: openAiModel,
+      });
+      return;
+    }
+
     const errorMessage = getOpenAiErrorMessage(error);
     console.error('OpenAI generate exam error:', errorMessage, error);
     res.status(502).json({

@@ -1,23 +1,46 @@
-﻿import { type ChangeEvent, type Dispatch, type ReactNode, type SetStateAction, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, BookOpen, Bot, CheckCircle2, Clock, Home, Monitor, NotebookPen, PlusCircle, RefreshCw, Search, Upload, UserCircle, XCircle } from 'lucide-react';
-import { completeExam, ensureSupabaseUser, fetchLatestExamRecord, fetchWrongNotes, loadLocalLastExam, loadLocalWrongNotes, saveExamDraft, saveWrongNotes, storeLocalLastExam, storeLocalWrongNotes, type PersistedExamRecord } from './lib/rootPersistence';
-import { normalizeGeneratedQuestions, normalizeMultipleChoiceChoices, toGeneratedQuestionMode, type GeneratedQuestionMode } from './lib/examGeneration';
+import { type ChangeEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, Bot, Home, NotebookPen, PlusCircle, RefreshCw, Settings, Upload } from 'lucide-react';
+import {
+  completeExam,
+  ensureSupabaseUser,
+  fetchLatestExamRecord,
+  fetchWrongNotes,
+  loadLocalLastExam,
+  loadLocalWrongNotes,
+  saveExamDraft,
+  saveWrongNotes,
+  storeLocalLastExam,
+  storeLocalWrongNotes,
+  type PersistedExamRecord,
+} from './lib/rootPersistence';
+import {
+  hasPlaceholderChoices,
+  normalizeGeneratedQuestions,
+  normalizeMultipleChoiceChoices,
+  normalizeStoredQuestions,
+  toGeneratedQuestionMode,
+  type GeneratedQuestionMode,
+} from './lib/examGeneration';
+import {
+  SUBJECT_CONFIG,
+  getSubjectFormats,
+  getSubjectQuestionTypes,
+  getSubjectSelectionDefaults,
+  getSubjectSelectionLabel,
+  usesNoSelector,
+  type SelectionFormat,
+  type SubjectKey,
+} from './lib/question/subjectConfig.ts';
+import { ExamHeader } from './components/exam/ExamHeader';
+import { ExamQuestionList } from './components/exam/ExamQuestionList';
+import { ExamNavigation } from './components/exam/ExamNavigation';
+import { QuestionPalette } from './components/exam/QuestionPalette';
+import type { ExamQuestion } from './components/exam/types';
 
 type Screen = 'landing' | 'create' | 'taking' | 'result' | 'wrong';
 type BuilderMode = 'upload' | 'ai';
-type QuestionType = '객관식' | '주관식' | '혼합형';
-type Difficulty = '기본' | '도전' | '실전';
-type ExamFormat = '중학교 내신형' | '고등학교 내신형' | '수능형';
-
-type Question = {
-  id: number;
-  topic: string;
-  type: '객관식' | '주관식';
-  stem: string;
-  choices?: string[];
-  answer: string;
-  explanation: string;
-};
+type DifficultyLevel = 'easy' | 'medium' | 'hard';
+type SchoolLevel = 'middle' | 'high' | 'csat';
 
 type WrongNote = {
   id: string;
@@ -29,79 +52,239 @@ type WrongNote = {
   explanation: string;
 };
 
-const seedQuestions: Question[] = [
-  { id: 1, topic: '개념 이해', type: '객관식', stem: '반복 학습을 문제 풀이와 함께 진행할 때 가장 기대되는 효과는 무엇인가?', choices: ['단순 암기량만 증가한다', '개념 연결과 회상력이 함께 강화된다', '문항 수가 자동으로 줄어든다', '오답 복습이 불가능해진다'], answer: '개념 연결과 회상력이 함께 강화된다', explanation: '풀이 중심 반복은 회상 연습과 개념 간 연결을 동시에 강화합니다.' },
-  { id: 2, topic: '자료 업로드', type: '객관식', stem: '문제 파일과 정답 파일을 분리 업로드해야 하는 가장 큰 이유는 무엇인가?', choices: ['디자인을 화려하게 만들기 위해', '정답 매핑과 채점 정확도를 높이기 위해', '파일 이름을 짧게 만들기 위해', '서버 부하를 늘리기 위해'], answer: '정답 매핑과 채점 정확도를 높이기 위해', explanation: '분리 업로드가 파싱과 채점 안정성을 높입니다.' },
-  { id: 3, topic: '오답 복습', type: '주관식', stem: '오답노트를 자동 저장해야 하는 이유를 한 문장으로 작성하세요.', answer: '취약 개념을 반복 복습하기 위해서', explanation: '오답노트는 취약 단원을 추적하는 핵심 장치입니다.' },
-  { id: 4, topic: '생성 설정', type: '객관식', stem: 'AI 문제 생성에서 사용자가 직접 조정하는 항목이 아닌 것은 무엇인가?', choices: ['문항 수', '난이도', '시험 형식', '서버 지역'], answer: '서버 지역', explanation: '사용자는 학습 관련 옵션만 조정합니다.' },
+type ExamMeta = {
+  subject: SubjectKey;
+  difficulty: DifficultyLevel;
+  schoolLevel: SchoolLevel;
+  count: number;
+};
+
+const genericSeedQuestions: ExamQuestion[] = [
+  {
+    id: 1,
+    topic: '핵심 개념',
+    type: '객관식',
+    stem: '제시된 학습 자료를 바르게 이해한 설명으로 가장 적절한 것은?',
+    choices: ['핵심 개념과 관련이 없다', '핵심 개념을 정리하고 적용한다', '정답 복습은 필요 없다', '자료 분석 없이 암기만 한다'],
+    answer: '핵심 개념을 정리하고 적용한다',
+    explanation: '자료를 바탕으로 개념을 정리하고 적용하는 태도가 가장 적절합니다.',
+  },
+  {
+    id: 2,
+    topic: '자료 해석',
+    type: '객관식',
+    stem: '자료를 읽을 때 가장 먼저 확인해야 할 것으로 가장 적절한 것은?',
+    choices: ['개인 의견', '핵심 정보와 조건', '작성자의 이름', '문항 번호'],
+    answer: '핵심 정보와 조건',
+    explanation: '핵심 정보와 조건을 먼저 파악해야 정확한 판단이 가능합니다.',
+  },
 ];
 
-function makeExamTitle(mode: BuilderMode, format: ExamFormat, difficulty: Difficulty, count: number) {
-  return mode === 'upload' ? `업로드 기반 ${format} ${count}문항` : `AI 생성 ${format} ${difficulty} ${count}문항`;
+const historySeedQuestions: ExamQuestion[] = [
+  {
+    id: 1,
+    topic: '조선 전기',
+    type: '객관식',
+    stem: '다음 설명에 해당하는 시기의 통치 특징으로 가장 적절한 것은?\n태종과 세종을 거치며 왕권이 강화되고, 집현전 설치와 4군 6진 개척이 이루어졌다.',
+    choices: ['문벌 귀족 사회가 강화되었다', '유교 정치 질서가 정비되었다', '무신 정권이 성립하였다', '전시과 체제가 처음 실시되었다', '6두품이 정계에 진출하였다'],
+    answer: '유교 정치 질서가 정비되었다',
+    explanation: '태종·세종 시기는 왕권 강화와 유교 정치 질서 정비가 대표적입니다.',
+  },
+  {
+    id: 2,
+    topic: '통일 신라',
+    type: '객관식',
+    stem: '다음 자료를 보고 알 수 있는 사실로 가장 적절한 것은?\n국학을 설치하고 독서삼품과를 실시하여 유교적 소양을 갖춘 인재를 키우려 하였다.',
+    choices: ['통일 신라가 유교 정치 이념을 강화하였다', '백제가 지방 통제를 위해 22담로를 설치하였다', '고려가 성종 때 12목을 설치하였다', '조선이 성균관을 중심으로 과거제를 운영하였다', '신라 하대에 호족 세력이 약화되었다'],
+    answer: '통일 신라가 유교 정치 이념을 강화하였다',
+    explanation: '국학과 독서삼품과는 통일 신라의 유교 정치 질서 강화와 연결됩니다.',
+  },
+];
+
+function getDifficultyLabel(value: DifficultyLevel) {
+  if (value === 'easy') return '쉬움';
+  if (value === 'medium') return '보통';
+  return '어려움';
+}
+
+function getSchoolLevelLabel(value: SchoolLevel) {
+  if (value === 'middle') return '중등';
+  if (value === 'high') return '고등';
+  return '수능';
 }
 
 function normalizeAnswer(value: string) {
   return value.trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
-function buildQuestions(questionType: QuestionType, count: number) {
-  const questions = Array.from({ length: count }, (_, index) => {
-    const source = seedQuestions[index % seedQuestions.length];
-    return { ...source, id: index + 1, topic: `${source.topic} ${Math.floor(index / seedQuestions.length) + 1}` };
+function inferUploadMode(
+  subject: SubjectKey,
+  questionType: string,
+  format: SelectionFormat,
+): GeneratedQuestionMode {
+  if (usesNoSelector(subject)) {
+    return 'multiple';
+  }
+
+  if (format === '단답형') {
+    return 'subjective';
+  }
+
+  if (questionType === '객관식') return 'multiple';
+  if (questionType === '주관식') return 'subjective';
+  return 'mixed';
+}
+
+function getSeedQuestions(subject: SubjectKey) {
+  return subject === 'korean_history' ? historySeedQuestions : genericSeedQuestions;
+}
+
+function buildQuestions(
+  subject: SubjectKey,
+  questionMode: GeneratedQuestionMode,
+  count: number,
+): ExamQuestion[] {
+  const seeds = getSeedQuestions(subject);
+  const base = Array.from({ length: count }, (_, index) => {
+    const source = seeds[index % seeds.length];
+    return {
+      ...source,
+      id: index + 1,
+    };
   });
-  if (questionType === '객관식') return questions.map((q) => ({ ...q, type: '객관식' as const, choices: normalizeMultipleChoiceChoices(q.choices) }));
-  if (questionType === '주관식') return questions.map((q) => ({ ...q, type: '주관식' as const, choices: undefined }));
-  return questions.map((q, i) => i % 2 === 0 ? { ...q, type: '객관식' as const, choices: normalizeMultipleChoiceChoices(q.choices) } : { ...q, type: '주관식' as const, choices: undefined });
+
+  if (questionMode === 'multiple') {
+    return base.map((question) => ({
+      ...question,
+      type: '객관식',
+      choices: normalizeMultipleChoiceChoices(question.choices),
+    }));
+  }
+
+  if (questionMode === 'subjective') {
+    return base.map((question) => ({
+      ...question,
+      type: '주관식',
+      choices: undefined,
+    }));
+  }
+
+  return base.map((question, index) =>
+    index % 2 === 0
+      ? { ...question, type: '객관식', choices: normalizeMultipleChoiceChoices(question.choices) }
+      : { ...question, type: '주관식', choices: undefined },
+  );
 }
 
 function mergeWrongNotes<T extends WrongNote>(notes: T[]) {
   return Array.from(new Map(notes.map((item) => [item.id, item])).values());
 }
 
+function makeExamTitle(
+  mode: BuilderMode,
+  subject: SubjectKey,
+  schoolLevel: SchoolLevel,
+  difficulty: DifficultyLevel,
+  count: number,
+  generationTopic: string,
+  selectionLabel: string | null,
+) {
+  const topicText = generationTopic.trim();
+  if (topicText.length > 0) {
+    return topicText;
+  }
+
+  const subjectLabel = SUBJECT_CONFIG[subject].label;
+  const parts = [
+    mode === 'ai' ? 'AI 생성' : '업로드 기반',
+    subjectLabel,
+    selectionLabel,
+    getSchoolLevelLabel(schoolLevel),
+    getDifficultyLabel(difficulty),
+    `${count}문항`,
+  ].filter(Boolean);
+  return parts.join(' ');
+}
+
 export default function App() {
+  const defaultSubject: SubjectKey = 'english';
+  const defaultSelection = getSubjectSelectionDefaults(defaultSubject);
   const [screen, setScreen] = useState<Screen>('landing');
   const [mode, setMode] = useState<BuilderMode>('upload');
-  const [questionType, setQuestionType] = useState<QuestionType>('혼합형');
-  const [difficulty, setDifficulty] = useState<Difficulty>('실전');
-  const [format, setFormat] = useState<ExamFormat>('고등학교 내신형');
+  const [subject, setSubject] = useState<SubjectKey>(defaultSubject);
+  const [questionType, setQuestionType] = useState(defaultSelection.questionType);
+  const [format, setFormat] = useState<SelectionFormat>(defaultSelection.format);
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>('hard');
+  const [schoolLevel, setSchoolLevel] = useState<SchoolLevel>('high');
   const [count, setCount] = useState(12);
+  const [generationTopic, setGenerationTopic] = useState('');
   const [materialText, setMaterialText] = useState('');
   const [questionFiles, setQuestionFiles] = useState<string[]>([]);
   const [answerFiles, setAnswerFiles] = useState<string[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [examTitle, setExamTitle] = useState(makeExamTitle('upload', '고등학교 내신형', '실전', 12));
-  const [questions, setQuestions] = useState<Question[]>(buildQuestions('혼합형', 12));
+  const [questions, setQuestions] = useState<ExamQuestion[]>(buildQuestions(defaultSubject, 'mixed', 12));
+  const [examTitle, setExamTitle] = useState('ROOT CBT');
   const [responses, setResponses] = useState<Record<number, string>>({});
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(1);
   const [generatedQuestionMode, setGeneratedQuestionMode] = useState<GeneratedQuestionMode>('mixed');
+  const [examMeta, setExamMeta] = useState<ExamMeta>({
+    subject: defaultSubject,
+    difficulty: 'hard',
+    schoolLevel: 'high',
+    count: 12,
+  });
   const [wrongNotes, setWrongNotes] = useState<WrongNote[]>([]);
   const [currentExamId, setCurrentExamId] = useState<string | null>(null);
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
-  const [syncMessage, setSyncMessage] = useState('Supabase 연결 확인 중...');
+  const [syncMessage, setSyncMessage] = useState('Supabase 연결 상태 확인 중...');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+
+  const selectionLabel = getSubjectSelectionLabel(subject, questionType, format);
+  const readyToGenerate = mode === 'upload'
+    ? questionFiles.length > 0 && answerFiles.length > 0
+    : materialText.trim().length > 20;
 
   useEffect(() => {
     const localWrong = loadLocalWrongNotes<WrongNote>();
-    if (localWrong.length > 0) setWrongNotes(localWrong);
+    if (localWrong.length > 0) {
+      setWrongNotes(localWrong);
+    }
+
     const localExam = loadLocalLastExam<PersistedExamRecord>();
     if (localExam) {
       setExamTitle(localExam.title);
-      if (Array.isArray(localExam.questions) && localExam.questions.length > 0) setQuestions(localExam.questions as Question[]);
-      setGeneratedQuestionMode(toGeneratedQuestionMode(localExam.question_type as QuestionType));
+      const restoredMode = toGeneratedQuestionMode(localExam.question_type);
+      if (Array.isArray(localExam.questions) && localExam.questions.length > 0) {
+        setQuestions(normalizeStoredQuestions(localExam.questions as ExamQuestion[], restoredMode) as ExamQuestion[]);
+      }
+      setGeneratedQuestionMode(restoredMode);
     }
+
     void (async () => {
       const auth = await ensureSupabaseUser();
       if (!auth.data) {
         setSyncMessage(auth.error ?? '로컬 저장 모드');
         return;
       }
+
       setSessionUserId(auth.data.id);
       setSyncMessage('Supabase 세션 연결 완료');
-      const [latest, wrong] = await Promise.all([fetchLatestExamRecord(auth.data.id), fetchWrongNotes(auth.data.id)]);
+
+      const [latest, wrong] = await Promise.all([
+        fetchLatestExamRecord(auth.data.id),
+        fetchWrongNotes(auth.data.id),
+      ]);
+
       if (latest.data) {
         setCurrentExamId(latest.data.id);
         setExamTitle(latest.data.title);
-        if (Array.isArray(latest.data.questions) && latest.data.questions.length > 0) setQuestions(latest.data.questions as Question[]);
+        const restoredMode = toGeneratedQuestionMode(latest.data.question_type);
+        if (Array.isArray(latest.data.questions) && latest.data.questions.length > 0) {
+          setQuestions(normalizeStoredQuestions(latest.data.questions as ExamQuestion[], restoredMode) as ExamQuestion[]);
+        }
         storeLocalLastExam(latest.data);
       }
+
       if (wrong.data) {
         const merged = mergeWrongNotes([...(wrong.data as WrongNote[]), ...localWrong]);
         setWrongNotes(merged);
@@ -110,45 +293,167 @@ export default function App() {
     })();
   }, []);
 
-  const readyToGenerate = mode === 'upload' ? questionFiles.length > 0 && answerFiles.length > 0 : materialText.trim().length > 20;
-
   const summary = useMemo(() => {
     const wrong = questions.flatMap((question) => {
       const myAnswer = responses[question.id] ?? '';
-      return normalizeAnswer(myAnswer) === normalizeAnswer(question.answer) ? [] : [{ id: `${examTitle}-${question.id}`, examTitle, topic: question.topic, stem: question.stem, myAnswer: myAnswer || '미응답', answer: question.answer, explanation: question.explanation }];
+      return normalizeAnswer(myAnswer) === normalizeAnswer(question.answer)
+        ? []
+        : [{
+            id: `${examTitle}-${question.id}`,
+            examTitle,
+            topic: question.topic,
+            stem: question.stem,
+            myAnswer: myAnswer || '미응답',
+            answer: question.answer,
+            explanation: question.explanation,
+          }];
     });
+
     const correctCount = questions.length - wrong.length;
-    return { score: questions.length ? Math.round((correctCount / questions.length) * 100) : 0, correctCount, wrongCount: wrong.length, wrong };
+    return {
+      score: questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0,
+      correctCount,
+      wrongCount: wrong.length,
+      wrong,
+    };
   }, [examTitle, questions, responses]);
+
+  const answeredIds = new Set(
+    Object.entries(responses)
+      .filter(([, value]) => String(value).trim().length > 0)
+      .map(([key]) => Number(key)),
+  );
+
+  const handleSubjectSelect = (nextSubject: SubjectKey) => {
+    const nextDefaults = getSubjectSelectionDefaults(nextSubject);
+    setSubject(nextSubject);
+    setQuestionType(nextDefaults.questionType);
+    setFormat(nextDefaults.format);
+    setGenerationError(null);
+  };
 
   const handleGenerate = async () => {
     setIsGenerating(true);
+    setGenerationError(null);
+
     try {
-      let nextQuestions = buildQuestions(questionType, count);
-      let nextTitle = makeExamTitle(mode, format, difficulty, count);
+      const uploadMode = inferUploadMode(subject, questionType, format);
+      let nextQuestions = buildQuestions(subject, uploadMode, count);
+      let nextQuestionMode = uploadMode;
+      const nextTitle = makeExamTitle(
+        mode,
+        subject,
+        schoolLevel,
+        difficulty,
+        count,
+        generationTopic,
+        selectionLabel,
+      );
+
+      let resolvedTitle = nextTitle;
+
       if (mode === 'ai') {
-        const apiQuestionType = toGeneratedQuestionMode(questionType);
-        const response = await fetch('/api/ai/generate-exam', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ materialText, questionType: apiQuestionType, difficulty, format, count }) });
-        const data = (await response.json()) as { title?: string; questions?: Question[]; error?: string };
-        if (!response.ok) throw new Error(data.error || 'AI 문제 생성에 실패했습니다.');
+        const response = await fetch('/api/ai/generate-exam', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            materialText,
+            subject,
+            questionType: usesNoSelector(subject) ? undefined : questionType,
+            format: usesNoSelector(subject) ? undefined : format,
+            difficulty,
+            schoolLevel,
+            count,
+            title: nextTitle,
+            topic: generationTopic.trim() || selectionLabel || SUBJECT_CONFIG[subject].label,
+          }),
+        });
+
+        const data = (await response.json()) as {
+          title?: string;
+          questions?: ExamQuestion[];
+          source?: 'ai' | 'mock';
+          error?: string;
+          validation?: { warnings?: string[] };
+        };
+
+        if (!response.ok) {
+          throw new Error(data.error || 'AI 문제 생성에 실패했습니다.');
+        }
+
         if (Array.isArray(data.questions) && data.questions.length > 0) {
-          nextQuestions = normalizeGeneratedQuestions(apiQuestionType, data.questions);
-          nextTitle = data.title || nextTitle;
+          nextQuestions = normalizeGeneratedQuestions('multiple', data.questions) as ExamQuestion[];
+          nextQuestionMode = 'multiple';
+        }
+
+        if (!Array.isArray(data.questions) || data.questions.length === 0) {
+          throw new Error('생성된 문항이 없습니다. 다시 시도해 주세요.');
+        }
+
+        const containsInvalidQuestion = data.questions.some((question) => {
+          const stem = question.stem?.trim() ?? '';
+          return stem.length === 0 || hasPlaceholderChoices(question.choices);
+        });
+
+        if (containsInvalidQuestion || data.source === 'mock') {
+          throw new Error('생성된 문항이 불완전합니다. placeholder 보기 또는 빈 문항이 감지되어 생성을 중단했습니다.');
+        }
+
+        resolvedTitle = data.title || nextTitle;
+        setExamTitle(resolvedTitle);
+      } else {
+        resolvedTitle = nextTitle;
+        setExamTitle(resolvedTitle);
+      }
+
+      setQuestions(nextQuestions);
+      setGeneratedQuestionMode(nextQuestionMode);
+      setResponses({});
+      setCurrentQuestionIndex(1);
+      setExamMeta({ subject, difficulty, schoolLevel, count });
+
+      const localRecord = {
+        id: currentExamId ?? `local-${Date.now()}`,
+        title: resolvedTitle,
+        builder_mode: mode,
+        question_type: nextQuestionMode,
+        difficulty,
+        exam_format: schoolLevel,
+        question_count: count,
+        source_text: mode === 'ai' ? materialText : null,
+        question_files: questionFiles,
+        answer_files: answerFiles,
+        questions: nextQuestions,
+        responses: null,
+        score: null,
+        correct_count: null,
+        wrong_count: null,
+        submitted_at: null,
+        created_at: new Date().toISOString(),
+      };
+      storeLocalLastExam(localRecord);
+
+      if (sessionUserId) {
+        const saved = await saveExamDraft(sessionUserId, {
+          title: localRecord.title,
+          builderMode: mode,
+          questionType: nextQuestionMode,
+          difficulty,
+          examFormat: schoolLevel,
+          questionCount: count,
+          sourceText: mode === 'ai' ? materialText : '',
+          questionFiles,
+          answerFiles,
+          questions: nextQuestions,
+        });
+        if (saved.data) {
+          setCurrentExamId(saved.data.id);
         }
       }
-      setQuestions(nextQuestions);
-      setExamTitle(nextTitle);
-      setGeneratedQuestionMode(toGeneratedQuestionMode(questionType));
-      setResponses({});
-      const localRecord = { id: currentExamId ?? `local-${Date.now()}`, title: nextTitle, builder_mode: mode, question_type: questionType, difficulty, exam_format: format, question_count: count, source_text: mode === 'ai' ? materialText : null, question_files: questionFiles, answer_files: answerFiles, questions: nextQuestions, responses: null, score: null, correct_count: null, wrong_count: null, submitted_at: null, created_at: new Date().toISOString() };
-      storeLocalLastExam(localRecord);
-      if (sessionUserId) {
-        const saved = await saveExamDraft(sessionUserId, { title: nextTitle, builderMode: mode, questionType, difficulty, examFormat: format, questionCount: count, sourceText: mode === 'ai' ? materialText : '', questionFiles, answerFiles, questions: nextQuestions });
-        if (saved.data) setCurrentExamId(saved.data.id);
-      }
+
       setScreen('taking');
     } catch (error) {
-      setSyncMessage(error instanceof Error ? error.message : '생성 실패');
+      setGenerationError(error instanceof Error ? error.message : '생성 실패');
     } finally {
       setIsGenerating(false);
     }
@@ -158,163 +463,719 @@ export default function App() {
     const merged = mergeWrongNotes([...summary.wrong, ...wrongNotes]);
     setWrongNotes(merged);
     storeLocalWrongNotes(merged);
+
     if (sessionUserId) {
       await saveWrongNotes(sessionUserId, merged);
-      if (currentExamId) await completeExam(sessionUserId, { examId: currentExamId, responses, score: summary.score, correctCount: summary.correctCount, wrongCount: summary.wrongCount });
+      if (currentExamId) {
+        await completeExam(sessionUserId, {
+          examId: currentExamId,
+          responses,
+          score: summary.score,
+          correctCount: summary.correctCount,
+          wrongCount: summary.wrongCount,
+        });
+      }
     }
+
     setScreen('result');
   };
 
-  const nav = (next: Screen) => { window.scrollTo(0, 0); setScreen(next); };
+  const navigate = (next: Screen) => {
+    window.scrollTo(0, 0);
+    setScreen(next);
+  };
 
-  if (screen === 'landing') return <LandingScreen onNavigate={nav} />;
-  if (screen === 'create') return <CreateScreen mode={mode} setMode={setMode} questionType={questionType} setQuestionType={setQuestionType} difficulty={difficulty} setDifficulty={setDifficulty} format={format} setFormat={setFormat} count={count} setCount={setCount} materialText={materialText} setMaterialText={setMaterialText} questionFiles={questionFiles} answerFiles={answerFiles} setQuestionFiles={setQuestionFiles} setAnswerFiles={setAnswerFiles} ready={readyToGenerate} isGenerating={isGenerating} onGenerate={handleGenerate} onBack={() => nav('landing')} />;
-  if (screen === 'taking') return <TakingScreen examTitle={examTitle} questions={questions} responses={responses} setResponses={setResponses} generatedQuestionMode={generatedQuestionMode} onBack={() => nav('create')} onSubmit={handleSubmit} />;
-  if (screen === 'result') return <ResultScreen examTitle={examTitle} summary={summary} questions={questions} responses={responses} onBack={() => nav('landing')} onWrong={() => nav('wrong')} />;
-  return <WrongScreen wrongNotes={wrongNotes} onBack={() => nav('landing')} onRetry={() => { setResponses({}); nav('taking'); }} syncMessage={syncMessage} />;
+  if (screen === 'taking' && questions.length > 0) {
+    return (
+      <>
+        <TopBar current={screen} onNavigate={navigate} />
+        <main className="min-h-screen bg-slate-100 px-3 pb-24 pt-4 text-slate-900 sm:px-5 sm:pt-6">
+          <div className="mx-auto flex max-w-[980px] flex-col gap-4">
+            <ExamHeader
+              title={examTitle}
+              subjectLabel={SUBJECT_CONFIG[examMeta.subject].label}
+              schoolLevelLabel={getSchoolLevelLabel(examMeta.schoolLevel)}
+              difficultyLabel={getDifficultyLabel(examMeta.difficulty)}
+              currentIndex={currentQuestionIndex}
+              totalCount={questions.length}
+              answeredCount={answeredIds.size}
+            />
+            <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
+              <div className="space-y-4">
+                <ExamQuestionList
+                  questions={questions}
+                  responses={responses}
+                  currentIndex={currentQuestionIndex}
+                  onVisibleChange={setCurrentQuestionIndex}
+                  onSelectChoice={(questionId, choice) =>
+                    setResponses((current) => ({
+                      ...current,
+                      [questionId]: choice,
+                    }))
+                  }
+                  onChangeText={(questionId, value) =>
+                    setResponses((current) => ({
+                      ...current,
+                      [questionId]: value,
+                    }))
+                  }
+                />
+                <ExamNavigation
+                  answeredCount={answeredIds.size}
+                  totalCount={questions.length}
+                  onSubmit={handleSubmit}
+                  onScrollTop={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                />
+              </div>
+              <div className="space-y-4 lg:sticky lg:top-6">
+                <QuestionPalette
+                  totalCount={questions.length}
+                  currentIndex={currentQuestionIndex}
+                  answeredIds={answeredIds}
+                  onJump={(index) => {
+                    setCurrentQuestionIndex(index);
+                    document.getElementById(`exam-question-${index}`)?.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'start',
+                    });
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </main>
+      </>
+    );
+  }
+
+  let content: ReactNode;
+  if (screen === 'landing') {
+    content = <LandingScreen onNavigate={navigate} />;
+  } else if (screen === 'create') {
+    content = (
+      <CreateScreen
+        mode={mode}
+        setMode={setMode}
+        subject={subject}
+        onSelectSubject={handleSubjectSelect}
+        questionType={questionType}
+        setQuestionType={setQuestionType}
+        format={format}
+        setFormat={setFormat}
+        difficulty={difficulty}
+        setDifficulty={setDifficulty}
+        schoolLevel={schoolLevel}
+        setSchoolLevel={setSchoolLevel}
+        count={count}
+        setCount={setCount}
+        generationTopic={generationTopic}
+        setGenerationTopic={setGenerationTopic}
+        materialText={materialText}
+        setMaterialText={setMaterialText}
+        questionFiles={questionFiles}
+        answerFiles={answerFiles}
+        setQuestionFiles={setQuestionFiles}
+        setAnswerFiles={setAnswerFiles}
+        ready={readyToGenerate}
+        isGenerating={isGenerating}
+        generationError={generationError}
+        onGenerate={handleGenerate}
+      />
+    );
+  } else if (screen === 'result') {
+    content = (
+      <ResultScreen
+        examTitle={examTitle}
+        summary={summary}
+        questions={questions}
+        responses={responses}
+        onBack={() => navigate('landing')}
+        onWrong={() => navigate('wrong')}
+      />
+    );
+  } else {
+    content = (
+      <WrongScreen
+        wrongNotes={wrongNotes}
+        syncMessage={syncMessage}
+        onBack={() => navigate('landing')}
+        onRetry={() => {
+          setCurrentQuestionIndex(1);
+          navigate('taking');
+        }}
+      />
+    );
+  }
+
+  return (
+    <>
+      <TopBar current={screen} onNavigate={navigate} />
+      {content}
+      <BottomNavigation current={screen} onNavigate={navigate} />
+    </>
+  );
+}
+
+type CreateScreenProps = {
+  mode: BuilderMode;
+  setMode: (value: BuilderMode) => void;
+  subject: SubjectKey;
+  onSelectSubject: (value: SubjectKey) => void;
+  questionType: string;
+  setQuestionType: (value: string) => void;
+  format: SelectionFormat;
+  setFormat: (value: SelectionFormat) => void;
+  difficulty: DifficultyLevel;
+  setDifficulty: (value: DifficultyLevel) => void;
+  schoolLevel: SchoolLevel;
+  setSchoolLevel: (value: SchoolLevel) => void;
+  count: number;
+  setCount: (value: number) => void;
+  generationTopic: string;
+  setGenerationTopic: (value: string) => void;
+  materialText: string;
+  setMaterialText: (value: string) => void;
+  questionFiles: string[];
+  answerFiles: string[];
+  setQuestionFiles: (value: string[]) => void;
+  setAnswerFiles: (value: string[]) => void;
+  ready: boolean;
+  isGenerating: boolean;
+  generationError: string | null;
+  onGenerate: () => void;
+};
+
+function CreateScreen(props: CreateScreenProps) {
+  const {
+    mode,
+    setMode,
+    subject,
+    onSelectSubject,
+    questionType,
+    setQuestionType,
+    format,
+    setFormat,
+    difficulty,
+    setDifficulty,
+    schoolLevel,
+    setSchoolLevel,
+    count,
+    setCount,
+    generationTopic,
+    setGenerationTopic,
+    materialText,
+    setMaterialText,
+    questionFiles,
+    answerFiles,
+    setQuestionFiles,
+    setAnswerFiles,
+    ready,
+    isGenerating,
+    generationError,
+    onGenerate,
+  } = props;
+
+  const selectionLabel = getSubjectSelectionLabel(subject, questionType, format);
+  const hideSelector = usesNoSelector(subject);
+  const questionTypeOptions = getSubjectQuestionTypes(subject);
+  const formatOptions = getSubjectFormats(subject);
+  const previewMode = inferUploadMode(subject, questionType, format);
+  const preview = buildQuestions(subject, mode === 'ai' ? 'multiple' : previewMode, Math.min(count, 2));
+  const readyHint = ready
+    ? '현재 설정으로 문제 생성이 가능합니다.'
+    : mode === 'upload'
+      ? '문제 파일과 정답 파일을 모두 업로드해야 합니다.'
+      : '자료 텍스트를 20자 이상 입력해야 합니다.';
+
+  const handleFileChange = (
+    event: ChangeEvent<HTMLInputElement>,
+    target: 'question' | 'answer',
+  ) => {
+    const files = event.target.files ? Array.from<File, string>(event.target.files, (file) => file.name) : [];
+    if (target === 'question') {
+      setQuestionFiles(files);
+    } else {
+      setAnswerFiles(files);
+    }
+  };
+
+  return (
+    <main className="min-h-screen bg-slate-50 px-4 pb-28 pt-8 text-slate-900 sm:px-6">
+      <div className="mx-auto max-w-5xl space-y-6">
+        <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
+          <h1 className="text-3xl font-bold">CBT 생성</h1>
+          <p className="mt-2 text-sm text-slate-500">
+            과목, 학교급, 난이도, 문항 수를 기준으로 실제 시험 흐름에 맞는 문제 세트를 만듭니다.
+          </p>
+        </section>
+
+        <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setMode('upload')}
+              className={`border px-4 py-3 text-sm font-semibold ${mode === 'upload' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700'}`}
+            >
+              업로드형
+            </button>
+            <button
+              onClick={() => setMode('ai')}
+              className={`border px-4 py-3 text-sm font-semibold ${mode === 'ai' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700'}`}
+            >
+              AI 생성형
+            </button>
+          </div>
+        </section>
+
+        <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
+          <h2 className="text-sm font-semibold text-slate-700">과목 선택</h2>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {(Object.keys(SUBJECT_CONFIG) as SubjectKey[]).map((key) => (
+              <button
+                key={key}
+                onClick={() => onSelectSubject(key)}
+                className={`border px-4 py-3 text-sm font-semibold ${
+                  subject === key ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700'
+                }`}
+              >
+                {SUBJECT_CONFIG[key].label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="grid gap-4 lg:grid-cols-2">
+          {!hideSelector && questionTypeOptions.length > 0 ? (
+            <SelectorPanel
+              title="문제유형"
+              options={questionTypeOptions}
+              value={questionType}
+              onSelect={setQuestionType}
+            />
+          ) : null}
+
+          {!hideSelector && formatOptions.length > 0 ? (
+            <SelectorPanel
+              title="문제 방식"
+              options={formatOptions}
+              value={format}
+              onSelect={(value) => setFormat(value as SelectionFormat)}
+            />
+          ) : null}
+
+          <SelectorPanel
+            title="난이도"
+            options={['easy', 'medium', 'hard']}
+            value={difficulty}
+            onSelect={(value) => setDifficulty(value as DifficultyLevel)}
+            labelMap={{ easy: '쉬움', medium: '보통', hard: '어려움' }}
+          />
+
+          <SelectorPanel
+            title="학교급"
+            options={['middle', 'high', 'csat']}
+            value={schoolLevel}
+            onSelect={(value) => setSchoolLevel(value as SchoolLevel)}
+            labelMap={{ middle: '중등', high: '고등', csat: '수능' }}
+          />
+
+          <section className="border border-slate-200 bg-white px-5 py-5">
+            <h2 className="text-sm font-semibold text-slate-700">문항 수</h2>
+            <input
+              type="range"
+              min={5}
+              max={30}
+              value={count}
+              onChange={(event) => setCount(Number(event.target.value))}
+              className="mt-4 w-full"
+            />
+            <div className="mt-3 text-sm font-medium text-slate-700">{count}문항</div>
+          </section>
+        </section>
+
+        {mode === 'upload' ? (
+          <section className="grid gap-4 lg:grid-cols-2">
+            <UploadPanel title="문제 파일" files={questionFiles} onChange={(event) => handleFileChange(event, 'question')} />
+            <UploadPanel title="정답 파일" files={answerFiles} onChange={(event) => handleFileChange(event, 'answer')} />
+          </section>
+        ) : (
+          <section className="grid gap-4">
+            <section className="border border-slate-200 bg-white px-5 py-5">
+              <h2 className="text-sm font-semibold text-slate-700">
+                {subject === 'korean_history' ? '단원 / 출제 범위' : '주제 / 단원'}
+              </h2>
+              <input
+                value={generationTopic}
+                onChange={(event) => setGenerationTopic(event.target.value)}
+                placeholder={subject === 'korean_history' ? '예: 조선 전기 통치 체제' : '예: 근대 사회 변화'}
+                className="mt-4 w-full border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900"
+              />
+            </section>
+
+            <section className="border border-slate-200 bg-white px-5 py-5">
+              <h2 className="text-sm font-semibold text-slate-700">
+                {subject === 'korean_history' ? '지문 / 사료 / 학습 자료' : '교재 / 학습 자료 텍스트'}
+              </h2>
+              <textarea
+                value={materialText}
+                onChange={(event) => setMaterialText(event.target.value)}
+                placeholder={subject === 'korean_history'
+                  ? '국사 문제의 범위가 되는 서술, 사료, 단원 요약을 입력하세요.'
+                  : '문제 생성을 위한 본문이나 요약 자료를 입력하세요.'}
+                className="mt-4 min-h-44 w-full border border-slate-300 px-4 py-4 text-sm leading-7 outline-none focus:border-slate-900"
+              />
+            </section>
+          </section>
+        )}
+
+        <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-700">현재 설정</p>
+              <p className="mt-2 text-sm leading-7 text-slate-600">
+                {SUBJECT_CONFIG[subject].label}
+                {selectionLabel ? ` / ${selectionLabel}` : ''}
+                {' / '}
+                {getSchoolLevelLabel(schoolLevel)}
+                {' / '}
+                {getDifficultyLabel(difficulty)}
+                {' / '}
+                {count}문항
+              </p>
+              <p className="mt-2 text-sm text-slate-500">{readyHint}</p>
+              {generationError ? <p className="mt-3 text-sm text-red-700">{generationError}</p> : null}
+            </div>
+            <button
+              onClick={onGenerate}
+              disabled={!ready || isGenerating}
+              className="bg-slate-900 px-6 py-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              {isGenerating ? '생성 중...' : 'CBT 생성하기'}
+            </button>
+          </div>
+        </section>
+
+        <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">미리보기</h2>
+            <span className="text-xs uppercase tracking-[0.14em] text-slate-400">Preview</span>
+          </div>
+          <div className="space-y-4">
+            {preview.map((question) => (
+              <div key={question.id} className="border border-slate-200 px-4 py-4">
+                <p className="text-base font-semibold text-slate-900">{question.id}. {question.stem}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function SelectorPanel({
+  title,
+  options,
+  value,
+  onSelect,
+  labelMap,
+}: {
+  title: string;
+  options: readonly string[];
+  value: string;
+  onSelect: (value: string) => void;
+  labelMap?: Record<string, string>;
+}) {
+  return (
+    <section className="border border-slate-200 bg-white px-5 py-5">
+      <h2 className="text-sm font-semibold text-slate-700">{title}</h2>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {options.map((option) => (
+          <button
+            key={option}
+            onClick={() => onSelect(option)}
+            className={`border px-4 py-3 text-sm font-semibold ${
+              value === option ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700'
+            }`}
+          >
+            {labelMap?.[option] ?? option}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function UploadPanel({
+  title,
+  files,
+  onChange,
+}: {
+  title: string;
+  files: string[];
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <label className="border border-slate-200 bg-white px-5 py-5">
+      <h2 className="text-sm font-semibold text-slate-700">{title}</h2>
+      <div className="mt-4 border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+        파일을 선택해 업로드하세요.
+      </div>
+      <input type="file" multiple className="mt-4 block w-full text-sm" onChange={onChange} />
+      {files.length > 0 ? (
+        <ul className="mt-4 space-y-2 text-sm text-slate-600">
+          {files.map((file) => (
+            <li key={file}>{file}</li>
+          ))}
+        </ul>
+      ) : null}
+    </label>
+  );
 }
 
 function LandingScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 px-6 pt-24 pb-28">
-      <div className="max-w-4xl mx-auto text-center">
-        <div className="w-20 h-20 rounded-3xl bg-blue-600 text-white text-4xl font-black flex items-center justify-center mx-auto mb-6">R</div>
-        <h1 className="text-5xl font-black mb-4">루트 (ROOT)</h1>
-        <p className="text-slate-600 mb-10">문제 생성, CBT 응시, 결과 확인, 오답노트 복습까지 한 흐름으로 연결됩니다.</p>
-        <div className="grid md:grid-cols-2 gap-4 mb-10">
-          <Card icon={<Upload className="w-6 h-6 text-blue-600" />} title="업로드형" description="문제 파일과 정답 파일로 시험 생성" />
-          <Card icon={<Bot className="w-6 h-6 text-blue-600" />} title="AI 생성형" description="텍스트와 조건으로 자동 문제 생성" />
+    <main className="min-h-screen bg-slate-50 px-4 pb-28 pt-20 text-slate-900 sm:px-6">
+      <div className="mx-auto max-w-4xl space-y-6 text-center">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center border border-slate-200 bg-white text-3xl font-bold">
+          R
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <button onClick={() => onNavigate('create')} className="px-6 py-4 rounded-2xl bg-blue-600 text-white font-bold inline-flex items-center justify-center gap-2"><PlusCircle className="w-5 h-5" />시험 만들기</button>
-          <button onClick={() => onNavigate('wrong')} className="px-6 py-4 rounded-2xl bg-white border border-slate-200 font-bold inline-flex items-center justify-center gap-2"><NotebookPen className="w-5 h-5" />오답노트</button>
+        <div>
+          <h1 className="text-4xl font-bold">ROOT CBT</h1>
+          <p className="mt-3 text-sm leading-7 text-slate-600">
+            과목 기반 문제 생성부터 실제 시험형 응시 화면, 결과 확인과 오답노트까지 한 흐름으로 관리합니다.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <InfoCard
+            icon={<Upload className="h-5 w-5 text-slate-900" />}
+            title="업로드형"
+            description="문제 파일과 정답 파일을 기준으로 시험 세트를 구성합니다."
+          />
+          <InfoCard
+            icon={<Bot className="h-5 w-5 text-slate-900" />}
+            title="AI 생성형"
+            description="과목, 학교급, 난이도, 문항 수 기준으로 문제를 자동 생성합니다."
+          />
+        </div>
+        <div className="flex flex-col justify-center gap-3 sm:flex-row">
+          <button
+            onClick={() => onNavigate('create')}
+            className="inline-flex items-center justify-center gap-2 bg-slate-900 px-6 py-4 text-sm font-semibold text-white"
+          >
+            <PlusCircle className="h-5 w-5" />
+            시험 만들기
+          </button>
+          <button
+            onClick={() => onNavigate('wrong')}
+            className="inline-flex items-center justify-center gap-2 border border-slate-300 bg-white px-6 py-4 text-sm font-semibold text-slate-700"
+          >
+            <NotebookPen className="h-5 w-5" />
+            오답노트
+          </button>
         </div>
       </div>
     </main>
   );
 }
-function CreateScreen(props: { mode: BuilderMode; setMode: (value: BuilderMode) => void; questionType: QuestionType; setQuestionType: (value: QuestionType) => void; difficulty: Difficulty; setDifficulty: (value: Difficulty) => void; format: ExamFormat; setFormat: (value: ExamFormat) => void; count: number; setCount: (value: number) => void; materialText: string; setMaterialText: (value: string) => void; questionFiles: string[]; answerFiles: string[]; setQuestionFiles: (value: string[]) => void; setAnswerFiles: (value: string[]) => void; ready: boolean; isGenerating: boolean; onGenerate: () => void; onBack: () => void }) {
-  const { mode, setMode, questionType, setQuestionType, difficulty, setDifficulty, format, setFormat, count, setCount, materialText, setMaterialText, questionFiles, answerFiles, setQuestionFiles, setAnswerFiles, ready, isGenerating, onGenerate, onBack } = props;
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>, target: 'question' | 'answer') => { const files = Array.from(event.target.files ?? []).map((file) => file.name); if (target === 'question') setQuestionFiles(files); else setAnswerFiles(files); };
-  const preview = buildQuestions(questionType, Math.min(count, 3));
 
+function ResultScreen({
+  examTitle,
+  summary,
+  questions,
+  responses,
+  onBack,
+  onWrong,
+}: {
+  examTitle: string;
+  summary: { score: number; correctCount: number; wrongCount: number; wrong: WrongNote[] };
+  questions: ExamQuestion[];
+  responses: Record<number, string>;
+  onBack: () => void;
+  onWrong: () => void;
+}) {
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 px-6 pt-10 pb-32">
-      <div className="max-w-3xl mx-auto">
-        <button onClick={onBack} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-slate-600"><ArrowLeft className="w-4 h-4" />뒤로</button>
-        <h2 className="text-4xl font-black mb-3">시험 생성</h2>
-        <p className="text-slate-600 mb-6">옵션을 설정하고 바로 응시할 수 있습니다.</p>
-        <div className="grid grid-cols-2 gap-3 bg-slate-100 p-2 rounded-2xl mb-6">
-          <button onClick={() => setMode('upload')} className={`rounded-2xl py-4 font-bold ${mode === 'upload' ? 'bg-white shadow-sm' : 'text-slate-500'}`}>업로드형</button>
-          <button onClick={() => setMode('ai')} className={`rounded-2xl py-4 font-bold ${mode === 'ai' ? 'bg-white shadow-sm' : 'text-slate-500'}`}>AI 생성형</button>
-        </div>
-        {mode === 'upload' ? (
-          <div className="grid md:grid-cols-2 gap-4 mb-6">
-            <UploadBox title="문제 파일 업로드" files={questionFiles} onChange={(e) => handleFileChange(e, 'question')} />
-            <UploadBox title="정답 파일 업로드" files={answerFiles} onChange={(e) => handleFileChange(e, 'answer')} />
+    <main className="min-h-screen bg-slate-50 px-4 pb-28 pt-8 text-slate-900 sm:px-6">
+      <div className="mx-auto max-w-4xl space-y-6">
+        <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
+          <h1 className="text-3xl font-bold">결과 확인</h1>
+          <p className="mt-2 text-sm text-slate-500">{examTitle}</p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <Metric label="점수" value={`${summary.score}점`} />
+            <Metric label="정답" value={`${summary.correctCount}문항`} />
+            <Metric label="오답" value={`${summary.wrongCount}문항`} />
           </div>
-        ) : (
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm mb-6">
-            <div className="text-sm font-bold mb-2">교재 / 교과서 텍스트</div>
-            <textarea value={materialText} onChange={(e) => setMaterialText(e.target.value)} placeholder="교과서 단원 개념, 예제, 빈출 포인트를 입력하면 AI가 선택한 조건에 맞는 CBT 문제를 생성합니다." className="w-full min-h-40 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 outline-none mb-4" />
-            <div className="grid md:grid-cols-2 gap-4">
-              <OptionGroup title="문제 유형" options={['객관식', '주관식', '혼합형']} value={questionType} onChange={(v) => setQuestionType(v as QuestionType)} />
-              <OptionGroup title="난이도" options={['기본', '도전', '실전']} value={difficulty} onChange={(v) => setDifficulty(v as Difficulty)} />
-              <OptionGroup title="시험 형식" options={['중학교 내신형', '고등학교 내신형', '수능형']} value={format} onChange={(v) => setFormat(v as ExamFormat)} />
-              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200"><div className="text-sm font-bold mb-3">문항 수</div><input type="range" min={5} max={30} value={count} onChange={(e) => setCount(Number(e.target.value))} className="w-full" /><div className="mt-3 font-semibold text-slate-600">{count}문항</div></div>
-            </div>
-          </div>
-        )}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm mb-6">
-          <div className="flex items-center justify-between mb-4"><h3 className="text-xl font-bold">문항 미리보기</h3><span className="text-xs font-bold text-slate-400">PREVIEW</span></div>
-          <div className="space-y-3">{preview.map((question) => <div key={question.id} className="rounded-2xl bg-slate-50 border border-slate-200 p-4"><div className="flex gap-2 flex-wrap mb-2"><Tag>{question.type}</Tag><Tag>{question.topic}</Tag></div><p className="font-semibold">{question.id}. {question.stem}</p></div>)}</div>
+        </section>
+
+        <div className="flex flex-wrap gap-3">
+          <button onClick={onWrong} className="border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700">
+            오답노트 보기
+          </button>
+          <button onClick={onBack} className="bg-slate-900 px-5 py-3 text-sm font-semibold text-white">
+            홈으로 이동
+          </button>
         </div>
-        <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur border-t border-slate-200"><div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between gap-4"><div className={`text-sm font-medium ${ready ? 'text-blue-600' : 'text-slate-500'}`}>{ready ? '생성 준비가 완료되었습니다.' : mode === 'upload' ? '문제 파일과 정답 파일을 모두 업로드하세요.' : 'AI 생성을 위해 충분한 텍스트를 입력하세요.'}</div><button onClick={onGenerate} disabled={!ready || isGenerating} className="px-6 py-3 rounded-2xl bg-blue-600 text-white font-bold disabled:bg-slate-300">{isGenerating ? '생성 중...' : '시험 생성'}</button></div></div>
-      </div>
-    </main>
-  );
-}
 
-function TakingScreen({ examTitle, questions, responses, setResponses, generatedQuestionMode, onBack, onSubmit }: { examTitle: string; questions: Question[]; responses: Record<number, string>; setResponses: Dispatch<SetStateAction<Record<number, string>>>; generatedQuestionMode: GeneratedQuestionMode; onBack: () => void; onSubmit: () => void }) {
-  const answeredCount = questions.filter((question) => typeof responses[question.id] === 'string' && responses[question.id].trim().length > 0).length;
-  const progress = questions.length ? Math.round((answeredCount / questions.length) * 100) : 0;
-
-  return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 px-4 md:px-0 pt-6 pb-28">
-      <div className="max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-6"><button onClick={onBack} className="inline-flex items-center gap-2 text-sm font-bold text-slate-600"><ArrowLeft className="w-4 h-4" />설정</button><div className="px-4 py-1.5 bg-blue-600 rounded-full text-white inline-flex items-center gap-2 text-sm font-bold"><Clock className="w-4 h-4" />24:18</div></div>
-        <div className="mb-6 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm"><div className="flex justify-between items-end mb-3"><span className="font-bold">{examTitle}</span><span className="text-sm text-blue-600 font-bold">{answeredCount}/{questions.length}</span></div><div className="h-2 rounded-full bg-slate-100 overflow-hidden"><div className="h-full bg-blue-600" style={{ width: `${progress}%` }} /></div></div>
-        <section className="space-y-6">
+        <section className="space-y-4">
           {questions.map((question) => {
-            const isMultiple = generatedQuestionMode === 'multiple' || (generatedQuestionMode === 'mixed' && question.type === '객관식');
-            const choices = isMultiple ? normalizeMultipleChoiceChoices(question.choices) : [];
+            const myAnswer = responses[question.id] ?? '미응답';
+            const isCorrect = normalizeAnswer(myAnswer) === normalizeAnswer(question.answer);
             return (
-              <article key={question.id} className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
-                <div className="flex flex-wrap gap-2 mb-4"><Tag>{isMultiple ? '객관식' : '주관식'}</Tag><Tag>{question.topic}</Tag></div>
-                <p className="text-lg leading-relaxed font-medium"><span className="mr-2">{question.id}.</span>{question.stem}</p>
-                {isMultiple ? (
-                  <div className="space-y-3 mt-5">
-                    {choices.map((choice, index) => <button key={`${question.id}-${index}-${choice}`} onClick={() => setResponses((prev) => ({ ...prev, [question.id]: choice }))} className={`w-full flex items-center p-5 rounded-2xl text-left border transition ${responses[question.id] === choice ? 'bg-white border-blue-200 shadow-sm' : 'bg-slate-50 border-slate-200'}`}><span className={`w-10 h-10 shrink-0 flex items-center justify-center rounded-full font-bold text-sm mr-5 ${responses[question.id] === choice ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700'}`}>{index + 1}</span><span className={responses[question.id] === choice ? 'text-blue-700 font-bold' : 'text-slate-900 font-medium'}>{choice}</span></button>)}
-                  </div>
-                ) : (
-                  <textarea value={responses[question.id] ?? ''} onChange={(e) => setResponses((prev) => ({ ...prev, [question.id]: e.target.value }))} className="w-full mt-5 min-h-28 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 outline-none" placeholder="주관식 답안을 입력하세요." />
-                )}
+              <article key={question.id} className="border border-slate-200 bg-white px-5 py-5">
+                <div className="mb-3 text-sm font-semibold text-slate-500">
+                  문항 {question.id} · {isCorrect ? '정답' : '오답'}
+                </div>
+                <h2 className="text-lg font-semibold text-slate-900">{question.stem}</h2>
+                <div className="mt-4 space-y-2 text-sm leading-7 text-slate-700">
+                  <p><span className="font-semibold">내 답:</span> {myAnswer}</p>
+                  <p><span className="font-semibold">정답:</span> {question.answer}</p>
+                  <p className="border border-slate-200 bg-slate-50 px-4 py-3">{question.explanation}</p>
+                </div>
               </article>
             );
           })}
         </section>
-        <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur border-t border-slate-200"><div className="max-w-3xl mx-auto px-6 py-4 flex justify-end"><button onClick={onSubmit} className="px-6 py-3 rounded-2xl bg-blue-600 text-white font-bold inline-flex items-center gap-2">제출하기<ArrowRight className="w-4 h-4" /></button></div></div>
       </div>
     </main>
   );
 }
-function ResultScreen({ examTitle, summary, questions, responses, onBack, onWrong }: { examTitle: string; summary: { score: number; correctCount: number; wrongCount: number; wrong: WrongNote[] }; questions: Question[]; responses: Record<number, string>; onBack: () => void; onWrong: () => void }) {
+
+function WrongScreen({
+  wrongNotes,
+  syncMessage,
+  onBack,
+  onRetry,
+}: {
+  wrongNotes: WrongNote[];
+  syncMessage: string;
+  onBack: () => void;
+  onRetry: () => void;
+}) {
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 px-6 pt-10 pb-20">
-      <div className="max-w-4xl mx-auto">
-        <button onClick={onBack} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-slate-600"><ArrowLeft className="w-4 h-4" />홈으로</button>
-        <div className="grid md:grid-cols-3 gap-6 mb-8"><div className="md:col-span-2 rounded-3xl bg-blue-600 text-white p-10 text-center"><div className="text-xs font-bold tracking-[0.2em] mb-4">FINAL SCORE</div><div className="text-8xl font-black">{summary.score}</div><p className="mt-4 text-blue-100">{examTitle}</p></div><div className="rounded-3xl bg-white border border-slate-200 p-8 space-y-6"><Metric icon={<CheckCircle2 className="w-5 h-5" />} label="정답 수" value={`${summary.correctCount}문항`} tone="blue" /><Metric icon={<XCircle className="w-5 h-5" />} label="오답 수" value={`${summary.wrongCount}문항`} tone="red" /><button onClick={onWrong} className="w-full px-5 py-4 rounded-2xl bg-blue-600 text-white font-bold inline-flex items-center justify-center gap-2">오답노트 보기<ArrowRight className="w-4 h-4" /></button></div></div>
-        <div className="bg-white rounded-3xl border border-slate-200 p-6"><div className="flex items-center justify-between mb-6"><h3 className="text-2xl font-black">문항별 분석</h3><span className="text-sm text-slate-500">{questions.length}문항</span></div><div className="space-y-3">{questions.map((question) => { const myAnswer = responses[question.id] || '미응답'; const correct = normalizeAnswer(myAnswer) === normalizeAnswer(question.answer); return <div key={question.id} className="rounded-2xl bg-slate-50 border border-slate-200 p-4 grid md:grid-cols-4 gap-3 items-center"><div className="font-black text-blue-600">{String(question.id).padStart(2, '0')}</div><div className="font-medium">{question.topic}</div><div className="text-sm text-slate-600">{myAnswer}</div><div className="text-right"><span className={`px-3 py-1 rounded-full text-xs font-bold ${correct ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}`}>{correct ? '정답' : '오답'}</span></div></div>; })}</div></div>
+    <main className="min-h-screen bg-slate-50 px-4 pb-28 pt-8 text-slate-900 sm:px-6">
+      <div className="mx-auto max-w-4xl space-y-6">
+        <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
+          <h1 className="text-3xl font-bold">오답노트</h1>
+          <p className="mt-2 text-sm text-slate-500">{syncMessage}</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button onClick={onRetry} className="inline-flex items-center gap-2 bg-slate-900 px-5 py-3 text-sm font-semibold text-white">
+              <RefreshCw className="h-4 w-4" />
+              다시 풀기
+            </button>
+            <button onClick={onBack} className="border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700">
+              홈으로
+            </button>
+          </div>
+        </section>
+
+        {wrongNotes.length === 0 ? (
+          <section className="border border-dashed border-slate-300 bg-white px-5 py-10 text-center text-sm text-slate-500">
+            저장된 오답이 없습니다.
+          </section>
+        ) : (
+          <section className="space-y-4">
+            {wrongNotes.map((note) => (
+              <article key={note.id} className="border border-slate-200 bg-white px-5 py-5">
+                <div className="mb-3 text-sm font-semibold text-slate-500">{note.examTitle}</div>
+                <h2 className="text-lg font-semibold text-slate-900">{note.stem}</h2>
+                <div className="mt-4 space-y-2 text-sm leading-7 text-slate-700">
+                  <p><span className="font-semibold">내 답:</span> {note.myAnswer}</p>
+                  <p><span className="font-semibold">정답:</span> {note.answer}</p>
+                  <p className="border border-slate-200 bg-slate-50 px-4 py-3">{note.explanation}</p>
+                </div>
+              </article>
+            ))}
+          </section>
+        )}
       </div>
     </main>
   );
 }
 
-function WrongScreen({ wrongNotes, onBack, onRetry, syncMessage }: { wrongNotes: WrongNote[]; onBack: () => void; onRetry: () => void; syncMessage: string }) {
-  const [keyword, setKeyword] = useState('');
-  const filtered = wrongNotes.filter((item) => { const q = keyword.trim().toLowerCase(); return q.length === 0 || item.examTitle.toLowerCase().includes(q) || item.topic.toLowerCase().includes(q) || item.stem.toLowerCase().includes(q); });
+function InfoCard({ icon, title, description }: { icon: ReactNode; title: string; description: string }) {
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 px-6 pt-10 pb-20">
-      <div className="max-w-4xl mx-auto">
-        <button onClick={onBack} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-slate-600"><Home className="w-4 h-4" />홈으로</button>
-        <h2 className="text-3xl font-black tracking-tight mb-2">Wrong Answer Journal</h2>
-        <p className="text-slate-600 mb-6">{syncMessage}</p>
-        <div className="grid md:grid-cols-2 gap-4 mb-6"><Card icon={<BookOpen className="w-6 h-6 text-blue-600" />} title="누적 오답" description={`${wrongNotes.length}문항이 저장되어 있습니다.`} /><Card icon={<Monitor className="w-6 h-6 text-blue-600" />} title="다시 풀기" description="최근 세트를 다시 응시할 수 있습니다." /></div>
-        <div className="flex items-center gap-2 rounded-2xl bg-white border border-slate-200 px-4 py-3 mb-6"><Search className="w-4 h-4 text-slate-400" /><input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="시험명, 주제, 문항 검색" className="bg-transparent outline-none text-sm w-full" /></div>
-        <div className="space-y-4">{filtered.map((item) => <article key={item.id} className="bg-white rounded-3xl border border-slate-200 p-6"><div className="flex items-center justify-between gap-4 flex-wrap mb-4"><div><div className="flex gap-2 flex-wrap mb-2"><Tag>{item.examTitle}</Tag><Tag>{item.topic}</Tag></div><h3 className="text-lg font-bold">{item.stem}</h3></div><span className="px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-700">자동 저장됨</span></div><div className="grid md:grid-cols-2 gap-3"><div className="rounded-2xl bg-slate-50 border border-slate-200 p-4"><div className="text-xs font-bold text-slate-500 mb-2">내 답안</div><p className="text-sm">{item.myAnswer}</p></div><div className="rounded-2xl bg-slate-50 border border-slate-200 p-4"><div className="text-xs font-bold text-slate-500 mb-2">정답</div><p className="text-sm">{item.answer}</p></div></div><div className="rounded-2xl bg-blue-50 p-4 mt-3"><div className="text-xs font-bold text-blue-700 mb-2">해설</div><p className="text-sm leading-relaxed">{item.explanation}</p></div></article>)}</div>
-        <div className="flex justify-end mt-6"><button onClick={onRetry} className="px-4 py-2 rounded-xl bg-slate-100 font-bold inline-flex items-center gap-2"><RefreshCw className="w-4 h-4" />최근 세트 다시 풀기</button></div>
-      </div>
-    </main>
+    <section className="border border-slate-200 bg-white px-5 py-6 text-left">
+      <div className="mb-4 inline-flex border border-slate-200 bg-slate-50 p-3">{icon}</div>
+      <h2 className="text-xl font-semibold text-slate-900">{title}</h2>
+      <p className="mt-2 text-sm leading-7 text-slate-600">{description}</p>
+    </section>
   );
 }
 
-function UploadBox({ title, files, onChange }: { title: string; files: string[]; onChange: (event: ChangeEvent<HTMLInputElement>) => void }) {
-  return <label className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm cursor-pointer block"><input type="file" accept=".pdf,.doc,.docx" multiple className="hidden" onChange={onChange} /><div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-5 py-6"><Upload className="w-6 h-6 text-blue-600 mb-4" /><h3 className="text-lg font-bold">{title}</h3></div><div className="mt-4 flex flex-wrap gap-2">{files.length > 0 ? files.map((file) => <Tag key={file}>{file}</Tag>) : <div className="text-sm text-slate-500">선택된 파일 없음</div>}</div></label>;
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border border-slate-200 bg-slate-50 px-4 py-4">
+      <div className="text-sm font-semibold text-slate-500">{label}</div>
+      <div className="mt-2 text-2xl font-bold text-slate-900">{value}</div>
+    </div>
+  );
 }
 
-function OptionGroup({ title, options, value, onChange }: { title: string; options: string[]; value: string; onChange: (value: string) => void }) {
-  return <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200"><div className="text-sm font-bold mb-3">{title}</div><div className="flex flex-wrap gap-2">{options.map((option) => <button key={option} onClick={() => onChange(option)} className={`px-3 py-2 rounded-full text-xs font-bold ${value === option ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-200'}`}>{option}</button>)}</div></div>;
+function TopBar({ current, onNavigate }: { current: Screen; onNavigate: (screen: Screen) => void }) {
+  const currentLabel =
+    current === 'landing' ? '홈' :
+    current === 'create' ? 'CBT 생성' :
+    current === 'taking' ? '응시' :
+    current === 'result' ? '결과' :
+    '오답노트';
+
+  return (
+    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => (current === 'landing' ? undefined : onNavigate('landing'))}
+            className={`flex h-11 w-11 items-center justify-center border ${
+              current === 'landing' ? 'border-slate-200 bg-slate-100 text-slate-400' : 'border-slate-900 bg-slate-900 text-white'
+            }`}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">ROOT</div>
+            <div className="text-lg font-semibold text-slate-900">{currentLabel}</div>
+          </div>
+        </div>
+        <button
+          onClick={() => window.alert('설정 메뉴는 다음 단계에서 연결할 수 있습니다.')}
+          className="flex h-11 w-11 items-center justify-center border border-slate-300 bg-white text-slate-700"
+        >
+          <Settings className="h-5 w-5" />
+        </button>
+      </div>
+    </header>
+  );
 }
 
-function Card({ icon, title, description }: { icon: ReactNode; title: string; description: string }) {
-  return <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm"><div className="mb-3">{icon}</div><h3 className="text-lg font-bold">{title}</h3><p className="text-sm text-slate-600 mt-2">{description}</p></div>;
-}
+function BottomNavigation({ current, onNavigate }: { current: Screen; onNavigate: (screen: Screen) => void }) {
+  if (current === 'taking') {
+    return null;
+  }
 
-function Tag({ children }: { children: ReactNode }) {
-  return <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600">{children}</span>;
-}
+  const items: Array<{ id: Screen; label: string; icon: ReactNode }> = [
+    { id: 'landing', label: '홈', icon: <Home className="h-5 w-5" /> },
+    { id: 'create', label: '시험 생성', icon: <PlusCircle className="h-5 w-5" /> },
+    { id: 'wrong', label: '오답노트', icon: <NotebookPen className="h-5 w-5" /> },
+  ];
 
-function Metric({ icon, label, value, tone }: { icon: ReactNode; label: string; value: string; tone: 'blue' | 'red' }) {
-  const color = tone === 'blue' ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700';
-  return <div className="flex items-center justify-between"><div className="flex items-center gap-3"><div className={`p-2 rounded-xl ${color}`}>{icon}</div><span className="font-medium">{label}</span></div><span className="font-bold">{value}</span></div>;
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white/95 backdrop-blur">
+      <div className="mx-auto grid max-w-3xl grid-cols-3 px-4 py-3">
+        {items.map((item) => {
+          const active = current === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => onNavigate(item.id)}
+              className={`flex flex-col items-center gap-1 px-3 py-2 text-xs font-semibold ${
+                active ? 'text-slate-900' : 'text-slate-500'
+              }`}
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
 }
