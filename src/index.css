@@ -1,0 +1,76 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&family=Inter:wght@400;500;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #002045;
+  --color-primary-container: #1a365d;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #86a0cd;
+  --color-primary-fixed: #d6e3ff;
+  --color-primary-fixed-dim: #adc7f7;
+  --color-secondary: #545f72;
+  --color-secondary-container: #d5e0f7;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #586377;
+  --color-surface: #f7fafc;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f1f4f6;
+  --color-surface-container: #ebeef0;
+  --color-surface-container-high: #e5e9eb;
+  --color-surface-container-highest: #e0e3e5;
+  --color-on-surface: #181c1e;
+  --color-on-surface-variant: #43474e;
+  --color-outline: #74777f;
+  --color-outline-variant: #c4c6cf;
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-tertiary: #321b00;
+  --color-tertiary-fixed: #ffddba;
+  --color-on-tertiary-container: #c6955e;
+
+  --font-headline: 'Manrope', 'Noto Sans KR', sans-serif;
+  --font-body: 'Inter', 'Noto Sans KR', sans-serif;
+  --font-label: 'Inter', 'Noto Sans KR', sans-serif;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-surface);
+  color: var(--color-on-surface);
+  min-height: max(884px, 100dvh);
+}
+
+.editorial-shadow {
+  box-shadow: 0 12px 32px -4px rgba(0, 32, 69, 0.08);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-surface-container-high);
+  border-radius: 10px;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.academic-gradient {
+  background: linear-gradient(135deg, #002045 0%, #1a365d 100%);
+}
+
+.ghost-border:focus-within {
+  outline: 1px solid rgba(0, 32, 69, 0.2);
+  background-color: #ffffff;
+}
