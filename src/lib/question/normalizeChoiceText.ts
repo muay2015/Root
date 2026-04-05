@@ -1,61 +1,73 @@
-function hasHangul(value: string) {
-  return /[가-힣]/.test(value);
+const ZERO_WIDTH_PATTERN = /[\u200B-\u200D\u2060\uFEFF]/g;
+const CHOICE_MARKER_PATTERN =
+  /^(?:(?:\(?\d+\)?|[A-Za-z]|[\u3131-\u314E\uAC00-\uD7A3])[\.\)]|[\u2022\u00B7\u25AA-])\s*/u;
+
+export function isSingleFragment(value: string) {
+  return /^[\p{L}\p{N}]$/u.test(value);
 }
 
-function isFragmentToken(value: string) {
-  return /^[가-힣A-Za-z0-9]$/.test(value);
+export function isMeaninglessPlaceholder(value: string) {
+  const normalized = value.trim().toLowerCase();
+  return (
+    normalized.length === 0 ||
+    normalized === 'null' ||
+    normalized === 'undefined' ||
+    normalized === 'nan' ||
+    /^choice\s*\d*$/i.test(normalized) ||
+    /^option\s*\d*$/i.test(normalized) ||
+    /^\uBCF4\uAE30\s*\d*$/u.test(normalized)
+  );
 }
 
-function joinFragmentBuffer(buffer: string[]) {
-  if (buffer.length === 0) {
-    return '';
-  }
-
-  const shouldJoin = buffer.length >= 3 || buffer.some(hasHangul);
-  return shouldJoin ? buffer.join('') : buffer.join(' ');
-}
-
-export function normalizeChoiceText(value: string) {
-  const cleaned = value
-    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+export function normalizeWhitespace(value: string) {
+  return value
+    .replace(ZERO_WIDTH_PATTERN, '')
     .replace(/\r\n/g, '\n')
+    .replace(/[\t\f\v]+/g, ' ')
     .replace(/\s*\n\s*/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
 
-  const tokens = cleaned.split(' ').filter(Boolean);
-  if (tokens.length <= 1) {
-    return cleaned;
+export function stripLeadingChoiceMarker(value: string) {
+  let normalized = value.trim();
+
+  while (CHOICE_MARKER_PATTERN.test(normalized)) {
+    normalized = normalized.replace(CHOICE_MARKER_PATTERN, '').trimStart();
   }
 
-  const merged: string[] = [];
-  let fragmentBuffer: string[] = [];
+  return normalized;
+}
 
-  const flushBuffer = () => {
-    if (fragmentBuffer.length === 0) {
-      return;
-    }
-
-    merged.push(joinFragmentBuffer(fragmentBuffer));
-    fragmentBuffer = [];
-  };
-
-  for (const token of tokens) {
-    if (isFragmentToken(token)) {
-      fragmentBuffer.push(token);
-      continue;
-    }
-
-    flushBuffer();
-    merged.push(token);
+export function looksFullyFragmented(tokens: string[]) {
+  if (tokens.length < 6) {
+    return false;
   }
 
-  flushBuffer();
+  const singleFragmentCount = tokens.filter(isSingleFragment).length;
+  const singleFragmentRatio = singleFragmentCount / tokens.length;
+  return singleFragmentRatio >= 0.85 && singleFragmentCount >= 6;
+}
 
-  return merged
-    .join(' ')
-    .replace(/\s+([,.;:!?])/g, '$1')
-    .replace(/([([{])\s+/g, '$1')
-    .replace(/\s+([)\]}])/g, '$1')
-    .trim();
+export function normalizeChoiceText(value: unknown) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  const normalizedWhitespace = normalizeWhitespace(value);
+  if (isMeaninglessPlaceholder(normalizedWhitespace)) {
+    return '';
+  }
+
+  const strippedMarker = stripLeadingChoiceMarker(normalizedWhitespace);
+  if (isMeaninglessPlaceholder(strippedMarker)) {
+    return '';
+  }
+
+  const tokens = strippedMarker.split(' ').filter(Boolean);
+  if (looksFullyFragmented(tokens)) {
+    return tokens.join('');
+  }
+
+  return strippedMarker;
 }

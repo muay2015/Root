@@ -8,13 +8,14 @@ type ChoiceListProps = {
 };
 
 export function ChoiceList({ choices, selectedChoice, onSelect }: ChoiceListProps) {
-  const normalizedSelectedChoice = selectedChoice ? normalizeChoiceText(selectedChoice) : undefined;
+  const normalizedChoices = choices
+    .map((choice) => normalizeChoiceText(choice))
+    .filter((choice) => choice.length > 0);
+  const normalizedSelectedChoice = normalizeChoiceText(selectedChoice);
 
   return (
     <div className="space-y-1.5 sm:space-y-2">
-      {choices.map((rawChoice, index) => {
-        const choice = normalizeChoiceText(rawChoice);
-        return (
+      {normalizedChoices.map((choice, index) => (
         <div key={`${index + 1}-${choice}`}>
           <ChoiceItem
             number={index + 1}
@@ -23,8 +24,7 @@ export function ChoiceList({ choices, selectedChoice, onSelect }: ChoiceListProp
             onSelect={() => onSelect(choice)}
           />
         </div>
-        );
-      })}
+      ))}
     </div>
   );
 }
