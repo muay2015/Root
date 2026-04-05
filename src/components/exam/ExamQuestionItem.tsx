@@ -25,7 +25,7 @@ export function ExamQuestionItem(props: ExamQuestionItemProps) {
     >
       <div className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-2 gap-y-3 sm:gap-x-3 sm:gap-y-4">
         <div />
-        <div className="min-w-0">
+        <div className="w-full min-w-0">
           {question.topic.trim().length > 0 ? (
             <p className="text-[11px] font-medium text-slate-500 sm:text-[12px]">{question.topic}</p>
           ) : null}
@@ -42,7 +42,7 @@ export function ExamQuestionItem(props: ExamQuestionItemProps) {
         <QuestionStimulusBox content={stimulus} />
 
         <div />
-        <div className="min-w-0">
+        <div className="w-full min-w-0">
           {question.type === '객관식' ? (
             <ChoiceList
               choices={question.choices ?? []}
