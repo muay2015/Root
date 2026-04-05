@@ -68,8 +68,19 @@ type ModelQuestion =
     }
   | GeneratedQuestionDraft;
 
+function collapseFragmentedKoreanText(value: string) {
+  const tokens = value.split(' ').filter(Boolean);
+  if (tokens.length < 4) {
+    return value;
+  }
+
+  const mostlySingleCharTokens = tokens.filter((token) => token.length === 1).length / tokens.length >= 0.7;
+  const hasHangulToken = tokens.some((token) => /[가-힣]/.test(token));
+  return mostlySingleCharTokens && hasHangulToken ? tokens.join('') : value;
+}
+
 function normalizeInlineText(value: string) {
-  return value.replace(/\s+/g, ' ').trim();
+  return collapseFragmentedKoreanText(value.replace(/\s+/g, ' ').trim());
 }
 
 function normalizeChoices(choices?: string[] | null) {

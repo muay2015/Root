@@ -10,8 +10,19 @@ type NormalizableQuestion = {
 const MULTIPLE_LABEL = '\uac1d\uad00\uc2dd';
 const SUBJECTIVE_LABEL = '\uc8fc\uad00\uc2dd';
 
+function collapseFragmentedKoreanText(value: string) {
+  const tokens = value.split(' ').filter(Boolean);
+  if (tokens.length < 4) {
+    return value;
+  }
+
+  const mostlySingleCharTokens = tokens.filter((token) => token.length === 1).length / tokens.length >= 0.7;
+  const hasHangulToken = tokens.some((token) => /[가-힣]/.test(token));
+  return mostlySingleCharTokens && hasHangulToken ? tokens.join('') : value;
+}
+
 function normalizeChoiceText(choice: string) {
-  return choice.replace(/\s+/g, ' ').trim();
+  return collapseFragmentedKoreanText(choice.replace(/\s+/g, ' ').trim());
 }
 
 export function normalizeMultipleChoiceChoices(choices?: string[]) {
