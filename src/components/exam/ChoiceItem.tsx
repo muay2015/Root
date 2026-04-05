@@ -28,7 +28,7 @@ export function ChoiceItem({ number, text, selected, onSelect }: ChoiceItemProps
           {number}
         </div>
         <div
-          className="min-w-0 flex-1 overflow-hidden whitespace-normal break-keep text-[14px] leading-6 sm:text-[15px] sm:leading-7"
+          className="mt-[4px] min-w-0 flex-1 overflow-hidden whitespace-normal break-keep text-[14px] leading-6 sm:mt-[5px] sm:text-[15px] sm:leading-7"
           style={{
             width: '100%',
             minWidth: 0,

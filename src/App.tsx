@@ -711,7 +711,7 @@ export default function App() {
     );
   } else {
     content = (
-      <WrongScreen
+      <WrongListScreen
         wrongNotes={wrongNotes}
         syncMessage={syncMessage}
         onBack={() => navigate('landing')}
@@ -795,8 +795,8 @@ function CreateScreen(props: CreateScreenProps) {
   const hideSelector = usesNoSelector(subject);
   const questionTypeOptions = getSubjectQuestionTypes(subject);
   const formatOptions = getSubjectFormats(subject);
-  const previewMode = inferUploadMode(subject, questionType, format);
-  const preview = buildQuestions(subject, mode === 'ai' ? 'multiple' : previewMode, Math.min(count, 2));
+  const generatedPreviewQuestion: ExamQuestion | null = null;
+  const preview: ExamQuestion[] = [];
   const readyHint = ready
     ? '현재 설정으로 문제 생성이 가능합니다.'
     : mode === 'upload'
@@ -970,19 +970,31 @@ function CreateScreen(props: CreateScreenProps) {
           </div>
         </section>
 
-        <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
+        {false ? <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">미리보기</h2>
-            <span className="text-xs uppercase tracking-[0.14em] text-slate-400">Preview</span>
+            <span className="text-xs uppercase tracking-[0.14em] text-slate-400">
+              {generatedPreviewQuestion ? 'Generated Q1' : 'Preview'}
+            </span>
           </div>
           <div className="space-y-4">
             {preview.map((question) => (
               <div key={question.id} className="border border-slate-200 px-4 py-4">
-                <p className="text-base font-semibold text-slate-900">{question.id}. {question.stem}</p>
+                <p className="text-[11px] font-medium text-slate-500">
+                  {generatedPreviewQuestion ? '최근 생성된 1번 문항' : '샘플 문항'}
+                </p>
+                <p className="mt-2 text-base font-semibold text-slate-900">{question.id}. {question.stem}</p>
+                {question.choices?.length ? (
+                  <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+                    {question.choices.slice(0, 5).map((choice, index) => (
+                      <li key={`${question.id}-${index}`}>{index + 1}. {choice}</li>
+                    ))}
+                  </ul>
+                ) : null}
               </div>
             ))}
           </div>
-        </section>
+        </section> : null}
       </div>
     </main>
   );
@@ -1200,6 +1212,88 @@ function WrongScreen({
                 </div>
               </article>
             ))}
+          </section>
+        )}
+      </div>
+    </main>
+  );
+}
+
+function WrongListScreen({
+  wrongNotes,
+  syncMessage,
+  onBack,
+  onRetry,
+}: {
+  wrongNotes: WrongNote[];
+  syncMessage: string;
+  onBack: () => void;
+  onRetry: () => void;
+}) {
+  const [openNoteId, setOpenNoteId] = useState<string | null>(null);
+
+  return (
+    <main className="min-h-screen bg-slate-50 px-4 pb-28 pt-8 text-slate-900 sm:px-6">
+      <div className="mx-auto max-w-4xl space-y-6">
+        <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
+          <h1 className="text-3xl font-bold">오답노트</h1>
+          <p className="mt-2 text-sm text-slate-500">{syncMessage}</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button onClick={onRetry} className="inline-flex items-center gap-2 bg-slate-900 px-5 py-3 text-sm font-semibold text-white">
+              <RefreshCw className="h-4 w-4" />
+              다시 풀기
+            </button>
+            <button onClick={onBack} className="border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700">
+              홈으로
+            </button>
+          </div>
+        </section>
+
+        {wrongNotes.length === 0 ? (
+          <section className="border border-dashed border-slate-300 bg-white px-5 py-10 text-center text-sm text-slate-500">
+            저장된 오답이 없습니다.
+          </section>
+        ) : (
+          <section className="overflow-hidden border border-slate-200 bg-white">
+            {wrongNotes.map((note, index) => {
+              const isOpen = openNoteId === note.id;
+
+              return (
+                <article key={note.id} className={index > 0 ? 'border-t border-slate-200' : ''}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenNoteId((current) => (current === note.id ? null : note.id))}
+                    className="flex w-full items-start justify-between gap-4 px-5 py-4 text-left hover:bg-slate-50 sm:px-6"
+                  >
+                    <div className="min-w-0 space-y-1">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{note.examTitle}</p>
+                      <h2 className="line-clamp-2 text-sm font-semibold leading-6 text-slate-900 sm:text-[15px]">
+                        {note.stem}
+                      </h2>
+                      <p className="text-sm text-slate-500">
+                        내 답: {note.myAnswer} / 정답: {note.answer}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-xs font-semibold text-slate-400">
+                      {isOpen ? '닫기' : '보기'}
+                    </span>
+                  </button>
+
+                  {isOpen ? (
+                    <div className="border-t border-slate-200 bg-slate-50/60 px-5 py-4 sm:px-6">
+                      <div className="space-y-3 text-sm leading-7 text-slate-700">
+                        <p><span className="font-semibold text-slate-900">내 답:</span> {note.myAnswer}</p>
+                        <p><span className="font-semibold text-slate-900">정답:</span> {note.answer}</p>
+                        <div className="border-l border-slate-300 bg-white/70 pl-4">
+                          <p className="text-[11px] font-semibold tracking-[0.08em] text-slate-500">해설</p>
+                          <p className="mt-2 whitespace-pre-wrap break-words">{note.explanation}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
           </section>
         )}
       </div>
