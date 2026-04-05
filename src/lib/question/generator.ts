@@ -68,9 +68,13 @@ type ModelQuestion =
     }
   | GeneratedQuestionDraft;
 
+function normalizeInlineText(value: string) {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
 function normalizeChoices(choices?: string[] | null) {
   const normalized = Array.isArray(choices)
-    ? choices.map((choice) => choice.trim()).filter((choice) => choice.length > 0).slice(0, 5)
+    ? choices.map(normalizeInlineText).filter((choice) => choice.length > 0).slice(0, 5)
     : [];
 
   while (normalized.length < 5) {
@@ -118,7 +122,7 @@ function normalizeQuestion(
   input: GenerateValidatedQuestionsInput,
 ): GeneratedQuestion {
   const choices = normalizeChoices(raw.choices);
-  const rawAnswer = String(raw.answer).trim();
+  const rawAnswer = normalizeInlineText(String(raw.answer));
   const exactChoice = choices.find((choice) => choice.trim() === rawAnswer);
   const numericAnswer = Number(rawAnswer);
   const answer =

@@ -10,9 +10,13 @@ type NormalizableQuestion = {
 const MULTIPLE_LABEL = '\uac1d\uad00\uc2dd';
 const SUBJECTIVE_LABEL = '\uc8fc\uad00\uc2dd';
 
+function normalizeChoiceText(choice: string) {
+  return choice.replace(/\s+/g, ' ').trim();
+}
+
 export function normalizeMultipleChoiceChoices(choices?: string[]) {
   const normalized = Array.isArray(choices)
-    ? choices.map((choice) => choice.trim()).filter((choice) => choice.length > 0).slice(0, 5)
+    ? choices.map(normalizeChoiceText).filter((choice) => choice.length > 0).slice(0, 5)
     : [];
 
   while (normalized.length < 5) {
