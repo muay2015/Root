@@ -16,6 +16,7 @@ export function ChoiceItem({ number, text, selected, onSelect }: ChoiceItemProps
           ? 'bg-blue-50 text-slate-900'
           : 'bg-transparent text-slate-700 hover:bg-slate-50'
       }`}
+      style={{ width: '100%', maxWidth: '100%' }}
     >
       <span
         className={`shrink-0 flex h-8 w-8 items-center justify-center rounded-full border text-[14px] font-bold leading-none sm:h-9 sm:w-9 sm:text-[15px] ${
@@ -26,7 +27,20 @@ export function ChoiceItem({ number, text, selected, onSelect }: ChoiceItemProps
       >
         {number}
       </span>
-      <span className="block w-full min-w-0 pt-[3px] whitespace-normal break-keep text-[14px] leading-6 sm:pt-[4px] sm:text-[15px] sm:leading-7">
+      <span
+        className="block w-full min-w-0 pt-[3px] text-[14px] leading-6 sm:pt-[4px] sm:text-[15px] sm:leading-7"
+        style={{
+          display: 'block',
+          width: '100%',
+          minWidth: 0,
+          whiteSpace: 'normal',
+          wordBreak: 'keep-all',
+          overflowWrap: 'normal',
+          writingMode: 'horizontal-tb',
+          textOrientation: 'mixed',
+          lineBreak: 'strict',
+        }}
+      >
         {text}
       </span>
     </button>
