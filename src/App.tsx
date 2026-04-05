@@ -1,14 +1,14 @@
 import { type ChangeEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Bot, Home, NotebookPen, PlusCircle, RefreshCw, Settings, Upload } from 'lucide-react';
+import { ArrowLeft, Bot, EllipsisVertical, FileText, Home, NotebookPen, PlusCircle, RefreshCw, Settings, Upload } from 'lucide-react';
 import {
   completeExam,
   ensureSupabaseUser,
-  fetchLatestExamRecord,
   fetchWrongNotes,
-  loadLocalLastExam,
+  loadLocalExamList,
   loadLocalWrongNotes,
   saveExamDraft,
   saveWrongNotes,
+  storeLocalExamList,
   storeLocalLastExam,
   storeLocalWrongNotes,
   type PersistedExamRecord,
@@ -38,7 +38,7 @@ import { ExamNavigation } from './components/exam/ExamNavigation';
 import { QuestionPalette } from './components/exam/QuestionPalette';
 import type { ExamQuestion } from './components/exam/types';
 
-type Screen = 'landing' | 'create' | 'taking' | 'result' | 'wrong';
+type Screen = 'landing' | 'create' | 'taking' | 'result' | 'wrong' | 'saved';
 type BuilderMode = 'upload' | 'ai';
 type DifficultyLevel = 'easy' | 'medium' | 'hard';
 type SchoolLevel = 'middle' | 'high' | 'csat';
@@ -181,6 +181,62 @@ function mergeWrongNotes<T extends WrongNote>(notes: T[]) {
   return Array.from(new Map(notes.map((item) => [item.id, item])).values());
 }
 
+function mergeExamRecords<T extends PersistedExamRecord>(records: T[]) {
+  return Array.from(new Map(records.map((item) => [item.id, item])).values())
+    .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at));
+}
+
+function isSubjectKey(value: string | null | undefined): value is SubjectKey {
+  return typeof value === 'string' && value in SUBJECT_CONFIG;
+}
+
+function isDifficultyLevel(value: string): value is DifficultyLevel {
+  return value === 'easy' || value === 'medium' || value === 'hard';
+}
+
+function isSchoolLevel(value: string): value is SchoolLevel {
+  return value === 'middle' || value === 'high' || value === 'csat';
+}
+
+function toResponseMap(value: PersistedExamRecord['responses']) {
+  if (!value) {
+    return {} as Record<number, string>;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, answer]) => typeof answer === 'string')
+      .map(([key, answer]) => [Number(key), answer]),
+  ) as Record<number, string>;
+}
+
+function formatSavedDate(value: string) {
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('ko-KR', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(parsed));
+}
+
+function getSourcePreview(value: string | null | undefined, maxLength = 220) {
+  const normalized = value?.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxLength).trimEnd()}...`;
+}
+
 function makeExamTitle(
   mode: BuilderMode,
   subject: SubjectKey,
@@ -234,6 +290,7 @@ export default function App() {
     count: 12,
   });
   const [wrongNotes, setWrongNotes] = useState<WrongNote[]>([]);
+  const [savedExams, setSavedExams] = useState<PersistedExamRecord[]>([]);
   const [currentExamId, setCurrentExamId] = useState<string | null>(null);
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [syncMessage, setSyncMessage] = useState('Supabase 연결 상태 확인 중...');
@@ -247,18 +304,12 @@ export default function App() {
 
   useEffect(() => {
     const localWrong = loadLocalWrongNotes<WrongNote>();
+    const localExams = loadLocalExamList<PersistedExamRecord>();
     if (localWrong.length > 0) {
       setWrongNotes(localWrong);
     }
-
-    const localExam = loadLocalLastExam<PersistedExamRecord>();
-    if (localExam) {
-      setExamTitle(localExam.title);
-      const restoredMode = toGeneratedQuestionMode(localExam.question_type);
-      if (Array.isArray(localExam.questions) && localExam.questions.length > 0) {
-        setQuestions(normalizeStoredQuestions(localExam.questions as ExamQuestion[], restoredMode) as ExamQuestion[]);
-      }
-      setGeneratedQuestionMode(restoredMode);
+    if (localExams.length > 0) {
+      setSavedExams(mergeExamRecords(localExams));
     }
 
     void (async () => {
@@ -271,20 +322,10 @@ export default function App() {
       setSessionUserId(auth.data.id);
       setSyncMessage('Supabase 세션 연결 완료');
 
-      const [latest, wrong] = await Promise.all([
-        fetchLatestExamRecord(auth.data.id),
+      const [, wrong] = await Promise.all([
+        Promise.resolve({ data: null, error: null }),
         fetchWrongNotes(auth.data.id),
       ]);
-
-      if (latest.data) {
-        setCurrentExamId(latest.data.id);
-        setExamTitle(latest.data.title);
-        const restoredMode = toGeneratedQuestionMode(latest.data.question_type);
-        if (Array.isArray(latest.data.questions) && latest.data.questions.length > 0) {
-          setQuestions(normalizeStoredQuestions(latest.data.questions as ExamQuestion[], restoredMode) as ExamQuestion[]);
-        }
-        storeLocalLastExam(latest.data);
-      }
 
       if (wrong.data) {
         const merged = mergeWrongNotes([...(wrong.data as WrongNote[]), ...localWrong]);
@@ -375,6 +416,7 @@ export default function App() {
           questions?: ExamQuestion[];
           source?: 'ai' | 'mock';
           error?: string;
+          reasons?: string[];
           validation?: { warnings?: string[] };
         }>(response, {
           emptyBodyMessage:
@@ -384,7 +426,10 @@ export default function App() {
         });
 
         if (!response.ok) {
-          throw new Error(data.error || 'AI 문제 생성에 실패했습니다.');
+          const details = Array.isArray(data.reasons) && data.reasons.length > 0
+            ? `\n${data.reasons.join('\n')}`
+            : '';
+          throw new Error((data.error || 'AI 문제 생성에 실패했습니다.') + details);
         }
 
         if (Array.isArray(data.questions) && data.questions.length > 0) {
@@ -396,7 +441,7 @@ export default function App() {
           throw new Error('생성된 문항이 없습니다. 다시 시도해 주세요.');
         }
 
-        const containsInvalidQuestion = data.questions.some((question) => {
+        const containsInvalidQuestion = nextQuestions.some((question) => {
           const stem = question.stem?.trim() ?? '';
           return stem.length === 0 || hasPlaceholderChoices(question.choices);
         });
@@ -419,8 +464,9 @@ export default function App() {
       setExamMeta({ subject, difficulty, schoolLevel, count });
 
       const localRecord = {
-        id: currentExamId ?? `local-${Date.now()}`,
+        id: `local-${Date.now()}`,
         title: resolvedTitle,
+        subject,
         builder_mode: mode,
         question_type: nextQuestionMode,
         difficulty,
@@ -438,6 +484,10 @@ export default function App() {
         created_at: new Date().toISOString(),
       };
       storeLocalLastExam(localRecord);
+      const nextSavedExams = mergeExamRecords([localRecord, ...savedExams]);
+      setSavedExams(nextSavedExams);
+      storeLocalExamList(nextSavedExams);
+      setCurrentExamId(localRecord.id);
 
       if (sessionUserId) {
         const saved = await saveExamDraft(sessionUserId, {
@@ -454,6 +504,11 @@ export default function App() {
         });
         if (saved.data) {
           setCurrentExamId(saved.data.id);
+          const savedRecord = { ...saved.data, subject };
+          const merged = mergeExamRecords([savedRecord, ...nextSavedExams.filter((item) => item.id !== localRecord.id)]);
+          setSavedExams(merged);
+          storeLocalExamList(merged);
+          storeLocalLastExam(savedRecord);
         }
       }
 
@@ -489,6 +544,51 @@ export default function App() {
   const navigate = (next: Screen) => {
     window.scrollTo(0, 0);
     setScreen(next);
+  };
+
+  const openSavedExam = (record: PersistedExamRecord) => {
+    const restoredMode = toGeneratedQuestionMode(record.question_type);
+    const restoredSubject = isSubjectKey(record.subject) ? record.subject : defaultSubject;
+
+    setCurrentExamId(record.id);
+    setExamTitle(record.title);
+    setQuestions(normalizeStoredQuestions(record.questions as ExamQuestion[], restoredMode) as ExamQuestion[]);
+    setGeneratedQuestionMode(restoredMode);
+    setResponses(toResponseMap(record.responses));
+    setCurrentQuestionIndex(1);
+    setExamMeta({
+      subject: restoredSubject,
+      difficulty: isDifficultyLevel(record.difficulty) ? record.difficulty : 'hard',
+      schoolLevel: isSchoolLevel(record.exam_format) ? record.exam_format : 'high',
+      count: record.question_count,
+    });
+    storeLocalLastExam(record);
+    navigate('taking');
+  };
+
+  const deleteSavedExam = (recordId: string) => {
+    const nextSavedExams = savedExams.filter((item) => item.id !== recordId);
+    setSavedExams(nextSavedExams);
+    storeLocalExamList(nextSavedExams);
+  };
+
+  const continueGenerateFromSavedExam = (record: PersistedExamRecord) => {
+    const restoredSubject = isSubjectKey(record.subject) ? record.subject : defaultSubject;
+    const nextDefaults = getSubjectSelectionDefaults(restoredSubject);
+
+    setMode('ai');
+    setSubject(restoredSubject);
+    setQuestionType(nextDefaults.questionType);
+    setFormat(nextDefaults.format);
+    setDifficulty(isDifficultyLevel(record.difficulty) ? record.difficulty : 'hard');
+    setSchoolLevel(isSchoolLevel(record.exam_format) ? record.exam_format : 'high');
+    setCount(record.question_count);
+    setGenerationTopic(record.title);
+    setMaterialText(record.source_text ?? '');
+    setQuestionFiles([]);
+    setAnswerFiles([]);
+    setGenerationError(null);
+    navigate('create');
   };
 
   if (screen === 'taking' && questions.length > 0) {
@@ -597,6 +697,16 @@ export default function App() {
         responses={responses}
         onBack={() => navigate('landing')}
         onWrong={() => navigate('wrong')}
+      />
+    );
+  } else if (screen === 'saved') {
+    content = (
+      <SavedScreen
+        exams={savedExams}
+        onOpen={openSavedExam}
+        onDelete={deleteSavedExam}
+        onContinueGenerate={continueGenerateFromSavedExam}
+        onCreate={() => navigate('create')}
       />
     );
   } else {
@@ -1097,6 +1207,127 @@ function WrongScreen({
   );
 }
 
+function SavedScreen({
+  exams,
+  onOpen,
+  onDelete,
+  onContinueGenerate,
+  onCreate,
+}: {
+  exams: PersistedExamRecord[];
+  onOpen: (record: PersistedExamRecord) => void;
+  onDelete: (recordId: string) => void;
+  onContinueGenerate: (record: PersistedExamRecord) => void;
+  onCreate: () => void;
+}) {
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [previewExamId, setPreviewExamId] = useState<string | null>(null);
+
+  return (
+    <main className="min-h-screen bg-slate-50 px-4 pb-28 pt-8 text-slate-900 sm:px-6">
+      <div className="mx-auto max-w-4xl space-y-6">
+        <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
+          <h1 className="text-3xl font-bold">저장된 문제</h1>
+          <p className="mt-2 text-sm text-slate-500">문제가 생성되면 자동으로 이 목록에 저장됩니다.</p>
+        </section>
+
+        {exams.length === 0 ? (
+          <section className="border border-dashed border-slate-300 bg-white px-5 py-10 text-center text-sm text-slate-500">
+            아직 저장된 문제가 없습니다.
+          </section>
+        ) : (
+          <section className="space-y-4">
+            {exams.map((exam) => (
+              <article key={exam.id} className="relative border border-slate-200 bg-white px-5 py-5 sm:px-6">
+                <button
+                  onClick={() => setOpenMenuId((current) => current === exam.id ? null : exam.id)}
+                  className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center text-slate-500 hover:text-slate-900 sm:right-4 sm:top-4"
+                  aria-label="문제함 메뉴"
+                >
+                  <EllipsisVertical className="h-4 w-4" />
+                </button>
+
+                {openMenuId === exam.id ? (
+                  <div className="absolute right-3 top-12 z-10 flex min-w-44 flex-col border border-slate-200 bg-white p-1 shadow-sm sm:right-4 sm:top-13">
+                    {exam.source_text?.trim() ? (
+                      <button
+                        onClick={() => {
+                          setPreviewExamId((current) => current === exam.id ? null : exam.id);
+                          setOpenMenuId(null);
+                        }}
+                        className="px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                      >
+                        {previewExamId === exam.id ? '입력 텍스트 숨기기' : '입력 텍스트 보기'}
+                      </button>
+                    ) : null}
+                    <button
+                      onClick={() => {
+                        onContinueGenerate(exam);
+                        setOpenMenuId(null);
+                      }}
+                      className="px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      추가 문제 생성
+                    </button>
+                    <button
+                      onClick={() => {
+                        onDelete(exam.id);
+                        setPreviewExamId((current) => current === exam.id ? null : current);
+                        setOpenMenuId(null);
+                      }}
+                      className="px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                ) : null}
+
+                <div className="space-y-4 pr-8 sm:pr-10">
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      {formatSavedDate(exam.created_at)}
+                    </p>
+                    <h2 className="text-lg font-semibold text-slate-900">{exam.title}</h2>
+                    <p className="text-sm leading-6 text-slate-600">
+                      {(isSubjectKey(exam.subject) ? SUBJECT_CONFIG[exam.subject].label : '문제 세트')}
+                      {' / '}
+                      {isSchoolLevel(exam.exam_format) ? getSchoolLevelLabel(exam.exam_format) : exam.exam_format}
+                      {' / '}
+                      {isDifficultyLevel(exam.difficulty) ? getDifficultyLabel(exam.difficulty) : exam.difficulty}
+                      {' / '}
+                      {exam.question_count}문항
+                    </p>
+                    {previewExamId === exam.id && getSourcePreview(exam.source_text, 1200) ? (
+                      <div className="border-l border-slate-300 bg-slate-50/70 pl-3 pt-1">
+                        <p className="text-[11px] font-semibold tracking-[0.08em] text-slate-500">입력 텍스트</p>
+                        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+                          {getSourcePreview(exam.source_text, 1200)}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => onOpen(exam)}
+                      className="border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700"
+                    >
+                      열기
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </section>
+        )}
+
+        <button onClick={onCreate} className="bg-slate-900 px-5 py-3 text-sm font-semibold text-white">
+          새 문제 생성
+        </button>
+      </div>
+    </main>
+  );
+}
+
 function InfoCard({ icon, title, description }: { icon: ReactNode; title: string; description: string }) {
   return (
     <section className="border border-slate-200 bg-white px-5 py-6 text-left">
@@ -1122,6 +1353,7 @@ function TopBar({ current, onNavigate }: { current: Screen; onNavigate: (screen:
     current === 'create' ? 'CBT 생성' :
     current === 'taking' ? '응시' :
     current === 'result' ? '결과' :
+    current === 'saved' ? '저장된 문제' :
     '오답노트';
 
   return (
@@ -1160,12 +1392,13 @@ function BottomNavigation({ current, onNavigate }: { current: Screen; onNavigate
   const items: Array<{ id: Screen; label: string; icon: ReactNode }> = [
     { id: 'landing', label: '홈', icon: <Home className="h-5 w-5" /> },
     { id: 'create', label: '시험 생성', icon: <PlusCircle className="h-5 w-5" /> },
+    { id: 'saved', label: '문제함', icon: <FileText className="h-5 w-5" /> },
     { id: 'wrong', label: '오답노트', icon: <NotebookPen className="h-5 w-5" /> },
   ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto grid max-w-3xl grid-cols-3 px-4 py-3">
+      <div className="mx-auto grid max-w-3xl grid-cols-4 px-4 py-3">
         {items.map((item) => {
           const active = current === item.id;
           return (

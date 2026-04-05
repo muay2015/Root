@@ -35,6 +35,7 @@ type DbWrongNoteRow = {
 export type PersistedExamRecord = {
   id: string;
   title: string;
+  subject?: string | null;
   builder_mode: string;
   question_type: string;
   difficulty: string;
@@ -80,6 +81,7 @@ type Result<T> = {
 
 const LOCAL_WRONG_NOTES_KEY = 'root:wrong-notes';
 const LOCAL_LAST_EXAM_KEY = 'root:last-exam';
+const LOCAL_EXAM_LIST_KEY = 'root:exam-list';
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) {
@@ -157,6 +159,24 @@ export function loadLocalLastExam<T extends PersistedExamRecord>() {
 
 export function storeLocalLastExam(exam: PersistedExamRecord) {
   window.localStorage.setItem(LOCAL_LAST_EXAM_KEY, JSON.stringify(exam));
+}
+
+export function loadLocalExamList<T extends PersistedExamRecord>() {
+  try {
+    const raw = window.localStorage.getItem(LOCAL_EXAM_LIST_KEY);
+    if (!raw) {
+      return [] as T[];
+    }
+
+    const parsed = JSON.parse(raw) as T[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [] as T[];
+  }
+}
+
+export function storeLocalExamList(exams: PersistedExamRecord[]) {
+  window.localStorage.setItem(LOCAL_EXAM_LIST_KEY, JSON.stringify(exams));
 }
 
 export async function ensureSupabaseUser(): Promise<Result<User>> {
