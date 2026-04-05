@@ -1,3 +1,5 @@
+import { normalizeChoiceText } from './question/normalizeChoiceText';
+
 export type GeneratedQuestionMode = 'multiple' | 'subjective' | 'mixed';
 
 type NormalizableQuestion = {
@@ -9,21 +11,6 @@ type NormalizableQuestion = {
 
 const MULTIPLE_LABEL = '\uac1d\uad00\uc2dd';
 const SUBJECTIVE_LABEL = '\uc8fc\uad00\uc2dd';
-
-function collapseFragmentedKoreanText(value: string) {
-  const tokens = value.split(' ').filter(Boolean);
-  if (tokens.length < 4) {
-    return value;
-  }
-
-  const mostlySingleCharTokens = tokens.filter((token) => token.length === 1).length / tokens.length >= 0.7;
-  const hasHangulToken = tokens.some((token) => /[가-힣]/.test(token));
-  return mostlySingleCharTokens && hasHangulToken ? tokens.join('') : value;
-}
-
-function normalizeChoiceText(choice: string) {
-  return collapseFragmentedKoreanText(choice.replace(/\s+/g, ' ').trim());
-}
 
 export function normalizeMultipleChoiceChoices(choices?: string[]) {
   const normalized = Array.isArray(choices)
@@ -105,11 +92,12 @@ function normalizeQuestion<T extends NormalizableQuestion>(
 
   if (resolvedKind === MULTIPLE_LABEL) {
     const choices = normalizeMultipleChoiceChoices(question.choices);
-    const numericAnswer = Number(question.answer.trim());
+    const normalizedAnswer = normalizeChoiceText(question.answer);
+    const numericAnswer = Number(normalizedAnswer);
     const resolvedAnswer =
       Number.isInteger(numericAnswer) && numericAnswer >= 1 && numericAnswer <= choices.length
         ? choices[numericAnswer - 1]
-        : question.answer;
+        : normalizedAnswer;
 
     return {
       ...question,

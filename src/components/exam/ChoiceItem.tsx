@@ -1,3 +1,5 @@
+import { normalizeChoiceText } from '../../lib/question/normalizeChoiceText';
+
 type ChoiceItemProps = {
   number: number;
   text: string;
@@ -6,6 +8,8 @@ type ChoiceItemProps = {
 };
 
 export function ChoiceItem({ number, text, selected, onSelect }: ChoiceItemProps) {
+  const displayText = normalizeChoiceText(text);
+
   return (
     <button
       type="button"
@@ -27,7 +31,7 @@ export function ChoiceItem({ number, text, selected, onSelect }: ChoiceItemProps
         {number}
       </span>
       <span className="min-w-0 flex-1 pt-[3px] whitespace-normal break-words text-[14px] leading-6 sm:pt-[4px] sm:text-[15px] sm:leading-7">
-        {text}
+        {displayText}
       </span>
     </button>
   );

@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { getGenerationRules, type DifficultyLevel, type SchoolLevel } from './generationRules.ts';
+import { normalizeChoiceText } from './normalizeChoiceText.ts';
 import { buildQuestionPrompt } from './promptBuilder.ts';
 import { validateGeneratedQuestions, type GeneratedQuestionDraft, type ValidationResult } from './validator.ts';
 import {
@@ -68,19 +69,8 @@ type ModelQuestion =
     }
   | GeneratedQuestionDraft;
 
-function collapseFragmentedKoreanText(value: string) {
-  const tokens = value.split(' ').filter(Boolean);
-  if (tokens.length < 4) {
-    return value;
-  }
-
-  const mostlySingleCharTokens = tokens.filter((token) => token.length === 1).length / tokens.length >= 0.7;
-  const hasHangulToken = tokens.some((token) => /[가-힣]/.test(token));
-  return mostlySingleCharTokens && hasHangulToken ? tokens.join('') : value;
-}
-
 function normalizeInlineText(value: string) {
-  return collapseFragmentedKoreanText(value.replace(/\s+/g, ' ').trim());
+  return normalizeChoiceText(value);
 }
 
 function normalizeChoices(choices?: string[] | null) {
