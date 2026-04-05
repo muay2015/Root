@@ -49,6 +49,38 @@ export function looksFullyFragmented(tokens: string[]) {
   return singleFragmentRatio >= 0.85 && singleFragmentCount >= 6;
 }
 
+function mergeFragmentRuns(tokens: string[]) {
+  const merged: string[] = [];
+  let fragmentRun: string[] = [];
+
+  const flushFragmentRun = () => {
+    if (fragmentRun.length === 0) {
+      return;
+    }
+
+    if (fragmentRun.length >= 2) {
+      merged.push(fragmentRun.join(''));
+    } else {
+      merged.push(fragmentRun[0]);
+    }
+
+    fragmentRun = [];
+  };
+
+  for (const token of tokens) {
+    if (isSingleFragment(token)) {
+      fragmentRun.push(token);
+      continue;
+    }
+
+    flushFragmentRun();
+    merged.push(token);
+  }
+
+  flushFragmentRun();
+  return merged;
+}
+
 export function normalizeChoiceText(value: unknown) {
   if (typeof value !== 'string') {
     return '';
@@ -69,5 +101,5 @@ export function normalizeChoiceText(value: unknown) {
     return tokens.join('');
   }
 
-  return strippedMarker;
+  return mergeFragmentRuns(tokens).join(' ').trim();
 }
