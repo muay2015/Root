@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { normalizeWhitespace, stripLeadingChoiceMarker } from '../../lib/question/normalizeChoiceText';
 
 type ChoiceItemProps = {
   number: number;
@@ -12,6 +13,7 @@ export function ChoiceItem({ number, text, selected, onSelect }: ChoiceItemProps
   const textRef = useRef<HTMLSpanElement | null>(null);
   const [debugSize, setDebugSize] = useState<string>('');
   const debugChoice = typeof window !== 'undefined' && window.location.search.includes('debug-choice=1');
+  const displayText = stripLeadingChoiceMarker(normalizeWhitespace(text));
 
   useEffect(() => {
     if (!debugChoice) {
@@ -33,7 +35,7 @@ export function ChoiceItem({ number, text, selected, onSelect }: ChoiceItemProps
     updateDebugSize();
     window.addEventListener('resize', updateDebugSize);
     return () => window.removeEventListener('resize', updateDebugSize);
-  }, [debugChoice, text]);
+  }, [debugChoice, displayText]);
 
   return (
     <button
@@ -90,12 +92,14 @@ export function ChoiceItem({ number, text, selected, onSelect }: ChoiceItemProps
             lineBreak: 'auto',
           }}
         >
-          {text}
+          {displayText}
         </span>
       </span>
       {debugChoice ? (
         <span className="mt-2 block border border-red-200 bg-white px-2 py-2 text-[11px] leading-4 text-red-700">
           raw: {JSON.stringify(text)}
+          <br />
+          display: {JSON.stringify(displayText)}
           <br />
           {debugSize}
         </span>
