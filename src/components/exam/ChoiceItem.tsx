@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { normalizeChoiceText } from '../../lib/question/normalizeChoiceText';
 
 type ChoiceItemProps = {
   number: number;
@@ -12,7 +11,6 @@ export function ChoiceItem({ number, text, selected, onSelect }: ChoiceItemProps
   const wrapperRef = useRef<HTMLSpanElement | null>(null);
   const textRef = useRef<HTMLSpanElement | null>(null);
   const [debugSize, setDebugSize] = useState<string>('');
-  const normalizedText = normalizeChoiceText(text);
   const debugChoice = typeof window !== 'undefined' && window.location.search.includes('debug-choice=1');
 
   useEffect(() => {
@@ -35,7 +33,7 @@ export function ChoiceItem({ number, text, selected, onSelect }: ChoiceItemProps
     updateDebugSize();
     window.addEventListener('resize', updateDebugSize);
     return () => window.removeEventListener('resize', updateDebugSize);
-  }, [debugChoice, normalizedText]);
+  }, [debugChoice, text]);
 
   return (
     <button
@@ -92,14 +90,12 @@ export function ChoiceItem({ number, text, selected, onSelect }: ChoiceItemProps
             lineBreak: 'auto',
           }}
         >
-          {normalizedText}
+          {text}
         </span>
       </span>
       {debugChoice ? (
         <span className="mt-2 block border border-red-200 bg-white px-2 py-2 text-[11px] leading-4 text-red-700">
           raw: {JSON.stringify(text)}
-          <br />
-          normalized: {JSON.stringify(normalizedText)}
           <br />
           {debugSize}
         </span>
