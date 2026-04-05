@@ -17,9 +17,9 @@ export function ChoiceItem({ number, text, selected, onSelect }: ChoiceItemProps
           : 'bg-transparent text-slate-700 hover:bg-slate-50'
       }`}
     >
-      <div className="flex w-full min-w-0 items-start gap-2 sm:gap-3">
+      <div className="flex w-full min-w-0 -translate-x-[2px] items-start gap-2 sm:-translate-x-[3px] sm:gap-3">
         <div
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-[14px] font-bold leading-none sm:h-9 sm:w-9 sm:text-[15px] ${
+          className={`mt-[1px] flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-[14px] font-bold leading-none sm:mt-[2px] sm:h-9 sm:w-9 sm:text-[15px] ${
             selected
               ? 'border-blue-700 bg-blue-700 text-white'
               : 'border-slate-300 bg-white text-slate-700'
@@ -28,7 +28,7 @@ export function ChoiceItem({ number, text, selected, onSelect }: ChoiceItemProps
           {number}
         </div>
         <div
-          className="min-w-0 flex-1 overflow-hidden pt-[3px] whitespace-normal break-keep text-[14px] leading-6 sm:pt-[4px] sm:text-[15px] sm:leading-7"
+          className="min-w-0 flex-1 overflow-hidden whitespace-normal break-keep text-[14px] leading-6 sm:text-[15px] sm:leading-7"
           style={{
             width: '100%',
             minWidth: 0,

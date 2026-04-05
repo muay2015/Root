@@ -12,6 +12,26 @@ type ExamQuestionItemProps = {
   onChangeText: (questionId: number, value: string) => void;
 };
 
+function PromptText({ text }: { text: string }) {
+  const parts = text.split(/(<[^>]+>)/g).filter(Boolean);
+
+  return (
+    <>
+      {parts.map((part, index) => {
+        if (/^<[^>]+>$/.test(part)) {
+          return (
+            <span key={`${part}-${index}`} className="font-medium tracking-[0.01em] text-slate-950">
+              {part}
+            </span>
+          );
+        }
+
+        return <span key={`${part}-${index}`}>{part}</span>;
+      })}
+    </>
+  );
+}
+
 function QuestionRow({
   leading,
   content,
@@ -43,7 +63,7 @@ export function ExamQuestionItem(props: ExamQuestionItemProps) {
         <QuestionRow
           content={
             question.topic.trim().length > 0 ? (
-              <p className="text-[11px] font-medium text-slate-500 sm:text-[12px]">{question.topic}</p>
+              <p className="max-w-[44rem] text-[11px] font-medium text-slate-500 sm:text-[12px]">{question.topic}</p>
             ) : null
           }
         />
@@ -55,9 +75,11 @@ export function ExamQuestionItem(props: ExamQuestionItemProps) {
             </div>
           }
           content={
-            <p className="min-w-0 whitespace-pre-wrap break-words break-keep text-[15px] leading-6 text-slate-900 sm:text-[16px] sm:leading-7">
-              {prompt}
-            </p>
+            <div className="max-w-[44rem]">
+              <p className="min-w-0 whitespace-pre-wrap break-words break-keep text-[15px] leading-7 text-slate-900 sm:text-[16px] sm:leading-8">
+                <PromptText text={prompt} />
+              </p>
+            </div>
           }
         />
 
@@ -65,23 +87,25 @@ export function ExamQuestionItem(props: ExamQuestionItemProps) {
 
         <QuestionRow
           content={
-            question.type === '객관식' ? (
-              <ChoiceList
-                choices={question.choices ?? []}
-                selectedChoice={response}
-                onSelect={(choice) => onSelectChoice(question.id, choice)}
-              />
-            ) : (
-              <div className="space-y-2">
-                <div className="text-[12px] font-medium text-slate-600 sm:text-[13px]">답안을 직접 입력하세요.</div>
-                <textarea
-                  value={response ?? ''}
-                  onChange={(event) => onChangeText(question.id, event.target.value)}
-                  placeholder="답안을 입력하세요"
-                  className="min-h-28 w-full border border-slate-300 bg-white px-4 py-3 text-[14px] leading-6 outline-none focus:border-slate-800 sm:text-[15px] sm:leading-7"
+            <div className="max-w-[44rem] pt-2 sm:pt-3">
+              {question.type === '객관식' ? (
+                <ChoiceList
+                  choices={question.choices ?? []}
+                  selectedChoice={response}
+                  onSelect={(choice) => onSelectChoice(question.id, choice)}
                 />
-              </div>
-            )
+              ) : (
+                <div className="space-y-2">
+                  <div className="text-[12px] font-medium text-slate-600 sm:text-[13px]">답안을 직접 입력하세요.</div>
+                  <textarea
+                    value={response ?? ''}
+                    onChange={(event) => onChangeText(question.id, event.target.value)}
+                    placeholder="답안을 입력하세요"
+                    className="min-h-28 w-full border border-slate-300 bg-white px-4 py-3 text-[14px] leading-6 outline-none focus:border-slate-800 sm:text-[15px] sm:leading-7"
+                  />
+                </div>
+              )}
+            </div>
           }
         />
       </div>
