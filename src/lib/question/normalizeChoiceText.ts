@@ -6,6 +6,10 @@ export function isSingleFragment(value: string) {
   return /^[\p{L}\p{N}]$/u.test(value);
 }
 
+function isHangulOrDigitFragment(value: string) {
+  return /^[\u3131-\u314E\uAC00-\uD7A3\p{N}]$/u.test(value);
+}
+
 export function isMeaninglessPlaceholder(value: string) {
   const normalized = value.trim().toLowerCase();
   return (
@@ -47,6 +51,23 @@ export function looksFullyFragmented(tokens: string[]) {
   const singleFragmentCount = tokens.filter(isSingleFragment).length;
   const singleFragmentRatio = singleFragmentCount / tokens.length;
   return singleFragmentRatio >= 0.85 && singleFragmentCount >= 6;
+}
+
+function looksMostlyFragmentedKorean(tokens: string[]) {
+  if (tokens.length < 5) {
+    return false;
+  }
+
+  const singleFragmentCount = tokens.filter(isSingleFragment).length;
+  const hangulFragmentCount = tokens.filter(isHangulOrDigitFragment).length;
+  const averageTokenLength =
+    tokens.reduce((sum, token) => sum + token.length, 0) / tokens.length;
+
+  return (
+    singleFragmentCount / tokens.length >= 0.65 &&
+    hangulFragmentCount >= Math.ceil(tokens.length * 0.5) &&
+    averageTokenLength <= 1.6
+  );
 }
 
 function mergeFragmentRuns(tokens: string[]) {
@@ -97,7 +118,7 @@ export function normalizeChoiceText(value: unknown) {
   }
 
   const tokens = strippedMarker.split(' ').filter(Boolean);
-  if (looksFullyFragmented(tokens)) {
+  if (looksFullyFragmented(tokens) || looksMostlyFragmentedKorean(tokens)) {
     return tokens.join('');
   }
 

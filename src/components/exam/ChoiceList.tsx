@@ -22,7 +22,7 @@ export function ChoiceList({ choices, selectedChoice, onSelect }: ChoiceListProp
         <div key={`${index + 1}-${choice.normalized}`} className="w-full min-w-0">
           <ChoiceItem
             number={index + 1}
-            text={choice.raw}
+            text={choice.normalized}
             selected={normalizedSelectedChoice === choice.normalized}
             onSelect={() => onSelect(choice.normalized)}
           />

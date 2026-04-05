@@ -38,8 +38,12 @@ export function ExamQuestionItem(props: ExamQuestionItemProps) {
           {prompt}
         </p>
 
-        <div />
-        <QuestionStimulusBox content={stimulus} />
+        {stimulus ? (
+          <>
+            <div />
+            <QuestionStimulusBox content={stimulus} />
+          </>
+        ) : null}
 
         <div />
         <div className="w-full min-w-0">
