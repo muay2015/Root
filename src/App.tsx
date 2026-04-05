@@ -31,7 +31,7 @@ import {
   type SelectionFormat,
   type SubjectKey,
 } from './lib/question/subjectConfig.ts';
-import { getApiUrl } from './lib/api.ts';
+import { getApiUrl, parseJsonResponse } from './lib/api.ts';
 import { ExamHeader } from './components/exam/ExamHeader';
 import { ExamQuestionList } from './components/exam/ExamQuestionList';
 import { ExamNavigation } from './components/exam/ExamNavigation';
@@ -370,13 +370,18 @@ export default function App() {
           }),
         });
 
-        const data = (await response.json()) as {
+        const data = await parseJsonResponse<{
           title?: string;
           questions?: ExamQuestion[];
           source?: 'ai' | 'mock';
           error?: string;
           validation?: { warnings?: string[] };
-        };
+        }>(response, {
+          emptyBodyMessage:
+            'CBT generation failed because the deployed API returned an empty response. Check VITE_API_BASE_URL and whether /api is actually deployed.',
+          invalidJsonMessage:
+            'CBT generation failed because the deployed API did not return valid JSON. Check VITE_API_BASE_URL and whether /api is returning an HTML error page.',
+        });
 
         if (!response.ok) {
           throw new Error(data.error || 'AI 문제 생성에 실패했습니다.');
