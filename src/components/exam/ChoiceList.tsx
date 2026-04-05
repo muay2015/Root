@@ -14,9 +14,9 @@ export function ChoiceList({ choices, selectedChoice, onSelect }: ChoiceListProp
   const normalizedSelectedChoice = normalizeChoiceText(selectedChoice);
 
   return (
-    <div className="space-y-1.5 sm:space-y-2">
+    <div className="min-w-0 space-y-1.5 sm:space-y-2">
       {normalizedChoices.map((choice, index) => (
-        <div key={`${index + 1}-${choice}`}>
+        <div key={`${index + 1}-${choice}`} className="min-w-0">
           <ChoiceItem
             number={index + 1}
             text={choice}

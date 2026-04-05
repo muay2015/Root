@@ -42,7 +42,7 @@ export function ExamQuestionItem(props: ExamQuestionItemProps) {
         <QuestionStimulusBox content={stimulus} />
 
         <div />
-        <div>
+        <div className="min-w-0">
           {question.type === '객관식' ? (
             <ChoiceList
               choices={question.choices ?? []}
