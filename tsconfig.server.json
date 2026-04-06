@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "server-dist",
+    "rootDir": ".",
+    "lib": ["ES2022", "DOM"],
+    "types": ["node"],
+    "skipLibCheck": true,
+    "allowJs": false,
+    "declaration": false,
+    "sourceMap": false,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "rewriteRelativeImportExtensions": true,
+    "esModuleInterop": true,
+    "noEmit": false
+  },
+  "include": [
+    "server/**/*.ts",
+    "src/lib/server/**/*.ts",
+    "src/lib/question/**/*.ts"
+  ]
+}

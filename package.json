@@ -5,12 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "dev:api": "tsx watch server/index.ts",
+    "dev:api": "npm run build:api && node server-dist/server/index.js",
+    "dev:api:tsx": "tsx watch server/index.ts",
+    "build:api": "tsc -p tsconfig.server.json",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "start:api": "tsx server/index.ts"
+    "start:api": "node server-dist/server/index.js",
+    "start:api:tsx": "tsx server/index.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

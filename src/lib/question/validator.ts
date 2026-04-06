@@ -167,19 +167,18 @@ function validateTopicReflection(
   index: number,
   title: string | undefined,
   topic: string | undefined,
-  reasons: string[],
-  issueCounts: Record<string, number>,
+  warnings: string[],
 ) {
   const text = `${question.topic} ${question.stem} ${question.explanation}`.toLowerCase();
   const titleTokens = tokenize(title ?? '');
   const topicTokens = tokenize(topic ?? '');
 
   if (titleTokens.length > 0 && !titleTokens.some((token) => text.includes(token))) {
-    pushReason(reasons, issueCounts, 'title_alignment', `Question ${index}: title reflection is too weak.`);
+    warnings.push(`Question ${index}: title reflection is too weak.`);
   }
 
   if (topicTokens.length > 0 && !topicTokens.some((token) => text.includes(token))) {
-    pushReason(reasons, issueCounts, 'topic_alignment', `Question ${index}: topic reflection is too weak.`);
+    warnings.push(`Question ${index}: topic reflection is too weak.`);
   }
 }
 
@@ -209,6 +208,7 @@ function validateHistorySubjectFit(
   question: GeneratedQuestionDraft,
   index: number,
   reasons: string[],
+  warnings: string[],
   issueCounts: Record<string, number>,
 ) {
   const text = `${question.topic} ${question.stem} ${question.choices?.join(' ') ?? ''} ${question.explanation}`.toLowerCase();
@@ -222,7 +222,7 @@ function validateHistorySubjectFit(
   }
 
   if (!historyMarkers.some((marker) => text.includes(marker.toLowerCase()))) {
-    pushReason(reasons, issueCounts, 'history_scope', `Question ${index}: history scope is too weak or off-topic.`);
+    warnings.push(`Question ${index}: history scope is weakly reflected.`);
   }
 
   if (offTopicMarkers.some((marker) => text.includes(marker))) {
@@ -242,12 +242,12 @@ export function validateGeneratedQuestions(input: ValidationInput): ValidationRe
   input.questions.forEach((question, zeroBasedIndex) => {
     const index = zeroBasedIndex + 1;
     validateStructure(question, index, reasons, issueCounts);
-    validateTopicReflection(question, index, input.title, input.topic, reasons, issueCounts);
+    validateTopicReflection(question, index, input.title, input.topic, warnings);
     validateSelectionReflection(question, index, input, warnings);
 
     if (input.subject === 'korean_history') {
       validateHistoryDifficulty(question, index, input.difficulty, reasons, warnings, issueCounts);
-      validateHistorySubjectFit(question, index, reasons, issueCounts);
+      validateHistorySubjectFit(question, index, reasons, warnings, issueCounts);
     } else {
       validateGenericDifficulty(question, index, input.difficulty, reasons, warnings, issueCounts);
     }

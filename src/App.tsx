@@ -341,7 +341,7 @@ export default function App() {
       return normalizeAnswer(myAnswer) === normalizeAnswer(question.answer)
         ? []
         : [{
-            id: `${examTitle}-${question.id}`,
+            id: `${examMeta.subject}___${examTitle}-${question.id}`,
             examTitle,
             topic: question.topic,
             stem: question.stem,
@@ -512,7 +512,7 @@ export default function App() {
         }
       }
 
-      setScreen('taking');
+      navigate('taking');
     } catch (error) {
       setGenerationError(error instanceof Error ? error.message : '생성 실패');
     } finally {
@@ -538,7 +538,7 @@ export default function App() {
       }
     }
 
-    setScreen('result');
+    navigate('result');
   };
 
   const navigate = (next: Screen) => {
@@ -713,11 +713,20 @@ export default function App() {
     content = (
       <WrongListScreen
         wrongNotes={wrongNotes}
+        savedExams={savedExams}
         syncMessage={syncMessage}
         onBack={() => navigate('landing')}
         onRetry={() => {
           setCurrentQuestionIndex(1);
           navigate('taking');
+        }}
+        onDelete={async (examTitle) => {
+          const filtered = wrongNotes.filter((n) => n.examTitle !== examTitle);
+          setWrongNotes(filtered);
+          storeLocalWrongNotes(filtered);
+          if (sessionUserId) {
+            await saveWrongNotes(sessionUserId, filtered);
+          }
         }}
       />
     );
@@ -1174,9 +1183,11 @@ function WrongScreen({
   onRetry,
 }: {
   wrongNotes: WrongNote[];
+  savedExams: PersistedExamRecord[];
   syncMessage: string;
   onBack: () => void;
   onRetry: () => void;
+  onDelete: (examTitle: string) => void;
 }) {
   return (
     <main className="min-h-screen bg-slate-50 px-4 pb-28 pt-8 text-slate-900 sm:px-6">
@@ -1221,16 +1232,52 @@ function WrongScreen({
 
 function WrongListScreen({
   wrongNotes,
+  savedExams,
   syncMessage,
   onBack,
   onRetry,
+  onDelete,
 }: {
   wrongNotes: WrongNote[];
+  savedExams: PersistedExamRecord[];
   syncMessage: string;
   onBack: () => void;
   onRetry: () => void;
+  onDelete: (examTitle: string) => void;
 }) {
-  const [openNoteId, setOpenNoteId] = useState<string | null>(null);
+  const [openExamTitle, setOpenExamTitle] = useState<string | null>(null);
+  const [openMenuTitle, setOpenMenuTitle] = useState<string | null>(null);
+
+  const groupedBySubject = useMemo(() => {
+    const subjects: Record<string, Record<string, WrongNote[]>> = {};
+
+    for (const note of wrongNotes) {
+      let subjectKey: string | null | undefined = null;
+      if (note.id.includes('___')) {
+        subjectKey = note.id.split('___')[0];
+      } else {
+        const examMatch = savedExams.find(e => e.title === note.examTitle);
+        subjectKey = examMatch?.subject;
+      }
+      
+      const subjectLabel = isSubjectKey(subjectKey) ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
+
+      if (!subjects[subjectLabel]) {
+        subjects[subjectLabel] = {};
+      }
+      if (!subjects[subjectLabel][note.examTitle]) {
+        subjects[subjectLabel][note.examTitle] = [];
+      }
+      subjects[subjectLabel][note.examTitle].push(note);
+    }
+    
+    // Convert to array and sort subjects (기타 과목 at the end)
+    return (Object.entries(subjects) as [string, Record<string, WrongNote[]>][]).sort(([a], [b]) => {
+      if (a === '기타 과목') return 1;
+      if (b === '기타 과목') return -1;
+      return a.localeCompare(b);
+    });
+  }, [wrongNotes, savedExams]);
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 pb-28 pt-8 text-slate-900 sm:px-6">
@@ -1239,62 +1286,94 @@ function WrongListScreen({
           <h1 className="text-3xl font-bold">오답노트</h1>
           <p className="mt-2 text-sm text-slate-500">{syncMessage}</p>
           <div className="mt-4 flex flex-wrap gap-3">
-            <button onClick={onRetry} className="inline-flex items-center gap-2 bg-slate-900 px-5 py-3 text-sm font-semibold text-white">
-              <RefreshCw className="h-4 w-4" />
-              다시 풀기
-            </button>
+            
             <button onClick={onBack} className="border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700">
               홈으로
             </button>
           </div>
         </section>
 
-        {wrongNotes.length === 0 ? (
+        {groupedBySubject.length === 0 ? (
           <section className="border border-dashed border-slate-300 bg-white px-5 py-10 text-center text-sm text-slate-500">
             저장된 오답이 없습니다.
           </section>
         ) : (
-          <section className="overflow-hidden border border-slate-200 bg-white">
-            {wrongNotes.map((note, index) => {
-              const isOpen = openNoteId === note.id;
+          <div className="space-y-8">
+            {groupedBySubject.map(([subjectLabel, exams]) => (
+              <section key={subjectLabel}>
+                <h2 className="mb-3 text-[15px] font-bold text-slate-800 px-1 border-b border-slate-200 pb-2">{subjectLabel}</h2>
+                <div className="overflow-hidden border border-slate-200 bg-white">
+                  {(Object.entries(exams) as [string, WrongNote[]][]).map(([examTitle, notes], index) => {
+                    const isOpen = openExamTitle === examTitle;
 
-              return (
-                <article key={note.id} className={index > 0 ? 'border-t border-slate-200' : ''}>
-                  <button
-                    type="button"
-                    onClick={() => setOpenNoteId((current) => (current === note.id ? null : note.id))}
-                    className="flex w-full items-start justify-between gap-4 px-5 py-4 text-left hover:bg-slate-50 sm:px-6"
-                  >
-                    <div className="min-w-0 space-y-1">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{note.examTitle}</p>
-                      <h2 className="line-clamp-2 text-sm font-semibold leading-6 text-slate-900 sm:text-[15px]">
-                        {note.stem}
-                      </h2>
-                      <p className="text-sm text-slate-500">
-                        내 답: {note.myAnswer} / 정답: {note.answer}
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-xs font-semibold text-slate-400">
-                      {isOpen ? '닫기' : '보기'}
-                    </span>
-                  </button>
+                    return (
+                      <article key={examTitle} className={`relative ${index > 0 ? 'border-t border-slate-200' : ''}`}>
+                        <button
+                          type="button"
+                          onClick={() => setOpenExamTitle((current) => (current === examTitle ? null : examTitle))}
+                          className="flex w-full items-start justify-between gap-4 pr-14 pl-5 py-4 text-left hover:bg-slate-50 sm:px-6"
+                        >
+                          <div className="min-w-0 space-y-1">
+                            <h2 className="line-clamp-2 text-sm font-semibold leading-6 text-slate-900 sm:text-[15px]">
+                              {examTitle}
+                            </h2>
+                            <p className="text-sm text-slate-500">
+                              오답 {notes.length}개
+                            </p>
+                          </div>
+                        </button>
 
-                  {isOpen ? (
-                    <div className="border-t border-slate-200 bg-slate-50/60 px-5 py-4 sm:px-6">
-                      <div className="space-y-3 text-sm leading-7 text-slate-700">
-                        <p><span className="font-semibold text-slate-900">내 답:</span> {note.myAnswer}</p>
-                        <p><span className="font-semibold text-slate-900">정답:</span> {note.answer}</p>
-                        <div className="border-l border-slate-300 bg-white/70 pl-4">
-                          <p className="text-[11px] font-semibold tracking-[0.08em] text-slate-500">해설</p>
-                          <p className="mt-2 whitespace-pre-wrap break-words">{note.explanation}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
-                </article>
-              );
-            })}
-          </section>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setOpenMenuTitle((current) => current === examTitle ? null : examTitle); }}
+                          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center text-slate-500 hover:text-slate-900 sm:right-4 sm:top-3"
+                        >
+                          <EllipsisVertical className="h-4 w-4" />
+                        </button>
+
+                        {openMenuTitle === examTitle ? (
+                          <div className="absolute right-3 top-11 z-10 flex min-w-32 flex-col border border-slate-200 bg-white p-1 shadow-sm sm:right-4 sm:top-11">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onRetry(); setOpenMenuTitle(null); }}
+                              className="px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                            >
+                              다시 풀기
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onDelete(examTitle); setOpenMenuTitle(null); }}
+                              className="px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50"
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        ) : null}
+
+                        {isOpen ? (
+                          <div className="border-t border-slate-200 bg-slate-50/60 flex flex-col gap-4 px-5 py-4 sm:px-6">
+                            {notes.map((note) => {
+                              const questionNumber = note.id.split('-').pop();
+                              return (
+                                <div key={note.id} className="space-y-3 rounded border border-slate-200 bg-white p-4">
+                                  <h3 className="font-semibold text-slate-900">문항 {questionNumber}. {note.stem}</h3>
+                                  <div className="text-sm leading-7 text-slate-700">
+                                    <p><span className="font-semibold text-slate-900">내 답:</span> {note.myAnswer}</p>
+                                    <p><span className="font-semibold text-slate-900">정답:</span> {note.answer}</p>
+                                    <div className="mt-3 border-l border-slate-300 bg-slate-50 py-2 pl-4">
+                                      <p className="text-[11px] font-semibold tracking-[0.08em] text-slate-500">해설</p>
+                                      <p className="mt-1 whitespace-pre-wrap break-words">{note.explanation}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
         )}
       </div>
     </main>
