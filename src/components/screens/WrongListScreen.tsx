@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { EllipsisVertical } from 'lucide-react';
 import { SUBJECT_CONFIG } from '../../lib/question/subjectConfig';
-import { isSubjectKey, inferSubjectFromTitle } from '../../lib/examUtils';
+import { isSubjectKey, normalizeToSubjectKey } from '../../lib/examUtils';
 import type { WrongNote } from '../../lib/examTypes';
 import type { PersistedExamRecord } from '../../lib/rootPersistence';
 
@@ -30,7 +30,7 @@ export function WrongListScreen({
   const allSubjects = useMemo(() => {
     const list = new Set<string>(['전체']);
     for (const note of wrongNotes) {
-      const subjectKey = note.subject || (note.id.includes('___') ? note.id.split('___')[0] : inferSubjectFromTitle(note.examTitle));
+      const subjectKey = normalizeToSubjectKey(note.subject || (note.id.includes('___') ? note.id.split('___')[0] : null), note.examTitle);
       const label = isSubjectKey(subjectKey) ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
       list.add(label);
     }
@@ -46,7 +46,7 @@ export function WrongListScreen({
   const filteredNotes = useMemo(() => {
     if (selectedSubject === '전체') return wrongNotes;
     return wrongNotes.filter((note) => {
-      const subjectKey = note.subject || (note.id.includes('___') ? note.id.split('___')[0] : inferSubjectFromTitle(note.examTitle));
+      const subjectKey = normalizeToSubjectKey(note.subject || (note.id.includes('___') ? note.id.split('___')[0] : null), note.examTitle);
       const label = isSubjectKey(subjectKey) ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
       return label === selectedSubject;
     });
@@ -63,7 +63,7 @@ export function WrongListScreen({
           subjectKey = note.id.split('___')[0];
         } else {
           const examMatch = savedExams.find(e => e.title === note.examTitle);
-          subjectKey = examMatch?.subject || inferSubjectFromTitle(note.examTitle);
+          subjectKey = normalizeToSubjectKey(examMatch?.subject, note.examTitle);
         }
       }
       

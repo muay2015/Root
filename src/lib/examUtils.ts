@@ -142,15 +142,43 @@ export function isSchoolLevel(value: string): value is SchoolLevel {
   return value === 'middle' || value === 'high' || value === 'csat';
 }
 
+// 제목 또는 저장된 데이터를 통해 과목 키(SubjectKey)를 정확하게 추출하는 함수
+export function normalizeToSubjectKey(value: string | null | undefined, title?: string): SubjectKey | null {
+  if (!value && !title) return null;
+
+  // 1. 이미 정확한 키인 경우 (english, social 등)
+  if (isSubjectKey(value)) return value;
+
+  // 2. 라벨(영어, 사회 등)로 저장된 경우 처리
+  if (value) {
+    const entry = Object.entries(SUBJECT_CONFIG).find(([_, config]) => config.label === value);
+    if (entry) return entry[0] as SubjectKey;
+  }
+
+  // 3. 제목을 통해 유추
+  if (title) {
+    const inferred = inferSubjectFromTitle(title);
+    if (inferred) return inferred;
+  }
+
+  return null;
+}
+
 // 제목을 통해 과목을 유추하는 함수 (기존 데이터 구제용)
 export function inferSubjectFromTitle(title: string): SubjectKey | null {
   const t = title.toLowerCase();
-  if (t.includes('사회')) return 'social';
-  if (t.includes('국사')) return 'korean_history';
-  if (t.includes('영어') || t.includes('english')) return 'english';
-  if (t.includes('수학') || t.includes('math')) return 'math';
-  if (t.includes('과학') || t.includes('science')) return 'science';
-  if (t.includes('국어')) return 'korean';
+  // 사회 관련 키워드 대폭 확장
+  if (t.includes('사회') || t.includes('경제') || t.includes('정치') || t.includes('법') || t.includes('지리') || t.includes('문화') || t.includes('시민') || t.includes('도덕') || t.includes('윤리')) return 'social';
+  
+  // 국사/역사 관련
+  if (t.includes('국사') || t.includes('역사') || t.includes('한국사') || t.includes('근현대사') || t.includes('삼국') || t.includes('고려') || t.includes('조선')) return 'korean_history';
+  
+  // 기타 과목들
+  if (t.includes('영어') || t.includes('english') || t.includes('grammar') || t.includes('reading')) return 'english';
+  if (t.includes('수학') || t.includes('math') || t.includes('산수') || t.includes('기하') || t.includes('함수')) return 'math';
+  if (t.includes('과학') || t.includes('science') || t.includes('실험') || t.includes('관찰') || t.includes('물리') || t.includes('화학') || t.includes('생물') || t.includes('지구')) return 'science';
+  if (t.includes('국어') || t.includes('독해') || t.includes('문학') || t.includes('비문학')) return 'korean';
+  
   return null;
 }
 

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { EllipsisVertical } from 'lucide-react';
 import { SUBJECT_CONFIG } from '../../lib/question/subjectConfig';
-import { formatSavedDate, getDifficultyLabel, getSchoolLevelLabel, getSourcePreview, inferSubjectFromTitle, isDifficultyLevel, isSchoolLevel, isSubjectKey } from '../../lib/examUtils';
+import { formatSavedDate, getDifficultyLabel, getSchoolLevelLabel, getSourcePreview, normalizeToSubjectKey, isDifficultyLevel, isSchoolLevel, isSubjectKey } from '../../lib/examUtils';
 import type { PersistedExamRecord } from '../../lib/rootPersistence';
 
 interface SavedScreenProps {
@@ -27,7 +27,7 @@ export function SavedScreen({
   const allSubjects = useMemo(() => {
     const list = new Set<string>(['전체']);
     for (const exam of exams) {
-      const subjectKey = isSubjectKey(exam.subject) ? exam.subject : inferSubjectFromTitle(exam.title);
+      const subjectKey = normalizeToSubjectKey(exam.subject, exam.title);
       const label = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
       list.add(label);
     }
@@ -43,7 +43,7 @@ export function SavedScreen({
   const filteredExams = useMemo(() => {
     if (selectedSubject === '전체') return exams;
     return exams.filter((exam) => {
-      const subjectKey = isSubjectKey(exam.subject) ? exam.subject : inferSubjectFromTitle(exam.title);
+      const subjectKey = normalizeToSubjectKey(exam.subject, exam.title);
       const label = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
       return label === selectedSubject;
     });
@@ -53,7 +53,7 @@ export function SavedScreen({
     const subjectsMap: Record<string, PersistedExamRecord[]> = {};
 
     for (const exam of filteredExams) {
-      const subjectKey = isSubjectKey(exam.subject) ? exam.subject : inferSubjectFromTitle(exam.title);
+      const subjectKey = normalizeToSubjectKey(exam.subject, exam.title);
       const subjectLabel = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
       if (!subjectsMap[subjectLabel]) {
         subjectsMap[subjectLabel] = [];
@@ -151,7 +151,25 @@ export function SavedScreen({
 
                       <div className="space-y-4 pr-8 sm:pr-10">
                         <div className="space-y-2">
-                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{formatSavedDate(exam.created_at)}</p>
+                          <div className="flex items-center gap-2">
+                             {(() => {
+                               const subjectKey = normalizeToSubjectKey(exam.subject, exam.title);
+                               const label = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타';
+                               const colorClass = subjectKey === 'social' ? 'bg-amber-100 text-amber-700' : 
+                                                 subjectKey === 'korean_history' ? 'bg-orange-100 text-orange-700' :
+                                                 subjectKey === 'english' ? 'bg-blue-100 text-blue-700' :
+                                                 subjectKey === 'math' ? 'bg-indigo-100 text-indigo-700' :
+                                                 subjectKey === 'science' ? 'bg-emerald-100 text-emerald-700' :
+                                                 subjectKey === 'korean' ? 'bg-rose-100 text-rose-700' :
+                                                 'bg-slate-100 text-slate-600';
+                               return (
+                                 <span className={`px-2 py-0.5 text-[11px] font-bold rounded-sm ${colorClass}`}>
+                                   {label}
+                                 </span>
+                               );
+                             })()}
+                             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{formatSavedDate(exam.created_at)}</p>
+                          </div>
                           <h2 className="text-lg font-semibold text-slate-900">{exam.title}</h2>
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
                             <span>{isSchoolLevel(exam.exam_format) ? getSchoolLevelLabel(exam.exam_format) : exam.exam_format}</span>

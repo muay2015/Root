@@ -283,13 +283,46 @@ export default function App() {
         });
 
         if (saved.data) {
-          const nextSavedExams = mergeExamRecords([saved.data as PersistedExamRecord, ...savedExams]);
+          // 서버 응답에 과목 정보가 없더라도 현재 선택된 과목 정보를 강제 병합하여 상태에 반영 (배포 환경 대비)
+          const recordWithSubject = { 
+            ...saved.data, 
+            subject: (saved.data as any).subject || subject 
+          } as PersistedExamRecord;
+          
+          const nextSavedExams = mergeExamRecords([recordWithSubject, ...savedExams]);
           setSavedExams(nextSavedExams);
           storeLocalExamList(nextSavedExams);
-          setCurrentExamId(saved.data.id);
-          const savedRecord = { ...saved.data, subject };
-          storeLocalLastExam(savedRecord);
+          setCurrentExamId(recordWithSubject.id);
+          storeLocalLastExam(recordWithSubject);
         }
+      } else {
+        // [익명 사용자 지원] 로그인하지 않은 경우 로컬 전용 기록 생성 및 저장
+        const localRecord: PersistedExamRecord = {
+          id: `local-${Date.now()}`,
+          title: resolvedTitle,
+          subject, // 과목 키 저장
+          builder_mode: mode,
+          question_type: nextQuestionMode,
+          difficulty,
+          exam_format: schoolLevel,
+          question_count: count,
+          source_text: materialText,
+          question_files: questionFiles,
+          answer_files: answerFiles,
+          questions: nextQuestions as any,
+          responses: {},
+          score: null,
+          correct_count: null,
+          wrong_count: null,
+          submitted_at: null,
+          created_at: new Date().toISOString(),
+        };
+
+        const nextSavedExams = mergeExamRecords([localRecord, ...savedExams]);
+        setSavedExams(nextSavedExams);
+        storeLocalExamList(nextSavedExams);
+        setCurrentExamId(localRecord.id);
+        storeLocalLastExam(localRecord);
       }
 
       navigate('taking');
