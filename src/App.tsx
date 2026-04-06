@@ -3,6 +3,7 @@ import {
   completeExam,
   deleteWrongNotesByTitle,
   ensureSupabaseUser,
+  fetchExamRecords,
   fetchWrongNotes,
   loadLocalExamList,
   loadLocalWrongNotes,
@@ -12,7 +13,9 @@ import {
   storeLocalLastExam,
   storeLocalWrongNotes,
   type PersistedExamRecord,
+  type PersistedWrongNote,
 } from './lib/rootPersistence';
+import { supabase } from './lib/supabase';
 import {
   hasPlaceholderChoices,
   normalizeGeneratedQuestions,
@@ -128,33 +131,57 @@ export default function App() {
       setSessionDisplayName(String(auth.data.user_metadata?.display_name ?? '사용자'));
       setSyncMessage('Supabase 세션 연결 완료');
 
-      const [, wrong] = await Promise.all([
-        Promise.resolve({ data: null, error: null }),
+      const [examsResult, wrongResult] = await Promise.all([
+        fetchExamRecords(auth.data.id),
         fetchWrongNotes(auth.data.id),
       ]);
 
-      if (wrong.data) {
-        // 서버 데이터를 기본 진실(Baseline)로 삼음
-        const serverNotes = wrong.data as WrongNote[];
-        
-        // 로컬에만 존재하는 데이터가 있는지 확인 (예: 오프라인에서 새로 추가된 오답)
+      if (examsResult.data) {
+        const localExams = loadLocalExamList<PersistedExamRecord>();
+        const merged = mergeExamRecords([...examsResult.data, ...localExams]);
+        setSavedExams(merged);
+        storeLocalExamList(merged);
+      }
+
+      if (wrongResult.data) {
+        const localWrong = loadLocalWrongNotes<PersistedWrongNote>();
+        const serverNotes = wrongResult.data as WrongNote[];
         const serverIds = new Set(serverNotes.map(n => n.id));
         const newLocalOnly = localWrong.filter(n => !serverIds.has(n.id));
 
         if (newLocalOnly.length > 0) {
-          // 로컬에만 있는 '새로운' 오답이 있다면 합쳐서 서버에 동기화
           const merged = mergeWrongNotes([...serverNotes, ...newLocalOnly]);
           setWrongNotes(merged);
           storeLocalWrongNotes(merged);
           await saveWrongNotes(auth.data.id, merged);
         } else {
-          // 로컬 데이터가 서버 데이터와 같거나 더 적다면(삭제된 상태 등), 서버 데이터를 그대로 사용
           setWrongNotes(serverNotes);
           storeLocalWrongNotes(serverNotes);
         }
       }
     })();
   }, []);
+
+  const handleSignOut = async () => {
+    try {
+      setSyncMessage('로그아웃 중...');
+      await supabase.auth.signOut();
+      
+      // 상태 초기화
+      setSavedExams([]);
+      setWrongNotes([]);
+      setSessionUserId(null);
+      setSessionUserEmail('');
+      setSessionDisplayName('사용자');
+      setIsAnonymous(true);
+      
+      setSyncMessage('로그아웃 완료');
+      setTimeout(() => window.location.reload(), 500);
+    } catch (err) {
+      console.error('로그아웃 실패:', err);
+      window.location.reload();
+    }
+  };
 
   // --- 오답 통계 계산 ---
   const summary = useMemo(() => {
@@ -471,7 +498,7 @@ export default function App() {
           onBack={handleBack}
           isAnonymous={isAnonymous}
           sessionDisplayName={sessionDisplayName}
-          onSignOut={() => window.location.reload()}
+          onSignOut={handleSignOut}
         />
         <main className="min-h-screen bg-slate-100 px-3 pb-24 pt-4 text-slate-900 sm:px-5 sm:pt-6">
           <div className="mx-auto flex max-w-[980px] flex-col gap-4">
@@ -546,7 +573,7 @@ export default function App() {
         );
       case 'account':
         return sessionUserId && !isAnonymous ? (
-          <AccountScreen email={sessionUserEmail} initialDisplayName={sessionDisplayName} syncMessage={syncMessage} onDisplayNameChange={setSessionDisplayName} onSignOut={() => window.location.reload()} />
+          <AccountScreen email={sessionUserEmail} initialDisplayName={sessionDisplayName} syncMessage={syncMessage} onDisplayNameChange={setSessionDisplayName} onSignOut={handleSignOut} />
         ) : (
           <AuthScreen onSuccess={() => window.location.reload()} />
         );
@@ -576,7 +603,7 @@ export default function App() {
         onBack={handleBack}
         isAnonymous={isAnonymous}
         sessionDisplayName={sessionDisplayName}
-        onSignOut={() => window.location.reload()}
+        onSignOut={handleSignOut}
       />
       {renderContent()}
       <BottomNavigation current={screen} onNavigate={navigate} isAnonymous={isAnonymous} />
