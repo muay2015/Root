@@ -64,6 +64,7 @@ type SaveExamDraftInput = {
   questionFiles: string[];
   answerFiles: string[];
   questions: PersistedQuestion[];
+  subject: string;
 };
 
 type CompleteExamInput = {
@@ -428,6 +429,7 @@ export async function saveExamDraft(userId: string, input: SaveExamDraftInput): 
     const payload = {
       user_id: userId,
       title: input.title,
+      subject: input.subject,
       builder_mode: input.builderMode,
       question_type: input.questionType,
       difficulty: input.difficulty,

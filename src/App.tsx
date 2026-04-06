@@ -270,6 +270,7 @@ export default function App() {
       if (sessionUserId) {
         const saved = await saveExamDraft(sessionUserId, {
           title: resolvedTitle,
+          subject, // 추가된 부분: 현재 과목 키를 명시적으로 저장
           builderMode: mode,
           questionType: nextQuestionMode,
           difficulty,

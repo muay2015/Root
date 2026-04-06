@@ -142,6 +142,18 @@ export function isSchoolLevel(value: string): value is SchoolLevel {
   return value === 'middle' || value === 'high' || value === 'csat';
 }
 
+// 제목을 통해 과목을 유추하는 함수 (기존 데이터 구제용)
+export function inferSubjectFromTitle(title: string): SubjectKey | null {
+  const t = title.toLowerCase();
+  if (t.includes('사회')) return 'social';
+  if (t.includes('국사')) return 'korean_history';
+  if (t.includes('영어') || t.includes('english')) return 'english';
+  if (t.includes('수학') || t.includes('math')) return 'math';
+  if (t.includes('과학') || t.includes('science')) return 'science';
+  if (t.includes('국어')) return 'korean';
+  return null;
+}
+
 // --- 응답 데이터 변환 ---
 
 export function toResponseMap(value: PersistedExamRecord['responses']) {

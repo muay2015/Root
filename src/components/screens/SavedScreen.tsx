@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { EllipsisVertical } from 'lucide-react';
 import { SUBJECT_CONFIG } from '../../lib/question/subjectConfig';
-import { formatSavedDate, getDifficultyLabel, getSchoolLevelLabel, getSourcePreview, isDifficultyLevel, isSchoolLevel, isSubjectKey } from '../../lib/examUtils';
+import { formatSavedDate, getDifficultyLabel, getSchoolLevelLabel, getSourcePreview, inferSubjectFromTitle, isDifficultyLevel, isSchoolLevel, isSubjectKey } from '../../lib/examUtils';
 import type { PersistedExamRecord } from '../../lib/rootPersistence';
 
 interface SavedScreenProps {
@@ -27,7 +27,8 @@ export function SavedScreen({
   const allSubjects = useMemo(() => {
     const list = new Set<string>(['전체']);
     for (const exam of exams) {
-      const label = isSubjectKey(exam.subject) ? SUBJECT_CONFIG[exam.subject].label : '기타 과목';
+      const subjectKey = isSubjectKey(exam.subject) ? exam.subject : inferSubjectFromTitle(exam.title);
+      const label = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
       list.add(label);
     }
     return Array.from(list).sort((a, b) => {
@@ -42,7 +43,8 @@ export function SavedScreen({
   const filteredExams = useMemo(() => {
     if (selectedSubject === '전체') return exams;
     return exams.filter((exam) => {
-      const label = isSubjectKey(exam.subject) ? SUBJECT_CONFIG[exam.subject].label : '기타 과목';
+      const subjectKey = isSubjectKey(exam.subject) ? exam.subject : inferSubjectFromTitle(exam.title);
+      const label = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
       return label === selectedSubject;
     });
   }, [exams, selectedSubject]);
@@ -51,7 +53,8 @@ export function SavedScreen({
     const subjectsMap: Record<string, PersistedExamRecord[]> = {};
 
     for (const exam of filteredExams) {
-      const subjectLabel = isSubjectKey(exam.subject) ? SUBJECT_CONFIG[exam.subject].label : '기타 과목';
+      const subjectKey = isSubjectKey(exam.subject) ? exam.subject : inferSubjectFromTitle(exam.title);
+      const subjectLabel = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
       if (!subjectsMap[subjectLabel]) {
         subjectsMap[subjectLabel] = [];
       }
