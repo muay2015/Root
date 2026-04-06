@@ -124,21 +124,30 @@ export function useExamGenerator(
   const finalizeGeneration = async (title: string, sub: SubjectKey, qs: ExamQuestion[], qMode: GeneratedQuestionMode) => {
     let finalRecord: PersistedExamRecord;
 
+    const createLocalRecord = (): PersistedExamRecord => ({
+      id: `local-${Date.now()}`, title, subject: sub, builder_mode: mode, question_type: qMode,
+      difficulty, exam_format: schoolLevel, question_count: count, source_text: materialText,
+      question_files: questionFiles, answer_files: answerFiles, questions: qs as any,
+      responses: {}, score: null, correct_count: null, wrong_count: null, submitted_at: null,
+      created_at: new Date().toISOString(),
+      isSynced: false,
+    });
+
     if (sessionUserId) {
       const saved = await saveExamDraft(sessionUserId, {
         title, subject: sub, builderMode: mode, questionType: qMode,
         difficulty, examFormat: schoolLevel, questionCount: count,
         sourceText: materialText, questionFiles, answerFiles, questions: qs as any,
       });
-      finalRecord = { ...saved.data, isSynced: true, subject: (saved.data as any).subject || sub } as PersistedExamRecord;
+
+      if (saved.data) {
+        finalRecord = { ...saved.data, isSynced: true, subject: (saved.data as any).subject || sub } as PersistedExamRecord;
+      } else {
+        console.error('서버 저장 실패. 로컬 환경으로 폴백합니다.', saved.error);
+        finalRecord = createLocalRecord();
+      }
     } else {
-      finalRecord = {
-        id: `local-${Date.now()}`, title, subject: sub, builder_mode: mode, question_type: qMode,
-        difficulty, exam_format: schoolLevel, question_count: count, source_text: materialText,
-        question_files: questionFiles, answer_files: answerFiles, questions: qs as any,
-        responses: {}, score: null, correct_count: null, wrong_count: null, submitted_at: null,
-        created_at: new Date().toISOString(),
-      };
+      finalRecord = createLocalRecord();
     }
 
     const nextSavedExams = mergeExamRecords([finalRecord, ...savedExams]);

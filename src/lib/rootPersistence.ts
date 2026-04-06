@@ -437,9 +437,14 @@ export async function saveExamDraft(userId: string, input: SaveExamDraftInput): 
       exam_format: input.examFormat,
       question_count: input.questionCount,
       source_text: input.sourceText || null,
-      question_files: input.questionFiles,
-      answer_files: input.answerFiles,
+      question_files: input.questionFiles || [],
+      answer_files: input.answerFiles || [],
       questions: input.questions,
+      responses: {},
+      score: null,
+      correct_count: null,
+      wrong_count: null,
+      submitted_at: null,
     };
 
     const { data, error } = await supabase.from('exam_attempts').insert(payload).select('*').single();
