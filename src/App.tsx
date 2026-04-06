@@ -62,6 +62,7 @@ import {
   isDifficultyLevel,
   isSchoolLevel,
   isSubjectKey,
+  inferSubjectFromTitle,
   makeExamTitle,
   mergeExamRecords,
   mergeWrongNotes,
@@ -140,21 +141,35 @@ export default function App() {
 
       if (examsResult.data) {
         const localExams = loadLocalExamList<PersistedExamRecord>();
-        // 서버 데이터를 기본으로 하고, '동기화 완료'인 모든 서버 데이터에 플래그 부여
-        const serverExams = (examsResult.data as PersistedExamRecord[]).map(e => ({ ...e, isSynced: true }));
+        
+        // --- 데이터 자가 치유(Self-Healing) 로직 ---
+        const serverExams = (examsResult.data as PersistedExamRecord[]).map(e => {
+          // 과목 정보가 비어 있거나 올바른 키가 아닌 경우 제목 기반으로 보정
+          if (!isSubjectKey(e.subject)) {
+            const healedSubject = inferSubjectFromTitle(e.title);
+            if (healedSubject) {
+              return { ...e, subject: healedSubject, isSynced: false }; // 보정된 데이터는 다시 서버 업로드 필요
+            }
+          }
+          return { ...e, isSynced: true };
+        });
+        // ------------------------------------------
+
         const serverIds = new Set(serverExams.map(e => e.id));
         
-        // 로컬 데이터 중 '아직 서버에 안 보낸(isSynced: false)' 새로운 데이터만 합침
+        // 로컬 데이터 중 '아직 서버에 안 보낸(isSynced: false)' 새로운 데이터나 보정된 데이터 합침
         const newLocalOnly = localExams.filter(e => !e.isSynced && !serverIds.has(e.id));
+        const healedLocals = serverExams.filter(e => !e.isSynced);
         
+        const pendingUploads = [...newLocalOnly, ...healedLocals];
         const merged = mergeExamRecords([...serverExams, ...newLocalOnly]);
+        
         setSavedExams(merged);
         storeLocalExamList(merged);
         
-        // 서버에 없는 새로운 로컬 데이터가 있다면 서버로 전송
-        if (newLocalOnly.length > 0) {
-          const result = await saveExamRecords(auth.data.id, newLocalOnly);
-          // 전송 성공 후 서버의 최신 목록으로 로컬을 완벽하게 덮어씀 (isSynced: true 보장)
+        // 서버에 없는 새로운 데이터나 보정된 데이터가 있다면 서버로 즉시 전송
+        if (pendingUploads.length > 0) {
+          const result = await saveExamRecords(auth.data.id, pendingUploads);
           if (result.data) {
             const final = (result.data as PersistedExamRecord[]).map(e => ({ ...e, isSynced: true }));
             setSavedExams(final);

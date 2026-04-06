@@ -202,6 +202,29 @@ export function normalizeToSubjectKey(value: string | null | undefined, title?: 
   return null;
 }
 
+/**
+ * 제목을 통해 과목을 유추하는 함수 (데이터 보정/Self-Healing 전용)
+ * 화면 렌더링 시 추측용이 아닌, DB의 누락된 과목 정보를 채워넣는 용도로만 사용됩니다.
+ */
+export function inferSubjectFromTitle(title: string): SubjectKey | null {
+  const t = title.toLowerCase();
+  
+  // 1. 역사를 사회보다 우선 검사 (문화/인물 등의 키워드 중복 방지)
+  if (t.includes('국사') || t.includes('역사') || t.includes('한국사') || t.includes('근현대사') || t.includes('삼국') || t.includes('고려') || t.includes('조선') || t.includes('세계사') || t.includes('동아시아') || t.includes('문화유산') || t.includes('유적') || t.includes('문화사') || t.includes('생활사') || t.includes('시대') || t.includes('인물') || t.includes('구석기') || t.includes('신석기') || t.includes('청동기') || t.includes('철기') || t.includes('고대') || t.includes('근대') || t.includes('현대')) return 'korean_history';
+
+  // 2. 사회 관련 (정제된 키워드)
+  if (t.includes('사회문화') || t.includes('생윤') || t.includes('생활과윤리') || t.includes('경제') || t.includes('정치') || t.includes('법') || t.includes('지리') || t.includes('시민') || t.includes('도덕') || t.includes('윤리') || t.includes('시사') || t.includes('인권') || t.includes('환경')) return 'social';
+  if (t.includes('사회')) return 'social';
+  
+  // 3. 기타 과목들
+  if (t.includes('영어') || t.includes('english') || t.includes('grammar') || t.includes('reading') || t.includes('단어')) return 'english';
+  if (t.includes('수학') || t.includes('math') || t.includes('산수') || t.includes('기하') || t.includes('함수') || t.includes('도형')) return 'math';
+  if (t.includes('과학') || t.includes('science') || t.includes('실험') || t.includes('관찰') || t.includes('물리') || t.includes('화학') || t.includes('생물') || t.includes('지구') || t.includes('생명') || t.includes('우주') || t.includes('에너지')) return 'science';
+  if (t.includes('국어') || t.includes('독해') || t.includes('문학') || t.includes('비문학') || t.includes('논증') || t.includes('어법')) return 'korean';
+  
+  return null;
+}
+
 
 // --- 응답 데이터 변환 ---
 
