@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { EllipsisVertical } from 'lucide-react';
+import { EllipsisVertical, Info, RefreshCw } from 'lucide-react';
 import { SUBJECT_CONFIG } from '../../lib/question/subjectConfig';
 import { formatSavedDate, getDifficultyLabel, getSchoolLevelLabel, getSourcePreview, normalizeToSubjectKey, isDifficultyLevel, isSchoolLevel, isSubjectKey } from '../../lib/examUtils';
 import type { PersistedExamRecord } from '../../lib/rootPersistence';
@@ -10,6 +10,9 @@ interface SavedScreenProps {
   onDelete: (recordId: string) => void;
   onContinueGenerate: (record: PersistedExamRecord) => void;
   onCreate: () => void;
+  onLogin: () => void;
+  isAnonymous: boolean;
+  syncMessage: string;
 }
 
 export function SavedScreen({
@@ -18,6 +21,9 @@ export function SavedScreen({
   onDelete,
   onContinueGenerate,
   onCreate,
+  onLogin,
+  isAnonymous,
+  syncMessage,
 }: SavedScreenProps) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [previewExamId, setPreviewExamId] = useState<string | null>(null);
@@ -72,8 +78,34 @@ export function SavedScreen({
     <main className="min-h-screen bg-slate-50 px-4 pb-28 pt-8 text-slate-900 sm:px-6">
       <div className="mx-auto max-w-4xl space-y-6">
         <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
-          <h1 className="text-3xl font-bold">문제함</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold">문제함</h1>
+            {syncMessage && (
+              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 animate-pulse">
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                {syncMessage}
+              </div>
+            )}
+          </div>
           <p className="mt-2 text-sm text-slate-500">문제가 생성되면 자동으로 이 목록에 저장됩니다.</p>
+
+          {isAnonymous && (
+            <div className="mt-4 flex items-start gap-3 bg-blue-50 p-4 border border-blue-100">
+              <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-blue-900">로그인이 필요합니다</p>
+                <p className="mt-1 text-xs text-blue-700 leading-relaxed">
+                  로그인하시면 PC나 다른 기기에서 생성한 모든 문제를 동기화하여 볼 수 있습니다. 현재는 이 기기에 저장된 문제만 표시됩니다.
+                </p>
+                <button
+                  onClick={() => onLogin()}
+                  className="mt-2.5 text-xs font-bold text-blue-600 hover:text-blue-800 underline underline-offset-4"
+                >
+                  지금 로그인하기
+                </button>
+              </div>
+            </div>
+          )}
           
           <div className="mt-6 flex flex-wrap gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {allSubjects.map((subj) => (

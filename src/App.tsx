@@ -532,7 +532,18 @@ export default function App() {
       case 'result':
         return <ResultScreen examTitle={examTitle} summary={summary} questions={questions} responses={responses} onBack={() => navigate('landing')} onWrong={() => navigate('wrong')} />;
       case 'saved':
-        return <SavedScreen exams={savedExams} onOpen={openSavedExam} onDelete={deleteSavedExam} onContinueGenerate={continueGenerateFromSavedExam} onCreate={() => navigate('create')} />;
+        return (
+          <SavedScreen
+            exams={savedExams}
+            onOpen={openSavedExam}
+            onDelete={deleteSavedExam}
+            onContinueGenerate={continueGenerateFromSavedExam}
+            onCreate={() => navigate('create')}
+            onLogin={() => navigate('account')}
+            isAnonymous={isAnonymous}
+            syncMessage={syncMessage}
+          />
+        );
       case 'account':
         return sessionUserId && !isAnonymous ? (
           <AccountScreen email={sessionUserEmail} initialDisplayName={sessionDisplayName} syncMessage={syncMessage} onDisplayNameChange={setSessionDisplayName} onSignOut={() => window.location.reload()} />
