@@ -56,20 +56,18 @@ export function useExamSync(sessionUserId: string | null, isAnonymous: boolean) 
         });
 
         const serverIds = new Set(serverExams.map(e => e.id));
+        // 로컬에는 있지만 서버에 없는 레코드만 업로드 대상 (healedLocals는 서버에서 온 것이라 재업로드 불필요)
         const missingFromServer = localExams
           .filter(e => !serverIds.has(e.id))
           .map(e => ({ ...e, isSynced: false }));
-        
-        const healedLocals = serverExams.filter(e => !e.isSynced);
-        const pendingUploads = [...missingFromServer, ...healedLocals];
         
         const merged = mergeExamRecords([...serverExams, ...missingFromServer]);
         setSavedExams(merged);
         storeLocalExamList(merged);
         
-        if (pendingUploads.length > 0) {
+        if (missingFromServer.length > 0) {
           // local-xxx ID를 가진 레코드들을 서버에 올리고 서버에서 새 UUID를 받아온다
-          const result = await saveExamRecords(sessionUserId, pendingUploads);
+          const result = await saveExamRecords(sessionUserId, missingFromServer);
           if (result.data) {
             // 서버에서 받아온 최신 목록(진짜 UUID만 가짐)으로 로컬 저장소 교체
             const finalFromServer = (result.data as PersistedExamRecord[]).map(e => ({ ...e, isSynced: true }));
