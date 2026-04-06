@@ -16,7 +16,7 @@ function getPasswordChecks(password: string) {
   };
 }
 
-export function AuthScreen() {
+export function AuthScreen({ onSuccess = () => window.location.reload() }: { onSuccess?: () => void } = {}) {
   const [mode, setMode] = useState<AuthMode>('sign_in');
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -111,8 +111,12 @@ export function AuthScreen() {
 
       if (mode === 'sign_up') {
         setMessage('회원가입이 완료되었습니다. 이메일 인증이 켜져 있다면 메일함에서 인증을 마친 뒤 로그인하세요.');
+        if (!import.meta.env.VITE_SUPABASE_REQUIRE_EMAIL_VERIFICATION) {
+           setTimeout(() => onSuccess(), 1000);
+        }
       } else {
         setMessage('로그인되었습니다.');
+        setTimeout(() => onSuccess(), 500);
       }
     } finally {
       setIsSubmitting(false);

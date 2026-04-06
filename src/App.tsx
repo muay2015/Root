@@ -33,12 +33,14 @@ import {
 } from './lib/question/subjectConfig.ts';
 import { getApiUrl, parseJsonResponse } from './lib/api.ts';
 import { ExamHeader } from './components/exam/ExamHeader';
+import { AuthScreen } from './components/auth/AuthScreen';
+import { AccountScreen } from './components/account/AccountScreen';
 import { ExamQuestionList } from './components/exam/ExamQuestionList';
 import { ExamNavigation } from './components/exam/ExamNavigation';
 import { QuestionPalette } from './components/exam/QuestionPalette';
 import type { ExamQuestion } from './components/exam/types';
 
-type Screen = 'landing' | 'create' | 'taking' | 'result' | 'wrong' | 'saved';
+type Screen = 'landing' | 'create' | 'taking' | 'result' | 'wrong' | 'saved' | 'account';
 type BuilderMode = 'upload' | 'ai';
 type DifficultyLevel = 'easy' | 'medium' | 'hard';
 type SchoolLevel = 'middle' | 'high' | 'csat';
@@ -1527,6 +1529,7 @@ function TopBar({ current, onNavigate }: { current: Screen; onNavigate: (screen:
     current === 'taking' ? '응시' :
     current === 'result' ? '결과' :
     current === 'saved' ? '저장된 문제' :
+    current === 'account' ? '내 계정' :
     '오답노트';
 
   return (
@@ -1536,19 +1539,18 @@ function TopBar({ current, onNavigate }: { current: Screen; onNavigate: (screen:
           <button
             onClick={() => (current === 'landing' ? undefined : onNavigate('landing'))}
             className={`flex h-11 w-11 items-center justify-center border ${
-              current === 'landing' ? 'border-slate-200 bg-slate-100 text-slate-400' : 'border-slate-900 bg-slate-900 text-white'
+              current === 'landing'
+                ? 'border-slate-900 bg-slate-900 text-white'
+                : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
             }`}
           >
-            <ArrowLeft className="h-5 w-5" />
+            <Bot className="h-6 w-6" />
           </button>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">ROOT</div>
-            <div className="text-lg font-semibold text-slate-900">{currentLabel}</div>
-          </div>
+          <span className="text-lg font-bold tracking-tight text-slate-900">{currentLabel}</span>
         </div>
         <button
-          onClick={() => window.alert('설정 메뉴는 다음 단계에서 연결할 수 있습니다.')}
-          className="flex h-11 w-11 items-center justify-center border border-slate-300 bg-white text-slate-700"
+          onClick={() => onNavigate('account')}
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
         >
           <Settings className="h-5 w-5" />
         </button>
