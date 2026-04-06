@@ -170,7 +170,14 @@ function extractInlineStimulus(stem: string): ExamQuestionParts | null {
   }
 
   const stimulusLines = markerSections
-    .map((section) => `${section.marker}. ${section.text.replace(/\s+/g, ' ').trim()}`)
+    .map((section) => {
+      // ㄱ. ㉠ 형태의 중복 기호 제거
+      const cleanText = section.text
+        .replace(/^\s*[㉠-㉽]\s*/, '') // 시작 부분의 원문자 기호 제거
+        .replace(/\s+/g, ' ')
+        .trim();
+      return `${section.marker}. ${cleanText}`;
+    })
     .filter((line) => hasStimulus(line));
 
   if (stimulusLines.length < 2) {
