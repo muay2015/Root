@@ -132,40 +132,13 @@ export function AuthScreen({ onSuccess = () => window.location.reload() }: { onS
         : '재설정 메일 보내기';
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] px-4 py-10 text-slate-900 sm:px-6">
-      <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-        <section className="overflow-hidden border border-slate-200 bg-white">
-          <div className="border-b border-slate-200 bg-slate-950 px-6 py-8 text-white sm:px-8">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">ROOT ACCOUNT</p>
-            <h1 className="mt-4 max-w-xl text-4xl font-bold leading-tight">
-              시험 기록, 오답노트, 생성 이력을 계정 기준으로 이어서 사용합니다.
-            </h1>
-            <p className="mt-4 max-w-lg text-sm leading-7 text-slate-300">
-              로그인 후 생성한 시험과 제출 결과를 저장하고, 다른 기기에서도 같은 계정으로 바로 이어서 사용할 수 있습니다.
-            </p>
-          </div>
-
-          <div className="grid gap-px bg-slate-200 sm:grid-cols-3">
-            <FeatureCard
-              title="시험 보관"
-              description="생성한 시험 목록과 최근 풀이 상태를 계정과 연결합니다."
-            />
-            <FeatureCard
-              title="오답노트 동기화"
-              description="로그인한 사용자 기준으로 오답노트가 누적되고 다시 열람됩니다."
-            />
-            <FeatureCard
-              title="이어서 사용"
-              description="다른 브라우저나 기기에서도 같은 계정으로 작업을 이어갈 수 있습니다."
-            />
-          </div>
-        </section>
-
+    <main className="min-h-screen bg-slate-50 px-4 pb-28 pt-10 text-slate-900 sm:px-6">
+      <div className="mx-auto max-w-md">
         <section className="border border-slate-200 bg-white px-6 py-8 sm:px-8">
           <div className="grid grid-cols-3 gap-2">
             <ModeButton active={mode === 'sign_in'} label="로그인" onClick={() => switchMode('sign_in')} />
             <ModeButton active={mode === 'sign_up'} label="회원가입" onClick={() => switchMode('sign_up')} />
-            <ModeButton active={mode === 'reset_password'} label="비밀번호 재설정" onClick={() => switchMode('reset_password')} />
+            <ModeButton active={mode === 'reset_password'} label="비번 재설정" onClick={() => switchMode('reset_password')} />
           </div>
 
           <div className="mt-6 space-y-4">
@@ -284,7 +257,7 @@ function ModeButton({
     <button
       type="button"
       onClick={onClick}
-      className={`px-4 py-3 text-sm font-semibold ${
+      className={`px-1 py-3 text-xs font-semibold sm:px-4 sm:text-sm ${
         active ? 'bg-slate-900 text-white' : 'border border-slate-300 bg-white text-slate-700'
       }`}
     >
@@ -293,11 +266,4 @@ function ModeButton({
   );
 }
 
-function FeatureCard({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="bg-white px-5 py-5">
-      <p className="text-sm font-semibold text-slate-900">{title}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
-    </div>
-  );
-}
+

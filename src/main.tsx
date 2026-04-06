@@ -2,6 +2,7 @@ import { StrictMode, Component, type ErrorInfo, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+// Test comment
 import { supabase } from './lib/supabase.ts';
 
 void supabase;

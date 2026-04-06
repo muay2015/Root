@@ -6,6 +6,7 @@ type AccountScreenProps = {
   initialDisplayName: string;
   syncMessage: string;
   onDisplayNameChange: (value: string) => void;
+  onSignOut: () => void;
 };
 
 export function AccountScreen({
@@ -13,6 +14,7 @@ export function AccountScreen({
   initialDisplayName,
   syncMessage,
   onDisplayNameChange,
+  onSignOut,
 }: AccountScreenProps) {
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [message, setMessage] = useState<string | null>(null);
@@ -93,6 +95,18 @@ export function AccountScreen({
               className="bg-slate-900 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
             >
               {isSaving ? '저장 중...' : '닉네임 저장'}
+            </button>
+          </div>
+        </section>
+
+        <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
+          <h2 className="text-lg font-semibold text-slate-900">시스템</h2>
+          <div className="mt-4">
+            <button
+              onClick={onSignOut}
+              className="border border-red-200 bg-red-50 px-5 py-3 text-sm font-semibold text-red-700 hover:bg-red-100"
+            >
+              로그아웃
             </button>
           </div>
         </section>
