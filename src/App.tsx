@@ -711,6 +711,17 @@ export default function App() {
         onCreate={() => navigate('create')}
       />
     );
+  } else if (screen === 'account') {
+    content = sessionUserId ? (
+      <AccountScreen
+        email={null}
+        initialDisplayName={'사용자'}
+        syncMessage={syncMessage}
+        onDisplayNameChange={() => {}}
+      />
+    ) : (
+      <AuthScreen />
+    );
   } else {
     content = (
       <WrongListScreen
