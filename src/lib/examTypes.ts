@@ -9,6 +9,7 @@ export type SchoolLevel = 'middle' | 'high' | 'csat';
 export type WrongNote = {
   id: string;
   examTitle: string;
+  subject?: string;
   topic: string;
   stem: string;
   myAnswer: string;

@@ -29,12 +29,15 @@ export function WrongListScreen({
     const subjects: Record<string, Record<string, WrongNote[]>> = {};
 
     for (const note of wrongNotes) {
-      let subjectKey: string | null | undefined = null;
-      if (note.id.includes('___')) {
-        subjectKey = note.id.split('___')[0];
-      } else {
-        const examMatch = savedExams.find(e => e.title === note.examTitle);
-        subjectKey = examMatch?.subject;
+      let subjectKey: string | null | undefined = note.subject;
+      
+      if (!subjectKey) {
+        if (note.id.includes('___')) {
+          subjectKey = note.id.split('___')[0];
+        } else {
+          const examMatch = savedExams.find(e => e.title === note.examTitle);
+          subjectKey = examMatch?.subject;
+        }
       }
       
       const subjectLabel = isSubjectKey(subjectKey) ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
@@ -78,7 +81,7 @@ export function WrongListScreen({
             {groupedBySubject.map(([subjectLabel, exams]) => (
               <section key={subjectLabel}>
                 <h2 className="mb-3 text-[15px] font-bold text-slate-800 px-1 border-b border-slate-200 pb-2">{subjectLabel}</h2>
-                <div className="overflow-hidden border border-slate-200 bg-white">
+                <div className="border border-slate-200 bg-white">
                   {(Object.entries(exams) as [string, WrongNote[]][]).map(([examTitle, notes], index) => {
                     const isOpen = openExamTitle === examTitle;
 

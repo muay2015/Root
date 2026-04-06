@@ -149,6 +149,7 @@ export default function App() {
         : [{
             id: `${examMeta.subject}___${examTitle}-${question.id}`,
             examTitle,
+            subject: examMeta.subject,
             topic: question.topic,
             stem: question.stem,
             myAnswer: myAnswer || '미응답',
