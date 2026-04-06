@@ -49,15 +49,12 @@ export function SavedScreen({
       if (a === '전체') return -1;
       if (b === '전체') return 1;
       return a.localeCompare(b);
-    }).filter(subj => subj !== '기타 과목');
+    });
   }, [exams]);
 
   const filteredExams = useMemo(() => {
-    // 모든 항목에서 일단 '기타 과목'은 제외 (필터 칩 정합성 및 중복 방지)
-    const validExams = exams.filter(exam => normalizeToSubjectKey(exam.subject, exam.title) !== null);
-    
-    if (selectedSubject === '전체') return validExams;
-    return validExams.filter((exam) => {
+    if (selectedSubject === '전체') return exams;
+    return exams.filter((exam) => {
       const subjectKey = normalizeToSubjectKey(exam.subject, exam.title);
       const label = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
       return label === selectedSubject;
