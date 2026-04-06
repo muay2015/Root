@@ -540,3 +540,46 @@ export async function deleteWrongNotesByTitle(userId: string, examTitle: string)
     return { data: null, error: normalizeSupabaseErrorMessage(error) };
   }
 }
+export async function saveExamRecords(userId: string, records: PersistedExamRecord[]): Promise<Result<PersistedExamRecord[]>> {
+  if (!supabase) {
+    return { data: null, error: 'Supabase is not configured.' };
+  }
+
+  if (records.length === 0) return { data: [], error: null };
+
+  try {
+    const payload = records.map(r => ({
+      id: r.id,
+      user_id: userId,
+      title: r.title,
+      subject: r.subject,
+      builder_mode: r.builder_mode,
+      question_type: r.question_type,
+      difficulty: r.difficulty,
+      exam_format: r.exam_format,
+      question_count: r.question_count,
+      source_text: r.source_text,
+      question_files: r.question_files,
+      answer_files: r.answer_files,
+      questions: r.questions,
+      responses: r.responses,
+      score: r.score,
+      correct_count: r.correct_count,
+      wrong_count: r.wrong_count,
+      submitted_at: r.submitted_at,
+      created_at: r.created_at
+    }));
+
+    const { error } = await supabase.from('exam_attempts').upsert(payload, {
+      onConflict: 'id',
+    });
+
+    if (error) {
+      return { data: null, error: normalizeSupabaseErrorMessage(error) };
+    }
+
+    return fetchExamRecords(userId);
+  } catch (error) {
+    return { data: null, error: normalizeSupabaseErrorMessage(error) };
+  }
+}

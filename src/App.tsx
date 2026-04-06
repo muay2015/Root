@@ -14,6 +14,7 @@ import {
   storeLocalWrongNotes,
   type PersistedExamRecord,
   type PersistedWrongNote,
+  saveExamRecords
 } from './lib/rootPersistence';
 import { supabase } from './lib/supabase';
 import {
@@ -138,9 +139,15 @@ export default function App() {
 
       if (examsResult.data) {
         const localExams = loadLocalExamList<PersistedExamRecord>();
-        const merged = mergeExamRecords([...examsResult.data, ...localExams]);
+        const serverExams = examsResult.data as PersistedExamRecord[];
+        const merged = mergeExamRecords([...serverExams, ...localExams]);
         setSavedExams(merged);
         storeLocalExamList(merged);
+        
+        // 서버에 없는 로컬 데이터가 있다면 서버로 푸시 (양방향 동기화)
+        if (merged.length > serverExams.length) {
+          await saveExamRecords(auth.data.id, merged);
+        }
       }
 
       if (wrongResult.data) {
