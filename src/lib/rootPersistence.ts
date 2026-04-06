@@ -430,7 +430,6 @@ export async function saveExamDraft(userId: string, input: SaveExamDraftInput): 
     const payload = {
       user_id: userId,
       title: input.title,
-      subject: input.subject,
       builder_mode: input.builderMode,
       question_type: input.questionType,
       difficulty: input.difficulty,
@@ -558,7 +557,6 @@ export async function saveExamRecords(userId: string, records: PersistedExamReco
       id: r.id,
       user_id: userId,
       title: r.title,
-      subject: r.subject,
       builder_mode: r.builder_mode,
       question_type: r.question_type,
       difficulty: r.difficulty,
