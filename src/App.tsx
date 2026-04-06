@@ -14,7 +14,8 @@ import {
   storeLocalWrongNotes,
   type PersistedExamRecord,
   type PersistedWrongNote,
-  saveExamRecords
+  saveExamRecords,
+  deleteExamRecordFromServer
 } from './lib/rootPersistence';
 import { supabase } from './lib/supabase';
 import {
@@ -139,14 +140,26 @@ export default function App() {
 
       if (examsResult.data) {
         const localExams = loadLocalExamList<PersistedExamRecord>();
-        const serverExams = examsResult.data as PersistedExamRecord[];
-        const merged = mergeExamRecords([...serverExams, ...localExams]);
+        // 서버 데이터를 기본으로 하고, '동기화 완료'인 모든 서버 데이터에 플래그 부여
+        const serverExams = (examsResult.data as PersistedExamRecord[]).map(e => ({ ...e, isSynced: true }));
+        const serverIds = new Set(serverExams.map(e => e.id));
+        
+        // 로컬 데이터 중 '아직 서버에 안 보낸(isSynced: false)' 새로운 데이터만 합침
+        const newLocalOnly = localExams.filter(e => !e.isSynced && !serverIds.has(e.id));
+        
+        const merged = mergeExamRecords([...serverExams, ...newLocalOnly]);
         setSavedExams(merged);
         storeLocalExamList(merged);
         
-        // 서버에 없는 로컬 데이터가 있다면 서버로 푸시 (양방향 동기화)
-        if (merged.length > serverExams.length) {
-          await saveExamRecords(auth.data.id, merged);
+        // 서버에 없는 새로운 로컬 데이터가 있다면 서버로 전송
+        if (newLocalOnly.length > 0) {
+          const result = await saveExamRecords(auth.data.id, newLocalOnly);
+          // 전송 성공 후 서버의 최신 목록으로 로컬을 완벽하게 덮어씀 (isSynced: true 보장)
+          if (result.data) {
+            const final = (result.data as PersistedExamRecord[]).map(e => ({ ...e, isSynced: true }));
+            setSavedExams(final);
+            storeLocalExamList(final);
+          }
         }
       }
 
@@ -320,6 +333,7 @@ export default function App() {
           // 서버 응답에 과목 정보가 없더라도 현재 선택된 과목 정보를 강제 병합하여 상태에 반영 (배포 환경 대비)
           const recordWithSubject = { 
             ...saved.data, 
+            isSynced: true, // 즉시 동기화 완료 상태로 표시
             subject: (saved.data as any).subject || subject 
           } as PersistedExamRecord;
           
@@ -381,13 +395,21 @@ export default function App() {
     if (sessionUserId) {
       await saveWrongNotes(sessionUserId, merged);
       if (currentExamId) {
-        await completeExam(sessionUserId, {
+        const result = await completeExam(sessionUserId, {
           examId: currentExamId,
           responses,
           score: summary.score,
           correctCount: summary.correctCount,
           wrongCount: summary.wrongCount,
         });
+
+        // 시험 완료 후 서버로부터 받은 최신 정보(점수 등)를 로컬 목록에 반영
+        if (result.data) {
+          const updatedRecord = { ...result.data, isSynced: true } as PersistedExamRecord;
+          const nextSavedExams = mergeExamRecords([updatedRecord, ...savedExams]);
+          setSavedExams(nextSavedExams);
+          storeLocalExamList(nextSavedExams);
+        }
       }
     }
     navigate('result');
@@ -470,10 +492,21 @@ export default function App() {
     navigate('taking');
   };
 
-  const deleteSavedExam = (recordId: string) => {
-    const nextSavedExams = savedExams.filter((item) => item.id !== recordId);
-    setSavedExams(nextSavedExams);
-    storeLocalExamList(nextSavedExams);
+  const deleteSavedExam = async (recordId: string) => {
+    if (!confirm('문제를 삭제하시겠습니까? 관련 오답 정보도 모두 삭제됩니다.')) return;
+
+    if (sessionUserId && !isAnonymous) {
+      await deleteExamRecordFromServer(sessionUserId, recordId);
+    }
+    
+    const updated = savedExams.filter((e) => e.id !== recordId);
+    setSavedExams(updated);
+    storeLocalExamList(updated);
+    
+    const deletedRecord = savedExams.find(e => e.id === recordId);
+    if (deletedRecord && sessionUserId && !isAnonymous) {
+      await deleteWrongNotesByTitle(sessionUserId, deletedRecord.title);
+    }
   };
 
   const continueGenerateFromSavedExam = (record: PersistedExamRecord) => {

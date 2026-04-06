@@ -51,6 +51,7 @@ export type PersistedExamRecord = {
   wrong_count: number | null;
   submitted_at: string | null;
   created_at: string;
+  isSynced?: boolean; // 서버 동기화 여부 추적용
 };
 
 type SaveExamDraftInput = {
@@ -579,6 +580,27 @@ export async function saveExamRecords(userId: string, records: PersistedExamReco
     }
 
     return fetchExamRecords(userId);
+  } catch (error) {
+    return { data: null, error: normalizeSupabaseErrorMessage(error) };
+  }
+}
+
+export async function deleteExamRecordFromServer(userId: string, examId: string): Promise<Result<null>> {
+  if (!supabase) {
+    return { data: null, error: 'Supabase 설정이 없어 로컬 저장 모드로 실행 중입니다.' };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('exam_attempts')
+      .delete()
+      .eq('id', examId)
+      .eq('user_id', userId);
+
+    return {
+      data: null,
+      error: error ? normalizeSupabaseErrorMessage(error) : null,
+    };
   } catch (error) {
     return { data: null, error: normalizeSupabaseErrorMessage(error) };
   }
