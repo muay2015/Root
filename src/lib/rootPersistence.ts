@@ -518,3 +518,23 @@ export async function saveWrongNotes(userId: string, wrongNotes: PersistedWrongN
     return { data: null, error: normalizeSupabaseErrorMessage(error) };
   }
 }
+export async function deleteWrongNotesByTitle(userId: string, examTitle: string): Promise<Result<null>> {
+  if (!supabase) {
+    return { data: null, error: 'Supabase 설정이 없어 로컬 저장 모드로 실행 중입니다.' };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('wrong_notes')
+      .delete()
+      .eq('user_id', userId)
+      .eq('exam_title', examTitle);
+
+    return {
+      data: null,
+      error: error ? normalizeSupabaseErrorMessage(error) : null,
+    };
+  } catch (error) {
+    return { data: null, error: normalizeSupabaseErrorMessage(error) };
+  }
+}

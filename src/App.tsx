@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   completeExam,
+  deleteWrongNotesByTitle,
   ensureSupabaseUser,
   fetchWrongNotes,
   loadLocalExamList,
@@ -480,7 +481,26 @@ export default function App() {
           <AuthScreen onSuccess={() => window.location.reload()} />
         );
       case 'wrong':
-        return <WrongListScreen wrongNotes={wrongNotes} savedExams={savedExams} syncMessage={syncMessage} onBack={() => navigate('landing')} onRetry={() => { setCurrentQuestionIndex(1); navigate('taking'); }} onDelete={async (title) => { const filtered = wrongNotes.filter(n => n.examTitle !== title); setWrongNotes(filtered); storeLocalWrongNotes(filtered); if (sessionUserId) await saveWrongNotes(sessionUserId, filtered); }} />;
+        return (
+          <WrongListScreen
+            wrongNotes={wrongNotes}
+            savedExams={savedExams}
+            syncMessage={syncMessage}
+            onBack={handleBack}
+            onRetry={() => {
+              setCurrentQuestionIndex(1);
+              navigate('taking');
+            }}
+            onDelete={async (title) => {
+              const filtered = wrongNotes.filter((n) => n.examTitle !== title);
+              setWrongNotes(filtered);
+              storeLocalWrongNotes(filtered);
+              if (sessionUserId) {
+                await deleteWrongNotesByTitle(sessionUserId, title);
+              }
+            }}
+          />
+        );
       default: return null;
     }
   };
