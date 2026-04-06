@@ -6,22 +6,20 @@ import {
   storeLocalWrongNotes,
   storeLocalLastExam,
   type PersistedExamRecord,
-  type WrongNote,
 } from '../lib/rootPersistence';
 import {
   isSubjectKey,
   isDifficultyLevel,
   isSchoolLevel,
   normalizeAnswer,
-  normalizeStoredQuestions,
   toResponseMap,
   mergeExamRecords,
   mergeWrongNotes,
 } from '../lib/examUtils';
-import { toGeneratedQuestionMode, type GeneratedQuestionMode } from '../lib/examGeneration';
+import { toGeneratedQuestionMode, normalizeStoredQuestions, type GeneratedQuestionMode } from '../lib/examGeneration';
 import type { SubjectKey } from '../lib/question/subjectConfig';
 import type { ExamQuestion } from '../components/exam/types';
-import type { ExamMeta, BuilderMode } from '../lib/examTypes';
+import type { ExamMeta, BuilderMode, WrongNote } from '../lib/examTypes';
 
 export function useExamSession(
   sessionUserId: string | null,
