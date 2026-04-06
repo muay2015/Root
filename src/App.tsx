@@ -134,9 +134,17 @@ export default function App() {
       ]);
 
       if (wrong.data) {
-        const merged = mergeWrongNotes([...(wrong.data as WrongNote[]), ...localWrong]);
+        // 서버 데이터를 기본으로 하고, 서버에 없는 로컬 데이터가 있다면 합침 (오프라인 작업 보존용)
+        const serverNotes = wrong.data as WrongNote[];
+        const merged = mergeWrongNotes([...serverNotes, ...localWrong]);
+        
         setWrongNotes(merged);
         storeLocalWrongNotes(merged);
+
+        // 만약 로컬에만 있고 서버에 없는 데이터가 있었다면 서버에도 동기화 수행
+        if (merged.length > serverNotes.length) {
+          await saveWrongNotes(auth.data.id, merged);
+        }
       }
     })();
   }, []);
