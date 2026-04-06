@@ -69,7 +69,7 @@ export function SavedScreen({
     <main className="min-h-screen bg-slate-50 px-4 pb-28 pt-8 text-slate-900 sm:px-6">
       <div className="mx-auto max-w-4xl space-y-6">
         <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
-          <h1 className="text-3xl font-bold">저장된 문제</h1>
+          <h1 className="text-3xl font-bold">문제함</h1>
           <p className="mt-2 text-sm text-slate-500">문제가 생성되면 자동으로 이 목록에 저장됩니다.</p>
           
           <div className="mt-6 flex flex-wrap gap-2 overflow-x-auto pb-1 scrollbar-hide">

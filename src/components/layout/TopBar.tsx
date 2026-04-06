@@ -23,7 +23,7 @@ export function TopBar({
     current === 'create' ? 'CBT 생성' :
     current === 'taking' ? '응시' :
     current === 'result' ? '결과' :
-    current === 'saved' ? '저장된 문제' :
+    current === 'saved' ? '문제함' :
     current === 'account' ? '내 계정' :
     '오답노트';
 
