@@ -168,16 +168,16 @@ export function normalizeToSubjectKey(value: string | null | undefined, title?: 
 export function inferSubjectFromTitle(title: string): SubjectKey | null {
   const t = title.toLowerCase();
   // 사회 관련 키워드 대폭 확장
-  if (t.includes('사회') || t.includes('경제') || t.includes('정치') || t.includes('법') || t.includes('지리') || t.includes('문화') || t.includes('시민') || t.includes('도덕') || t.includes('윤리')) return 'social';
+  if (t.includes('사회') || t.includes('경제') || t.includes('정치') || t.includes('법') || t.includes('지리') || t.includes('문화') || t.includes('시민') || t.includes('도덕') || t.includes('윤리') || t.includes('시사') || t.includes('인권') || t.includes('환경')) return 'social';
   
-  // 국사/역사 관련
-  if (t.includes('국사') || t.includes('역사') || t.includes('한국사') || t.includes('근현대사') || t.includes('삼국') || t.includes('고려') || t.includes('조선')) return 'korean_history';
+  // 국사/역사 관련 (세계사, 동아시아사 포함)
+  if (t.includes('국사') || t.includes('역사') || t.includes('한국사') || t.includes('근현대사') || t.includes('삼국') || t.includes('고려') || t.includes('조선') || t.includes('세계사') || t.includes('동아시아')) return 'korean_history';
   
   // 기타 과목들
-  if (t.includes('영어') || t.includes('english') || t.includes('grammar') || t.includes('reading')) return 'english';
-  if (t.includes('수학') || t.includes('math') || t.includes('산수') || t.includes('기하') || t.includes('함수')) return 'math';
-  if (t.includes('과학') || t.includes('science') || t.includes('실험') || t.includes('관찰') || t.includes('물리') || t.includes('화학') || t.includes('생물') || t.includes('지구')) return 'science';
-  if (t.includes('국어') || t.includes('독해') || t.includes('문학') || t.includes('비문학')) return 'korean';
+  if (t.includes('영어') || t.includes('english') || t.includes('grammar') || t.includes('reading') || t.includes('단어')) return 'english';
+  if (t.includes('수학') || t.includes('math') || t.includes('산수') || t.includes('기하') || t.includes('함수') || t.includes('도형')) return 'math';
+  if (t.includes('과학') || t.includes('science') || t.includes('실험') || t.includes('관찰') || t.includes('물리') || t.includes('화학') || t.includes('생물') || t.includes('지구') || t.includes('생명') || t.includes('우주') || t.includes('에너지')) return 'science';
+  if (t.includes('국어') || t.includes('독해') || t.includes('문학') || t.includes('비문학') || t.includes('논증') || t.includes('어법')) return 'korean';
   
   return null;
 }

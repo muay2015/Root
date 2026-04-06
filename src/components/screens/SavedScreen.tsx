@@ -1,7 +1,15 @@
 import { useMemo, useState } from 'react';
 import { EllipsisVertical, Info, RefreshCw } from 'lucide-react';
 import { SUBJECT_CONFIG } from '../../lib/question/subjectConfig';
-import { formatSavedDate, getDifficultyLabel, getSchoolLevelLabel, getSourcePreview, normalizeToSubjectKey, isDifficultyLevel, isSchoolLevel, isSubjectKey } from '../../lib/examUtils';
+import { 
+  formatSavedDate, 
+  getDifficultyLabel, 
+  getSchoolLevelLabel, 
+  getSourcePreview, 
+  normalizeToSubjectKey, 
+  isDifficultyLevel, 
+  isSchoolLevel 
+} from '../../lib/examUtils';
 import type { PersistedExamRecord } from '../../lib/rootPersistence';
 
 interface SavedScreenProps {
@@ -29,7 +37,7 @@ export function SavedScreen({
   const [previewExamId, setPreviewExamId] = useState<string | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<string>('전체');
 
-  // 추출된 전체 과목 리스트
+  // 추출된 전체 과목 리스트 (기타 과목 제외)
   const allSubjects = useMemo(() => {
     const list = new Set<string>(['전체']);
     for (const exam of exams) {
@@ -40,10 +48,8 @@ export function SavedScreen({
     return Array.from(list).sort((a, b) => {
       if (a === '전체') return -1;
       if (b === '전체') return 1;
-      if (a === '기타 과목') return 1;
-      if (b === '기타 과목') return -1;
       return a.localeCompare(b);
-    });
+    }).filter(subj => subj !== '기타 과목');
   }, [exams]);
 
   const filteredExams = useMemo(() => {
@@ -60,17 +66,15 @@ export function SavedScreen({
 
     for (const exam of filteredExams) {
       const subjectKey = normalizeToSubjectKey(exam.subject, exam.title);
-      const subjectLabel = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
-      if (!subjectsMap[subjectLabel]) {
-        subjectsMap[subjectLabel] = [];
-      }
-      subjectsMap[subjectLabel].push(exam);
+      const label = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
+      if (!subjectsMap[label]) subjectsMap[label] = [];
+      subjectsMap[label].push(exam);
     }
 
-    return Object.entries(subjectsMap).sort(([a], [b]) => {
-      if (a === '기타 과목') return 1;
-      if (b === '기타 과목') return -1;
-      return a.localeCompare(b);
+    return Object.entries(subjectsMap).sort((a, b) => {
+      if (a[0] === '기타 과목') return 1;
+      if (b[0] === '기타 과목') return -1;
+      return a[0].localeCompare(b[0]);
     });
   }, [filteredExams]);
 
@@ -124,17 +128,19 @@ export function SavedScreen({
           </div>
         </section>
 
-        {exams.length === 0 ? (
+        {filteredExams.length === 0 ? (
           <section className="border border-dashed border-slate-300 bg-white px-5 py-10 text-center text-sm text-slate-500">
-            아직 저장된 문제가 없습니다.
+            {selectedSubject === '전체' ? '저장된 문제가 없습니다.' : `'${selectedSubject}' 과목의 문제가 없습니다.`}
           </section>
         ) : (
           <div className="space-y-8">
             {groupedBySubject.map(([subjectLabel, examList]) => (
               <section key={subjectLabel}>
-                <h2 className="mb-3 text-[15px] font-bold text-slate-800 px-1 border-b border-slate-200 pb-2">
-                  {subjectLabel}
-                </h2>
+                {subjectLabel !== '기타 과목' && (
+                  <h2 className="mb-3 text-[15px] font-bold text-slate-800 px-1 border-b border-slate-200 pb-2">
+                    {subjectLabel}
+                  </h2>
+                )}
                 <div className="space-y-4">
                   {examList.map((exam) => (
                     <article key={exam.id} className="relative border border-slate-200 bg-white px-5 py-5 sm:px-6">
@@ -160,10 +166,7 @@ export function SavedScreen({
                             </button>
                           ) : null}
                           <button
-                            onClick={() => {
-                              onContinueGenerate(exam);
-                              setOpenMenuId(null);
-                            }}
+                            onClick={() => onContinueGenerate(exam)}
                             className="px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
                           >
                             추가 문제 생성

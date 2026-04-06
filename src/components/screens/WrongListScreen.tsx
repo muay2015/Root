@@ -37,10 +37,8 @@ export function WrongListScreen({
     return Array.from(list).sort((a, b) => {
       if (a === '전체') return -1;
       if (b === '전체') return 1;
-      if (a === '기타 과목') return 1;
-      if (b === '기타 과목') return -1;
       return a.localeCompare(b);
-    });
+    }).filter(subj => subj !== '기타 과목');
   }, [wrongNotes]);
 
   const filteredNotes = useMemo(() => {
@@ -78,7 +76,6 @@ export function WrongListScreen({
       subjects[subjectLabel][note.examTitle].push(note);
     }
     
-    // 정합 이미 정렬 됨
     return Object.entries(subjects).sort(([a], [b]) => {
       if (a === '기타 과목') return 1;
       if (b === '기타 과목') return -1;
@@ -118,7 +115,9 @@ export function WrongListScreen({
           <div className="space-y-8">
             {groupedBySubject.map(([subjectLabel, exams]) => (
               <section key={subjectLabel}>
-                <h2 className="mb-3 text-[15px] font-bold text-slate-800 px-1 border-b border-slate-200 pb-2">{subjectLabel}</h2>
+                {subjectLabel !== '기타 과목' && (
+                  <h2 className="mb-3 text-[15px] font-bold text-slate-800 px-1 border-b border-slate-200 pb-2">{subjectLabel}</h2>
+                )}
                 <div className="border border-slate-200 bg-white">
                   {(Object.entries(exams) as [string, WrongNote[]][]).map(([examTitle, notes], index) => {
                     const isOpen = openExamTitle === examTitle;
