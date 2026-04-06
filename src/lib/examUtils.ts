@@ -198,6 +198,11 @@ export function normalizeToSubjectKey(value: string | null | undefined, title?: 
     if (entry) return entry[0] as SubjectKey;
   }
 
+  // 3. 제목에서 과목 유추
+  if (title) {
+    return inferSubjectFromTitle(title);
+  }
+
   return null;
 }
 
@@ -278,10 +283,13 @@ export function makeExamTitle(
   generationTopic: string,
   selectionLabel: string | null,
 ) {
-  const topicText = generationTopic.trim();
-  if (topicText.length > 0) return topicText;
-
   const subjectLabel = SUBJECT_CONFIG[subject].label;
+  const topicText = generationTopic.trim();
+  
+  if (topicText.length > 0) {
+    return topicText.includes(subjectLabel) ? topicText : `[${subjectLabel}] ${topicText}`;
+  }
+
   const parts = [
     mode === 'ai' ? 'AI 생성' : '업로드 기반',
     subjectLabel,

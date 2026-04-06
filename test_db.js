@@ -7,43 +7,14 @@ const key = combined.slice(markerIndex + 1);
 
 const supabase = createClient(url, key);
 
-async function testInsert() {
-  console.log("Testing insert without subject...");
-  
-  const authRes = await supabase.auth.signInAnonymously();
-  if (authRes.error) {
-    console.error("Auth error:", authRes.error.message);
-    return;
-  }
-  
-  const userId = authRes.data.user.id;
-  
-  const payload = {
-    user_id: userId,
-    title: "Test Exam",
-    builder_mode: "upload",
-    question_type: "mixed",
-    difficulty: "hard",
-    exam_format: "high",
-    question_count: 5,
-    source_text: "test",
-    question_files: [],
-    answer_files: [],
-    questions: [],
-    responses: {},
-    score: null,
-    correct_count: null,
-    wrong_count: null,
-    submitted_at: null,
-  };
-
-  const { data, error } = await supabase.from('exam_attempts').insert(payload).select('*').single();
-  
+async function checkExams() {
+  const { data, error } = await supabase.from('exam_attempts').select('title, created_at, user_id').order('created_at', { ascending: false }).limit(5);
   if (error) {
-    console.error("❌ Insert Error:", error);
+    console.error("Query Error:", error);
   } else {
-    console.log("✅ Insert Success. Returned keys:", Object.keys(data));
+    console.log(`Fetched ${data.length} recent exams:`);
+    console.log(data);
   }
 }
 
-testInsert();
+checkExams();
