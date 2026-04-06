@@ -42,8 +42,14 @@ export function WrongListScreen({
   }, [wrongNotes]);
 
   const filteredNotes = useMemo(() => {
-    if (selectedSubject === '전체') return wrongNotes;
-    return wrongNotes.filter((note) => {
+    // 모든 오답에서 일단 '기타 과목'은 제외 (중복 방지)
+    const validNotes = wrongNotes.filter(note => {
+      const subjectKey = normalizeToSubjectKey(note.subject || (note.id.includes('___') ? note.id.split('___')[0] : null), note.examTitle);
+      return subjectKey !== null;
+    });
+
+    if (selectedSubject === '전체') return validNotes;
+    return validNotes.filter((note) => {
       const subjectKey = normalizeToSubjectKey(note.subject || (note.id.includes('___') ? note.id.split('___')[0] : null), note.examTitle);
       const label = isSubjectKey(subjectKey) ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
       return label === selectedSubject;

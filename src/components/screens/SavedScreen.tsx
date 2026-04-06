@@ -53,8 +53,11 @@ export function SavedScreen({
   }, [exams]);
 
   const filteredExams = useMemo(() => {
-    if (selectedSubject === '전체') return exams;
-    return exams.filter((exam) => {
+    // 모든 항목에서 일단 '기타 과목'은 제외 (필터 칩 정합성 및 중복 방지)
+    const validExams = exams.filter(exam => normalizeToSubjectKey(exam.subject, exam.title) !== null);
+    
+    if (selectedSubject === '전체') return validExams;
+    return validExams.filter((exam) => {
       const subjectKey = normalizeToSubjectKey(exam.subject, exam.title);
       const label = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
       return label === selectedSubject;
@@ -189,7 +192,9 @@ export function SavedScreen({
                           <div className="flex items-center gap-2">
                              {(() => {
                                const subjectKey = normalizeToSubjectKey(exam.subject, exam.title);
-                               const label = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타';
+                               if (!subjectKey) return null; // 유추 실패 항목은 배지도 노출 안함 (이미 필터링됨)
+                               
+                               const label = SUBJECT_CONFIG[subjectKey].label;
                                const colorClass = subjectKey === 'social' ? 'bg-amber-100 text-amber-700' : 
                                                  subjectKey === 'korean_history' ? 'bg-orange-100 text-orange-700' :
                                                  subjectKey === 'english' ? 'bg-blue-100 text-blue-700' :
