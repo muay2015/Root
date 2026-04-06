@@ -7,14 +7,44 @@ const key = combined.slice(markerIndex + 1);
 
 const supabase = createClient(url, key);
 
-async function checkExams() {
-  const { data, error } = await supabase.from('exam_attempts').select('title, created_at, user_id').order('created_at', { ascending: false }).limit(5);
+async function testLocalIdUpsert() {
+  console.log("=== 테스트: local-xxxx ID로 upsert 시도 ===");
+  
+  const authRes = await supabase.auth.signInAnonymously();
+  const userId = authRes.data?.user?.id;
+  
+  const localId = `local-${Date.now()}`;
+  console.log("테스트 ID:", localId);
+  
+  const payload = {
+    id: localId,         // <-- 이것이 UUID 타입과 충돌하는지 확인
+    user_id: userId,
+    title: "[영어] local ID 테스트",
+    builder_mode: "upload",
+    question_type: "mixed",
+    difficulty: "hard",
+    exam_format: "high",
+    question_count: 5,
+    source_text: null,
+    question_files: [],
+    answer_files: [],
+    questions: [],
+    responses: {},
+    score: null,
+    correct_count: null,
+    wrong_count: null,
+    submitted_at: null,
+  };
+
+  const { error } = await supabase.from('exam_attempts').upsert(payload, { onConflict: 'id' });
+
   if (error) {
-    console.error("Query Error:", error);
+    console.error("❌ local ID upsert 실패:", error.message);
+    console.log("→ 이것이 동기화가 안되는 원인입니다!");
   } else {
-    console.log(`Fetched ${data.length} recent exams:`);
-    console.log(data);
+    console.log("✅ local ID upsert 성공 (DB가 text ID 허용)");
+    await supabase.from('exam_attempts').delete().eq('id', localId);
   }
 }
 
-checkExams();
+testLocalIdUpsert();

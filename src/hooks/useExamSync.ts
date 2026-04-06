@@ -17,7 +17,8 @@ import {
   mergeExamRecords,
   mergeWrongNotes,
 } from '../lib/examUtils';
-import type { PersistedExamRecord, PersistedWrongNote, WrongNote } from '../lib/rootPersistence';
+import type { PersistedExamRecord, PersistedWrongNote } from '../lib/rootPersistence';
+import type { WrongNote } from '../lib/examTypes';
 
 export function useExamSync(sessionUserId: string | null, isAnonymous: boolean) {
   const [savedExams, setSavedExams] = useState<PersistedExamRecord[]>([]);
@@ -67,11 +68,13 @@ export function useExamSync(sessionUserId: string | null, isAnonymous: boolean) 
         storeLocalExamList(merged);
         
         if (pendingUploads.length > 0) {
+          // local-xxx ID를 가진 레코드들을 서버에 올리고 서버에서 새 UUID를 받아온다
           const result = await saveExamRecords(sessionUserId, pendingUploads);
           if (result.data) {
-            const final = (result.data as PersistedExamRecord[]).map(e => ({ ...e, isSynced: true }));
-            setSavedExams(final);
-            storeLocalExamList(final);
+            // 서버에서 받아온 최신 목록(진짜 UUID만 가짐)으로 로컬 저장소 교체
+            const finalFromServer = (result.data as PersistedExamRecord[]).map(e => ({ ...e, isSynced: true }));
+            setSavedExams(finalFromServer);
+            storeLocalExamList(finalFromServer);
           }
         }
       }

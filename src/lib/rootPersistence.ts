@@ -552,8 +552,36 @@ export async function saveExamRecords(userId: string, records: PersistedExamReco
 
   if (records.length === 0) return { data: [], error: null };
 
-  try {
-    const payload = records.map(r => ({
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const isValidUuid = (id: string) => UUID_REGEX.test(id);
+
+  // local-xxx ID 레코드는 ID를 버리고 새로운 UUID를 서버가 자동 생성하도록 id 필드 제외
+  const toInsert = records
+    .filter(r => !isValidUuid(r.id))
+    .map(r => ({
+      user_id: userId,
+      title: r.title,
+      builder_mode: r.builder_mode,
+      question_type: r.question_type,
+      difficulty: r.difficulty,
+      exam_format: r.exam_format,
+      question_count: r.question_count,
+      source_text: r.source_text,
+      question_files: r.question_files || [],
+      answer_files: r.answer_files || [],
+      questions: r.questions,
+      responses: r.responses || {},
+      score: r.score,
+      correct_count: r.correct_count,
+      wrong_count: r.wrong_count,
+      submitted_at: r.submitted_at,
+      created_at: r.created_at,
+    }));
+
+  // 기존 UUID를 가진 레코드는 upsert (기존 동작 유지)
+  const toUpsert = records
+    .filter(r => isValidUuid(r.id))
+    .map(r => ({
       id: r.id,
       user_id: userId,
       title: r.title,
@@ -574,12 +602,19 @@ export async function saveExamRecords(userId: string, records: PersistedExamReco
       created_at: r.created_at
     }));
 
-    const { error } = await supabase.from('exam_attempts').upsert(payload, {
-      onConflict: 'id',
-    });
+  try {
+    if (toInsert.length > 0) {
+      const { error: insertError } = await supabase.from('exam_attempts').insert(toInsert);
+      if (insertError) {
+        return { data: null, error: normalizeSupabaseErrorMessage(insertError) };
+      }
+    }
 
-    if (error) {
-      return { data: null, error: normalizeSupabaseErrorMessage(error) };
+    if (toUpsert.length > 0) {
+      const { error: upsertError } = await supabase.from('exam_attempts').upsert(toUpsert, { onConflict: 'id' });
+      if (upsertError) {
+        return { data: null, error: normalizeSupabaseErrorMessage(upsertError) };
+      }
     }
 
     return fetchExamRecords(userId);
