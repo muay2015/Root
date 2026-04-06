@@ -124,7 +124,49 @@ export function mergeWrongNotes<T extends WrongNote>(notes: T[]) {
 }
 
 export function mergeExamRecords<T extends PersistedExamRecord>(records: T[]) {
-  return Array.from(new Map(records.map((item) => [item.id, item])).values())
+  const map = new Map<string, T>();
+  
+  // 1. 일차적으로 ID 기반 중복 제거
+  for (const record of records) {
+    if (!map.has(record.id)) {
+      map.set(record.id, record);
+    } else {
+      const existing = map.get(record.id)!;
+      if (Date.parse(record.created_at) > Date.parse(existing.created_at)) {
+        map.set(record.id, record);
+      }
+    }
+  }
+
+  // 2. 콘텐츠 기반 중복 제거 (제목 + 문항수 + 생성시간 유사성) 및 ID 우선순위 적용
+  const uniqueById = Array.from(map.values());
+  const contentMap = new Map<string, T>();
+
+  for (const r of uniqueById) {
+    // 1분 단위로 생성 시간을 절삭하여 기기 간 미세한 시간차 허용
+    const timeKey = Math.floor(Date.parse(r.created_at) / 60000);
+    const contentKey = `${r.title}___${r.question_count}___${timeKey}`;
+    
+    if (!contentMap.has(contentKey)) {
+      contentMap.set(contentKey, r);
+    } else {
+      const existing = contentMap.get(contentKey)!;
+      const isExistingLocal = existing.id.startsWith('local-');
+      const isCurrentLocal = r.id.startsWith('local-');
+
+      // UUID(정식 ID)를 가진 레코드를 우선 보존 (로컬 임시 ID보다 신뢰도 높음)
+      if (isExistingLocal && !isCurrentLocal) {
+        contentMap.set(contentKey, r);
+      } else if (isExistingLocal === isCurrentLocal) {
+        // 같은 종류의 ID라면 더 최신의 데이터를 유지
+        if (Date.parse(r.created_at) > Date.parse(existing.created_at)) {
+          contentMap.set(contentKey, r);
+        }
+      }
+    }
+  }
+
+  return Array.from(contentMap.values())
     .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at));
 }
 
