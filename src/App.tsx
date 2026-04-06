@@ -142,32 +142,32 @@ export default function App() {
       if (examsResult.data) {
         const localExams = loadLocalExamList<PersistedExamRecord>();
         
-        // --- 데이터 자가 치유(Self-Healing) 로직 ---
+        // 서버 데이터 가공 및 자가 치유 (과목 유추 포함)
         const serverExams = (examsResult.data as PersistedExamRecord[]).map(e => {
-          // 과목 정보가 비어 있거나 올바른 키가 아닌 경우 제목 기반으로 보정
           if (!isSubjectKey(e.subject)) {
             const healedSubject = inferSubjectFromTitle(e.title);
             if (healedSubject) {
-              return { ...e, subject: healedSubject, isSynced: false }; // 보정된 데이터는 다시 서버 업로드 필요
+              return { ...e, subject: healedSubject, isSynced: false };
             }
           }
           return { ...e, isSynced: true };
         });
-        // ------------------------------------------
 
         const serverIds = new Set(serverExams.map(e => e.id));
         
-        // 로컬 데이터 중 '아직 서버에 안 보낸(isSynced: false)' 새로운 데이터나 보정된 데이터 합침
-        const newLocalOnly = localExams.filter(e => !e.isSynced && !serverIds.has(e.id));
+        // [강제 복구] 서버에 없는데 로컬에만 있는 '고아' 데이터 구출하여 서버로 강제 재동기화
+        const missingFromServer = localExams
+          .filter(e => !serverIds.has(e.id))
+          .map(e => ({ ...e, isSynced: false }));
+        
         const healedLocals = serverExams.filter(e => !e.isSynced);
+        const pendingUploads = [...missingFromServer, ...healedLocals];
         
-        const pendingUploads = [...newLocalOnly, ...healedLocals];
-        const merged = mergeExamRecords([...serverExams, ...newLocalOnly]);
-        
+        const merged = mergeExamRecords([...serverExams, ...missingFromServer]);
         setSavedExams(merged);
         storeLocalExamList(merged);
         
-        // 서버에 없는 새로운 데이터나 보정된 데이터가 있다면 서버로 즉시 전송
+        // 구출된 데이터들을 서버로 즉시 재전송하여 100% 복구 완료
         if (pendingUploads.length > 0) {
           const result = await saveExamRecords(auth.data.id, pendingUploads);
           if (result.data) {

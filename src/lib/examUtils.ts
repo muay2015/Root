@@ -143,8 +143,8 @@ export function mergeExamRecords<T extends PersistedExamRecord>(records: T[]) {
   const contentMap = new Map<string, T>();
 
   for (const r of uniqueById) {
-    // 5분 단위로 생성 시간을 절광하여 기기 간 동기화 지연 및 재생성 허용 (중복과 유실 사이의 최적점)
-    const timeKey = Math.floor(Date.parse(r.created_at) / 300000);
+    // 1분 단위로 생성 시간을 절광하여 기기 간 미세한 시간차만 허용 (데이터 과도 병합 방지)
+    const timeKey = Math.floor(Date.parse(r.created_at) / 60000);
     // 제목 정규화 제거: 제목이 조금이라도 다르면 별개의 시험으로 취급하여 데이터 유실 방지
     const contentKey = `${r.title}___${r.question_count}___${timeKey}`;
     
@@ -202,11 +202,16 @@ export function normalizeToSubjectKey(value: string | null | undefined, title?: 
 }
 
 /**
- * 전 과목 제목 정밀 유추 함수 (데이터 보정 전속)
+ * 전 과목 제목 정밀 유추 함수 (데이터 보정 전용)
  */
 export function inferSubjectFromTitle(title: string): SubjectKey | null {
   const t = title.toLowerCase();
   
+  // 0. 사용자 요청 전용 정밀 매핑 (최우선순위) 🛡️🎯
+  if (t.includes('기압과 날씨') || t.includes('구름과 강수')) return 'science';
+  if (t.includes('상처가 더 꽃이다')) return 'korean';
+  if (t.includes('여러 나라의 성장')) return 'korean_history';
+
   // 1. 국어 관련
   if (t.includes('국어') || t.includes('독해') || t.includes('문학') || t.includes('비문학') || t.includes('논증') || t.includes('어법') || t.includes('화작') || t.includes('언매')) return 'korean';
 
