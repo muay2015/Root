@@ -65,11 +65,6 @@ export function WrongListScreen({
         <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
           <h1 className="text-3xl font-bold">오답노트</h1>
           <p className="mt-2 text-sm text-slate-500">{syncMessage}</p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <button onClick={onBack} className="border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700">
-              홈으로
-            </button>
-          </div>
         </section>
 
         {groupedBySubject.length === 0 ? (
