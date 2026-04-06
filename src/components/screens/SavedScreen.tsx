@@ -21,24 +21,49 @@ export function SavedScreen({
 }: SavedScreenProps) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [previewExamId, setPreviewExamId] = useState<string | null>(null);
+  const [selectedSubject, setSelectedSubject] = useState<string>('전체');
 
-  const groupedBySubject = useMemo(() => {
-    const subjects: Record<string, PersistedExamRecord[]> = {};
-
+  // 추출된 전체 과목 리스트
+  const allSubjects = useMemo(() => {
+    const list = new Set<string>(['전체']);
     for (const exam of exams) {
-      const subjectLabel = isSubjectKey(exam.subject) ? SUBJECT_CONFIG[exam.subject].label : '기타 과목';
-      if (!subjects[subjectLabel]) {
-        subjects[subjectLabel] = [];
-      }
-      subjects[subjectLabel].push(exam);
+      const label = isSubjectKey(exam.subject) ? SUBJECT_CONFIG[exam.subject].label : '기타 과목';
+      list.add(label);
     }
-
-    return Object.entries(subjects).sort(([a], [b]) => {
+    return Array.from(list).sort((a, b) => {
+      if (a === '전체') return -1;
+      if (b === '전체') return 1;
       if (a === '기타 과목') return 1;
       if (b === '기타 과목') return -1;
       return a.localeCompare(b);
     });
   }, [exams]);
+
+  const filteredExams = useMemo(() => {
+    if (selectedSubject === '전체') return exams;
+    return exams.filter((exam) => {
+      const label = isSubjectKey(exam.subject) ? SUBJECT_CONFIG[exam.subject].label : '기타 과목';
+      return label === selectedSubject;
+    });
+  }, [exams, selectedSubject]);
+
+  const groupedBySubject = useMemo(() => {
+    const subjectsMap: Record<string, PersistedExamRecord[]> = {};
+
+    for (const exam of filteredExams) {
+      const subjectLabel = isSubjectKey(exam.subject) ? SUBJECT_CONFIG[exam.subject].label : '기타 과목';
+      if (!subjectsMap[subjectLabel]) {
+        subjectsMap[subjectLabel] = [];
+      }
+      subjectsMap[subjectLabel].push(exam);
+    }
+
+    return Object.entries(subjectsMap).sort(([a], [b]) => {
+      if (a === '기타 과목') return 1;
+      if (b === '기타 과목') return -1;
+      return a.localeCompare(b);
+    });
+  }, [filteredExams]);
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 pb-28 pt-8 text-slate-900 sm:px-6">
@@ -46,6 +71,22 @@ export function SavedScreen({
         <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
           <h1 className="text-3xl font-bold">저장된 문제</h1>
           <p className="mt-2 text-sm text-slate-500">문제가 생성되면 자동으로 이 목록에 저장됩니다.</p>
+          
+          <div className="mt-6 flex flex-wrap gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {allSubjects.map((subj) => (
+              <button
+                key={subj}
+                onClick={() => setSelectedSubject(subj)}
+                className={`whitespace-nowrap px-4 py-2 text-sm font-semibold transition-colors ${
+                  selectedSubject === subj
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                {subj}
+              </button>
+            ))}
+          </div>
         </section>
 
         {exams.length === 0 ? (

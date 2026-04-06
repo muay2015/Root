@@ -24,11 +24,38 @@ export function WrongListScreen({
 }: WrongListScreenProps) {
   const [openExamTitle, setOpenExamTitle] = useState<string | null>(null);
   const [openMenuTitle, setOpenMenuTitle] = useState<string | null>(null);
+  const [selectedSubject, setSelectedSubject] = useState<string>('전체');
+
+  // 추출된 전체 과목 리스트
+  const allSubjects = useMemo(() => {
+    const list = new Set<string>(['전체']);
+    for (const note of wrongNotes) {
+      const subjectKey = note.subject || (note.id.includes('___') ? note.id.split('___')[0] : null);
+      const label = isSubjectKey(subjectKey) ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
+      list.add(label);
+    }
+    return Array.from(list).sort((a, b) => {
+      if (a === '전체') return -1;
+      if (b === '전체') return 1;
+      if (a === '기타 과목') return 1;
+      if (b === '기타 과목') return -1;
+      return a.localeCompare(b);
+    });
+  }, [wrongNotes]);
+
+  const filteredNotes = useMemo(() => {
+    if (selectedSubject === '전체') return wrongNotes;
+    return wrongNotes.filter((note) => {
+      const subjectKey = note.subject || (note.id.includes('___') ? note.id.split('___')[0] : null);
+      const label = isSubjectKey(subjectKey) ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
+      return label === selectedSubject;
+    });
+  }, [wrongNotes, selectedSubject]);
 
   const groupedBySubject = useMemo(() => {
     const subjects: Record<string, Record<string, WrongNote[]>> = {};
 
-    for (const note of wrongNotes) {
+    for (const note of filteredNotes) {
       let subjectKey: string | null | undefined = note.subject;
       
       if (!subjectKey) {
@@ -51,13 +78,13 @@ export function WrongListScreen({
       subjects[subjectLabel][note.examTitle].push(note);
     }
     
-    // 정렬 (기타 과목은 마지막으로)
-    return (Object.entries(subjects) as [string, Record<string, WrongNote[]>][]).sort(([a], [b]) => {
+    // 정합 이미 정렬 됨
+    return Object.entries(subjects).sort(([a], [b]) => {
       if (a === '기타 과목') return 1;
       if (b === '기타 과목') return -1;
       return a.localeCompare(b);
-    });
-  }, [wrongNotes, savedExams]);
+    }) as [string, Record<string, WrongNote[]>][];
+  }, [filteredNotes, savedExams]);
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 pb-28 pt-8 text-slate-900 sm:px-6">
@@ -65,6 +92,22 @@ export function WrongListScreen({
         <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
           <h1 className="text-3xl font-bold">오답노트</h1>
           <p className="mt-2 text-sm text-slate-500">{syncMessage}</p>
+
+          <div className="mt-6 flex flex-wrap gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {allSubjects.map((subj) => (
+              <button
+                key={subj}
+                onClick={() => setSelectedSubject(subj)}
+                className={`whitespace-nowrap px-4 py-2 text-sm font-semibold transition-colors ${
+                  selectedSubject === subj
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                {subj}
+              </button>
+            ))}
+          </div>
         </section>
 
         {groupedBySubject.length === 0 ? (
