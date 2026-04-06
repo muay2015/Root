@@ -5,18 +5,21 @@ import type { Screen } from '../../lib/examTypes';
 export function TopBar({
   current,
   onNavigate,
+  onBack,
   isAnonymous,
   sessionDisplayName,
   onSignOut,
 }: {
   current: Screen;
   onNavigate: (screen: Screen) => void;
+  onBack: () => void;
   isAnonymous: boolean;
   sessionDisplayName: string;
   onSignOut: () => void;
 }) {
   const currentLabel =
     current === 'landing' ? '홈' :
+    current === 'dashboard' ? '대시보드' :
     current === 'create' ? 'CBT 생성' :
     current === 'taking' ? '응시' :
     current === 'result' ? '결과' :
@@ -29,7 +32,7 @@ export function TopBar({
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => (current === 'landing' ? undefined : onNavigate('landing'))}
+            onClick={() => (current === 'landing' ? undefined : onBack())}
             className={`flex h-11 w-11 items-center justify-center border ${
               current === 'landing'
                 ? 'border-slate-900 bg-slate-900 text-white'
@@ -40,7 +43,7 @@ export function TopBar({
           </button>
           {current !== 'landing' && (
             <button
-              onClick={() => onNavigate('landing')}
+              onClick={onBack}
               className="flex h-11 items-center gap-1.5 border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               <ArrowLeft className="h-4 w-4" />

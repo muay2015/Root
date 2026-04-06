@@ -321,10 +321,40 @@ export default function App() {
     navigate('result');
   };
 
-  const navigate = (next: Screen) => {
+  const navigate = (next: Screen, replace = false) => {
     window.scrollTo(0, 0);
+    if (replace) {
+      window.history.replaceState({ screen: next }, '', '');
+    } else {
+      window.history.pushState({ screen: next }, '', '');
+    }
     setScreen(next);
   };
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      navigate('landing', true);
+    }
+  };
+
+  // 브라우저 뒤로 가기/앞으로 가기 연동
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.screen) {
+        setScreen(event.state.screen as Screen);
+      } else {
+        setScreen('landing');
+      }
+    };
+
+    // 초기 상태 설정
+    window.history.replaceState({ screen: 'landing' }, '', '');
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const openSavedExam = (record: PersistedExamRecord) => {
     const restoredMode = toGeneratedQuestionMode(record.question_type);
@@ -378,6 +408,7 @@ export default function App() {
         <TopBar
           current={screen}
           onNavigate={navigate}
+          onBack={handleBack}
           isAnonymous={isAnonymous}
           sessionDisplayName={sessionDisplayName}
           onSignOut={() => window.location.reload()}
@@ -459,6 +490,7 @@ export default function App() {
       <TopBar
         current={screen}
         onNavigate={navigate}
+        onBack={handleBack}
         isAnonymous={isAnonymous}
         sessionDisplayName={sessionDisplayName}
         onSignOut={() => window.location.reload()}
