@@ -143,9 +143,11 @@ export function mergeExamRecords<T extends PersistedExamRecord>(records: T[]) {
   const contentMap = new Map<string, T>();
 
   for (const r of uniqueById) {
-    // 1분 단위로 생성 시간을 절삭하여 기기 간 미세한 시간차 허용
-    const timeKey = Math.floor(Date.parse(r.created_at) / 60000);
-    const contentKey = `${r.title}___${r.question_count}___${timeKey}`;
+    // 10분 단위로 생성 시간을 절광하여 기기 간 동기화 지연 및 재생성 허용
+    const timeKey = Math.floor(Date.parse(r.created_at) / 600000);
+    // 제목 정규화: 끝에 붙은 일련번호나 공백을 무시하여 비교
+    const sanitizedTitle = r.title.replace(/\(\d+\)$|\s\d+$|\s$/, '').trim();
+    const contentKey = `${sanitizedTitle}___${r.question_count}___${timeKey}`;
     
     if (!contentMap.has(contentKey)) {
       contentMap.set(contentKey, r);
@@ -154,7 +156,7 @@ export function mergeExamRecords<T extends PersistedExamRecord>(records: T[]) {
       const isExistingLocal = existing.id.startsWith('local-');
       const isCurrentLocal = r.id.startsWith('local-');
 
-      // UUID(정식 ID)를 가진 레코드를 우선 보존 (로컬 임시 ID보다 신뢰도 높음)
+      // UUID(정식 ID)를 가진 레코드를 우선 보존
       if (isExistingLocal && !isCurrentLocal) {
         contentMap.set(contentKey, r);
       } else if (isExistingLocal === isCurrentLocal) {
@@ -197,32 +199,9 @@ export function normalizeToSubjectKey(value: string | null | undefined, title?: 
     if (entry) return entry[0] as SubjectKey;
   }
 
-  // 3. 제목을 통해 유추
-  if (title) {
-    const inferred = inferSubjectFromTitle(title);
-    if (inferred) return inferred;
-  }
-
   return null;
 }
 
-// 제목을 통해 과목을 유추하는 함수 (기존 데이터 구제용)
-export function inferSubjectFromTitle(title: string): SubjectKey | null {
-  const t = title.toLowerCase();
-  // 사회 관련 키워드 대폭 확장
-  if (t.includes('사회') || t.includes('경제') || t.includes('정치') || t.includes('법') || t.includes('지리') || t.includes('문화') || t.includes('시민') || t.includes('도덕') || t.includes('윤리') || t.includes('시사') || t.includes('인권') || t.includes('환경')) return 'social';
-  
-  // 국사/역사 관련 (세계사, 동아시아사 포함)
-  if (t.includes('국사') || t.includes('역사') || t.includes('한국사') || t.includes('근현대사') || t.includes('삼국') || t.includes('고려') || t.includes('조선') || t.includes('세계사') || t.includes('동아시아')) return 'korean_history';
-  
-  // 기타 과목들
-  if (t.includes('영어') || t.includes('english') || t.includes('grammar') || t.includes('reading') || t.includes('단어')) return 'english';
-  if (t.includes('수학') || t.includes('math') || t.includes('산수') || t.includes('기하') || t.includes('함수') || t.includes('도형')) return 'math';
-  if (t.includes('과학') || t.includes('science') || t.includes('실험') || t.includes('관찰') || t.includes('물리') || t.includes('화학') || t.includes('생물') || t.includes('지구') || t.includes('생명') || t.includes('우주') || t.includes('에너지')) return 'science';
-  if (t.includes('국어') || t.includes('독해') || t.includes('문학') || t.includes('비문학') || t.includes('논증') || t.includes('어법')) return 'korean';
-  
-  return null;
-}
 
 // --- 응답 데이터 변환 ---
 
