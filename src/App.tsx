@@ -303,6 +303,12 @@ export default function App() {
       }
 
       navigate('taking');
+      
+      // 입력 필드 초기화
+      setGenerationTopic('');
+      setMaterialText('');
+      setQuestionFiles([]);
+      setAnswerFiles([]);
     } catch (error) {
       setGenerationError(error instanceof Error ? error.message : '생성 실패');
     } finally {
