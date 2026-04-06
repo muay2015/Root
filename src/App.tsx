@@ -106,7 +106,7 @@ export default function App() {
   const selectionLabel = getSubjectSelectionLabel(subject, questionType, format);
   const readyToGenerate = mode === 'upload'
     ? questionFiles.length > 0 && answerFiles.length > 0
-    : materialText.trim().length > 20;
+    : generationTopic.trim().length >= 2 || materialText.trim().length >= 20;
 
   // --- 초기 로드 ---
   useEffect(() => {
@@ -134,16 +134,23 @@ export default function App() {
       ]);
 
       if (wrong.data) {
-        // 서버 데이터를 기본으로 하고, 서버에 없는 로컬 데이터가 있다면 합침 (오프라인 작업 보존용)
+        // 서버 데이터를 기본 진실(Baseline)로 삼음
         const serverNotes = wrong.data as WrongNote[];
-        const merged = mergeWrongNotes([...serverNotes, ...localWrong]);
         
-        setWrongNotes(merged);
-        storeLocalWrongNotes(merged);
+        // 로컬에만 존재하는 데이터가 있는지 확인 (예: 오프라인에서 새로 추가된 오답)
+        const serverIds = new Set(serverNotes.map(n => n.id));
+        const newLocalOnly = localWrong.filter(n => !serverIds.has(n.id));
 
-        // 만약 로컬에만 있고 서버에 없는 데이터가 있었다면 서버에도 동기화 수행
-        if (merged.length > serverNotes.length) {
+        if (newLocalOnly.length > 0) {
+          // 로컬에만 있는 '새로운' 오답이 있다면 합쳐서 서버에 동기화
+          const merged = mergeWrongNotes([...serverNotes, ...newLocalOnly]);
+          setWrongNotes(merged);
+          storeLocalWrongNotes(merged);
           await saveWrongNotes(auth.data.id, merged);
+        } else {
+          // 로컬 데이터가 서버 데이터와 같거나 더 적다면(삭제된 상태 등), 서버 데이터를 그대로 사용
+          setWrongNotes(serverNotes);
+          storeLocalWrongNotes(serverNotes);
         }
       }
     })();
@@ -206,11 +213,15 @@ export default function App() {
       let resolvedTitle = nextTitle;
 
       if (mode === 'ai') {
+        const finalMaterialText = (materialText.trim().length < 20 && generationTopic.trim().length >= 2)
+          ? `이 문제는 사용자가 입력한 단원명 '${generationTopic.trim()}'에 기초하여 생성되는 문제입니다. 추가 자료는 제공되지 않았습니다.`
+          : materialText;
+
         const response = await fetch(getApiUrl('/api/ai/generate-exam'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            materialText,
+            materialText: finalMaterialText,
             subject,
             questionType: usesNoSelector(subject) ? undefined : questionType,
             format: usesNoSelector(subject) ? undefined : format,
@@ -248,54 +259,32 @@ export default function App() {
         resolvedTitle = data.title || nextTitle;
       }
 
-      setExamTitle(resolvedTitle);
       setQuestions(nextQuestions);
       setGeneratedQuestionMode(nextQuestionMode);
+      setExamTitle(resolvedTitle);
       setResponses({});
       setCurrentQuestionIndex(1);
       setExamMeta({ subject, difficulty, schoolLevel, count });
-
-      const localRecord: PersistedExamRecord = {
-        id: `local-${Date.now()}`,
-        title: resolvedTitle,
-        subject,
-        builder_mode: mode,
-        question_type: nextQuestionMode,
-        difficulty,
-        exam_format: schoolLevel,
-        question_count: count,
-        source_text: mode === 'ai' ? materialText : null,
-        question_files: questionFiles,
-        answer_files: answerFiles,
-        questions: nextQuestions,
-        responses: null,
-        score: null,
-        correct_count: null,
-        wrong_count: null,
-        submitted_at: null,
-        created_at: new Date().toISOString(),
-      };
-      
-      storeLocalLastExam(localRecord);
-      const nextSavedExams = mergeExamRecords([localRecord, ...savedExams]);
-      setSavedExams(nextSavedExams);
-      storeLocalExamList(nextSavedExams);
-      setCurrentExamId(localRecord.id);
+      setCurrentExamId(null);
 
       if (sessionUserId) {
         const saved = await saveExamDraft(sessionUserId, {
-          title: localRecord.title,
+          title: resolvedTitle,
           builderMode: mode,
           questionType: nextQuestionMode,
           difficulty,
           examFormat: schoolLevel,
           questionCount: count,
-          sourceText: mode === 'ai' ? materialText : '',
+          sourceText: materialText,
           questionFiles,
           answerFiles,
-          questions: nextQuestions,
+          questions: nextQuestions as any,
         });
+
         if (saved.data) {
+          const nextSavedExams = mergeExamRecords([saved.data as PersistedExamRecord, ...savedExams]);
+          setSavedExams(nextSavedExams);
+          storeLocalExamList(nextSavedExams);
           setCurrentExamId(saved.data.id);
           const savedRecord = { ...saved.data, subject };
           storeLocalLastExam(savedRecord);
@@ -370,6 +359,28 @@ export default function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  const handleWrongNoteDelete = async (title: string) => {
+    const previousNotes = [...wrongNotes];
+    const filtered = wrongNotes.filter((n) => n.examTitle !== title);
+    
+    // 낙관적 업데이트
+    setWrongNotes(filtered);
+    storeLocalWrongNotes(filtered);
+
+    if (sessionUserId) {
+      const result = await deleteWrongNotesByTitle(sessionUserId, title);
+      if (result.error) {
+        console.error('오답 삭제 실패:', result.error);
+        // 실패 시 복구
+        setWrongNotes(previousNotes);
+        storeLocalWrongNotes(previousNotes);
+        setSyncMessage('오답 삭제에 실패하여 이전 데이터가 복구되었습니다.');
+      } else {
+        setSyncMessage('오답 리스트가 서버에서도 성공적으로 삭제되었습니다.');
+      }
+    }
+  };
 
   const openSavedExam = (record: PersistedExamRecord) => {
     const restoredMode = toGeneratedQuestionMode(record.question_type);
@@ -505,14 +516,7 @@ export default function App() {
               setCurrentQuestionIndex(1);
               navigate('taking');
             }}
-            onDelete={async (title) => {
-              const filtered = wrongNotes.filter((n) => n.examTitle !== title);
-              setWrongNotes(filtered);
-              storeLocalWrongNotes(filtered);
-              if (sessionUserId) {
-                await deleteWrongNotesByTitle(sessionUserId, title);
-              }
-            }}
+            onDelete={handleWrongNoteDelete}
           />
         );
       default: return null;

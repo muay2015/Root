@@ -73,7 +73,7 @@ export function CreateScreen(props: CreateScreenProps) {
     ? '현재 설정으로 문제 생성이 가능합니다.'
     : mode === 'upload'
       ? '문제 파일과 정답 파일을 모두 업로드해야 합니다.'
-      : '자료 텍스트를 20자 이상 입력해야 합니다.';
+      : '단원명 또는 추가 정보를 입력해야 합니다.';
 
   const handleFileChange = (
     event: ChangeEvent<HTMLInputElement>,
@@ -193,26 +193,24 @@ export function CreateScreen(props: CreateScreenProps) {
           <section className="grid gap-4">
             <section className="border border-slate-200 bg-white px-5 py-5">
               <h2 className="text-sm font-semibold text-slate-700">
-                {subject === 'korean_history' ? '단원 / 출제 범위' : '주제 / 단원'}
+                {subject === 'korean_history' ? '단원명 / 시대 (필수)' : '단원명 / 주제 (필수)'}
               </h2>
               <input
                 value={generationTopic}
                 onChange={(event) => setGenerationTopic(event.target.value)}
-                placeholder={subject === 'korean_history' ? '예: 조선 전기 통치 체제' : '예: 근대 사회 변화'}
+                placeholder={subject === 'korean_history' ? '예: 조선 전기 통치 체제, 일제 강점기 경제' : '예: 근대 사회의 변화, 세포의 구조'}
                 className="mt-4 w-full border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900"
               />
             </section>
 
             <section className="border border-slate-200 bg-white px-5 py-5">
               <h2 className="text-sm font-semibold text-slate-700">
-                {subject === 'korean_history' ? '지문 / 사료 / 학습 자료' : '교재 / 학습 자료 텍스트'}
+                추가 상세 정보 (선택 사항)
               </h2>
               <textarea
                 value={materialText}
                 onChange={(event) => setMaterialText(event.target.value)}
-                placeholder={subject === 'korean_history'
-                  ? '국사 문제의 범위가 되는 서술, 사료, 단원 요약을 입력하세요.'
-                  : '문제 생성을 위한 본문이나 요약 자료를 입력하세요.'}
+                placeholder="특정 지문이나 사료를 문제에 포함하고 싶을 때만 입력하세요. 비워두시면 AI가 단원명에 맞춰 핵심 위주로 자동 생성합니다."
                 className="mt-4 min-h-44 w-full border border-slate-300 px-4 py-4 text-sm leading-7 outline-none focus:border-slate-900"
               />
             </section>

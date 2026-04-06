@@ -149,6 +149,7 @@ const subjectRules: Record<SubjectKey, SubjectRule> = {
       'Write all stems and explanations in natural Korean.',
       'Stay strictly within Korean history. Do not drift into exercise, health, English reading, or generic study topics.',
       'If difficulty is hard, avoid keyword-triggered direct recall questions.',
+      'If the user provides only a unit name (e.g., "삼국 시대" or "조선 후기"), use your internal knowledge of the standard national curriculum to derive key historical facts and concept linkages automatically.',
       'If there are source texts, clues, or multiple conditions (like ㉠, ㉡, ㉢ or ㄱ, ㄴ, ㄷ), separate them from the main prompt with double newlines so they form a distinct stimulus/passage box. Do NOT mix these clues directly into the question sentence.',
       'Never double-label clues. For example, use "ㄱ. [content]" OR "㉠. [content]", but never "ㄱ. ㉠ [content]".',
       'Use source interpretation, comparison, sequence, policy-event linkage, or cause-result reasoning where appropriate.',

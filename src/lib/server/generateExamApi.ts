@@ -107,10 +107,13 @@ export async function generateExamApiResponse(input: {
   const openAiModel = input.openAiModel?.trim() || 'gpt-5.4-mini';
   const openai = openAiApiKey ? new OpenAI({ apiKey: openAiApiKey }) : null;
 
-  if (!payload.materialText || payload.materialText.trim().length < 20) {
+  const hasTopic = payload.topic && payload.topic.trim().length >= 2;
+  const hasMaterial = payload.materialText && payload.materialText.trim().length >= 20;
+
+  if (!hasTopic && !hasMaterial) {
     return {
       status: 400,
-      body: { error: 'Study material must be at least 20 characters.' },
+      body: { error: 'Please provide either a unit name (at least 2 characters) or study material (at least 20 characters).' },
     };
   }
 
