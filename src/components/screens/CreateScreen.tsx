@@ -314,53 +314,70 @@ export function CreateScreen(props: CreateScreenProps) {
                 </label>
               </div>
               
-              {/* 파일 분석 진행/완료 표시부 (진행 상황 메시지 강화) */}
-              <div className="min-h-[40px] flex flex-col gap-2 mb-2">
+              <div className="relative mt-2">
+                {/* 강력한 업로드 오버레이 (분석 중일 때 노출) */}
                 {isParsing && (
-                  <div className="flex flex-col gap-1.5 rounded-xl bg-blue-50 px-5 py-4 ring-1 ring-blue-100 shadow-sm animate-in fade-in duration-300">
-                    <div className="flex items-center gap-3 text-[13px] font-bold text-blue-600">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                      <span>{parsingProgress || '자료를 정밀 분석하고 있습니다...'}</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-blue-200/50 rounded-full overflow-hidden mt-1">
-                      <div className="h-full bg-blue-500 animate-[progress_10s_ease-in-out_infinite]" />
+                  <div className="absolute inset-x-0 -inset-y-2 z-50 flex flex-col items-center justify-center rounded-2xl bg-white/80 backdrop-blur-[2px] animate-in fade-in duration-300">
+                    <div className="flex flex-col items-center gap-4 p-8 rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200">
+                      <div className="relative h-16 w-16">
+                        <div className="absolute inset-0 animate-ping rounded-full bg-blue-100" />
+                        <div className="relative flex h-full w-full items-center justify-center rounded-full bg-blue-50">
+                          <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-blue-600 border-t-transparent shadow-sm" />
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-center gap-1 text-center">
+                        <span className="text-[15px] font-black text-slate-800">지능형 자료 분석 중</span>
+                        <p className="text-[11px] font-bold text-slate-400 max-w-[200px] leading-relaxed">
+                          {parsingProgress || 'AI가 지식을 습득하고 있습니다.'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {showSuccess && (
-                  <div className="flex items-center justify-between rounded-xl bg-emerald-500 px-5 py-3 text-[13px] font-black text-white shadow-lg shadow-emerald-900/10 animate-in zoom-in-95 slide-in-from-top-2 duration-300">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-5 w-5" strokeWidth={3} />
-                      <span>업로드 완료: {successFile}</span>
-                    </div>
-                    <div className="h-1 w-12 rounded-full bg-white/30 overflow-hidden">
-                      <div className="h-full bg-white animate-[progress_4s_linear_forwards]" />
-                    </div>
-                  </div>
-                )}
-                
-                {parsedFiles.length > 0 ? (
-                  <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-1">
-                    {parsedFiles.map((name, i) => (
-                      <div key={i} className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-black text-emerald-600 ring-1 ring-emerald-100 shadow-sm">
-                        <CheckCircle2 className="h-3 w-3" />
-                        <span>학습자료 반영됨: {name}</span>
+                {/* 파일 분석 결과/플레이스홀더 영역 */}
+                <div className="min-h-[44px] flex flex-col gap-2 mb-3">
+                  {showSuccess && (
+                    <div className="flex items-center justify-between rounded-xl bg-emerald-500 px-5 py-3.5 text-[13px] font-black text-white shadow-lg shadow-emerald-900/10 animate-in zoom-in-95 slide-in-from-top-2 duration-300">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20">
+                          <CheckCircle2 className="h-4 w-4" strokeWidth={3} />
+                        </div>
+                        <span>자료 업로드 및 반영 완료 : {successFile}</span>
                       </div>
-                    ))}
-                  </div>
-                ) : !isParsing && (
-                  <div className="text-[11px] font-bold text-slate-300 ml-1">
-                    자료를 업로드하면 여기에 표시됩니다.
-                  </div>
-                )}
+                      <div className="h-1.5 w-16 rounded-full bg-white/30 overflow-hidden">
+                        <div className="h-full bg-white animate-[progress_4s_linear_forwards]" />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {parsedFiles.length > 0 ? (
+                    <div className="flex flex-wrap gap-2 py-1">
+                      {parsedFiles.map((name, i) => (
+                        <div key={i} className="group relative inline-flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-[12px] font-black text-slate-700 ring-1 ring-slate-200 shadow-sm hover:ring-blue-400 hover:text-blue-600 transition-all cursor-default overflow-hidden">
+                          <div className="absolute inset-0 bg-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <div className="relative flex items-center gap-1.5">
+                            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span>{name}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : !isParsing && (
+                    <div className="flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-slate-100 bg-slate-50/30 text-[12px] font-bold text-slate-400">
+                      <div className="h-2 w-2 rounded-full bg-slate-200" />
+                      <span>업로드된 학습 자료가 여기에 표시됩니다.</span>
+                    </div>
+                  )}
+                </div>
+
+                <textarea
+                  value={materialText}
+                  onChange={(event) => setMaterialText(event.target.value)}
+                  placeholder="학습할 교재의 텍스트를 붙여넣거나, 상단 '자료 업로드' 버튼을 통해 파일을 추가하세요. (PDF, Word, HWP 지원)"
+                  className="w-full min-h-[180px] p-5 rounded-2xl bg-slate-50/50 border-2 border-slate-100 text-sm focus:bg-white focus:border-blue-400 focus:ring-4 focus:ring-blue-400/10 transition-all outline-none resize-none font-medium leading-relaxed placeholder:text-slate-300"
+                />
               </div>
-              <textarea
-                value={materialText}
-                onChange={(event) => setMaterialText(event.target.value)}
-                placeholder="특정 지문이나 학습 내용을 문제에 반영하고 싶을 때 입력하세요. 파일을 업로드하여 내용을 채울 수도 있습니다."
-                className="min-h-40 w-full rounded-2xl bg-slate-50 border-none px-5 py-5 text-[15px] font-medium leading-relaxed text-slate-900 outline-none ring-1 ring-slate-100 focus:ring-2 focus:ring-accent transition-all resize-none"
-              />
             </section>
           </section>
         )}
