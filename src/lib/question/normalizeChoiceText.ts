@@ -2,6 +2,8 @@ const ZERO_WIDTH_PATTERN = /[\u200B-\u200D\u2060\uFEFF]/g;
 const CHOICE_MARKER_PATTERN =
   /^(?:(?:\(?\d+\)?|[A-Za-z]|[\u3131-\u314E\uAC00-\uD7A3])[\.\)]|[\u2022\u00B7\u25AA-])\s*/u;
 
+const EMPTY_LATEX_PATTERN = /\\\(\s*\\\)|\\\[\s*\\\]/g;
+
 export function isSingleFragment(value: string) {
   return /^[\p{L}\p{N}]$/u.test(value);
 }
@@ -107,8 +109,15 @@ export function normalizeChoiceText(value: unknown) {
     return '';
   }
 
+  // 0. 불필요한 빈 수식 기호 제거
+  let normalized = (typeof value === 'string' ? value : '').replace(EMPTY_LATEX_PATTERN, '');
+
+  // 0.1. 지문 내의 불필요한 슬래시(/) 구분자 줄바꿈 변환 (가독성 개선)
+  // 양쪽에 공백이 있는 슬래시만 대상으로 하여 수학적 분수와 구분
+  normalized = normalized.replace(/\s\/\s/g, '\n');
+
   // 1. 유니코드 이스케이프 및 수식 기호 정규화 (UI 렌더러와 동일하게)
-  let normalized = value
+  normalized = normalized
     .replace(/\\u221a/gi, '√')
     .replace(/\\u03c0/gi, 'π')
     .replace(/\\u03b1/gi, 'α')

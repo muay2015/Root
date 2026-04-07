@@ -79,6 +79,7 @@ function buildGenericPrompt(input: PromptBuildInput) {
     '- [CRITICAL] 모든 수학 기호와 수식은 반드시 LaTeX 형식을 사용하십시오. "루트"와 같은 한글 텍스트 대신 \\sqrt{} 등을 사용하고, 모든 수식(숫자 포함)은 반드시 \\( 와 \\) 기호로 감싸야 합니다. (예: 루트 2 -> \\(\\sqrt{2}\\))',
     '- [CRITICAL] JSON 결과물 내의 모든 LaTeX 명령어(\\\\sqrt 등)와 구분자(\\\\(, \\\\))는 반드시 JSON 규격에 맞춰 이중 역슬래시(\\\\)를 사용해야 합니다. (예: "\\(n\\)"(X) -> "\\\\(n\\\\)"(O), "\\sqrt{x}"(X) -> "\\\\sqrt{x}"(O))',
     '- [CRITICAL] "Choice 1", "Placeholder", "내용 없음" 등의 임시 텍스트(Placeholder)를 절대 사용하지 마십시오. 모든 보기는 실제 출제될 유효한 텍스트여야 합니다.',
+    '- [CRITICAL] 지문이나 발문 내에 불필요한 기호(예: 문장이나 시구 사이의 슬래시 "/" 등)를 사용하여 구분하지 마십시오. 줄바꿈이 필요한 경우 반드시 실제 줄바꿈 문자(\\n)를 사용하여 가독성을 확보하십시오.',
     '',
     buildFeedbackBlock(input.validationFeedback),
     '',

@@ -22,6 +22,8 @@ interface SavedScreenProps {
   onLogin: () => void;
   isAnonymous: boolean;
   syncMessage: string;
+  selectedSubject: string;
+  onSelectSubject: (subject: string) => void;
 }
 
 export function SavedScreen({
@@ -33,10 +35,11 @@ export function SavedScreen({
   onLogin,
   isAnonymous,
   syncMessage,
+  selectedSubject,
+  onSelectSubject,
 }: SavedScreenProps) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [previewExamId, setPreviewExamId] = useState<string | null>(null);
-  const [selectedSubject, setSelectedSubject] = useState<string>('전체');
 
   const allSubjects = useMemo(() => {
     const list = new Set<string>(['전체']);
@@ -144,7 +147,7 @@ export function SavedScreen({
             {allSubjects.map((subj) => (
               <button
                 key={subj}
-                onClick={() => setSelectedSubject(subj)}
+                onClick={() => onSelectSubject(subj)}
                 className={`whitespace-nowrap rounded-xl px-5 py-2.5 text-[13px] font-black transition-all ${
                   selectedSubject === subj
                     ? 'premium-gradient text-white shadow-md'

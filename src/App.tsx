@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { SUBJECT_CONFIG, getSubjectSelectionDefaults } from './lib/question/subjectConfig';
+import { SUBJECT_CONFIG, getSubjectSelectionDefaults, type SubjectKey } from './lib/question/subjectConfig';
 import { getSchoolLevelLabel, getDifficultyLabel } from './lib/examUtils';
 
 // 분리된 컴포넌트들
@@ -27,6 +27,7 @@ import { useExamSession } from './hooks/useExamSession';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('landing');
+  const [savedScreenSubject, setSavedScreenSubject] = useState<string>('전체');
 
   // --- 1. 인증 및 세션 훅 ---
   const auth = useAuth();
@@ -83,12 +84,18 @@ export default function App() {
     const result = await generator.generateExam();
     if (result.success && result.record) {
       session.startExam(result.record);
+      // 자동 과목 필터 동기화
+      const label = SUBJECT_CONFIG[result.record.subject as SubjectKey]?.label || '기타 과목';
+      setSavedScreenSubject(label);
       navigate('taking');
     }
   };
 
   const onOpenSavedExam = (record: any) => {
     session.startExam(record);
+    // 자동 과목 필터 동기화
+    const label = SUBJECT_CONFIG[record.subject as SubjectKey]?.label || '기타 과목';
+    setSavedScreenSubject(label);
     navigate('taking');
   };
 
@@ -207,7 +214,16 @@ export default function App() {
                   />
                 );
               case 'result':
-                return <ResultScreen examTitle={session.examTitle} summary={session.summary} questions={session.questions} responses={session.responses} onBack={() => navigate('landing')} onWrong={() => navigate('wrong')} />;
+                return (
+                  <ResultScreen 
+                    examTitle={session.examTitle} 
+                    summary={session.summary} 
+                    questions={session.questions} 
+                    responses={session.responses} 
+                    onBack={() => navigate('saved')} 
+                    onWrong={() => navigate('wrong')} 
+                  />
+                );
               case 'saved':
                 return (
                   <SavedScreen
@@ -219,6 +235,8 @@ export default function App() {
                     onLogin={() => navigate('account')}
                     isAnonymous={auth.isAnonymous}
                     syncMessage={auth.syncMessage}
+                    selectedSubject={savedScreenSubject}
+                    onSelectSubject={setSavedScreenSubject}
                   />
                 );
               case 'account':

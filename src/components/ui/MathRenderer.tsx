@@ -73,14 +73,12 @@ export function MathRenderer({ text, className = '', inline = true }: MathRender
             // \sqrtx 처럼 명령어 뒤에 공백이나 괄호를 생략한 경우 교정 (\sqrt x)
             cleanContent = cleanContent.replace(/\\(sqrt|frac|pm|times|div|alpha|beta|gamma|delta|epsilon|theta|pi|sigma|phi|omega|leq|geq|neq|approx|infty|degree|angle)([a-zA-Z0-9])/g, '\\$1 $2');
 
-            if (cleanContent) {
+            if (cleanContent.trim()) {
               katex.render(cleanContent, span, {
                 throwOnError: false,
                 displayMode
               });
               fragment.appendChild(span);
-            } else {
-              fragment.appendChild(document.createTextNode(part));
             }
           } catch (e) {
             fragment.appendChild(document.createTextNode(part));
@@ -101,5 +99,5 @@ export function MathRenderer({ text, className = '', inline = true }: MathRender
     renderMath();
   }, [text]);
 
-  return <span ref={containerRef} className={className} />;
+  return <span ref={containerRef} className={`${className} whitespace-pre-wrap`} style={{ whiteSpace: 'pre-wrap', wordBreak: 'keep-all' }} />;
 }

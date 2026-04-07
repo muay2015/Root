@@ -31,7 +31,7 @@ export function ChoiceItem({ number, text, selected, onSelect }: ChoiceItemProps
       </div>
       
       <div
-        className={`flex-1 overflow-hidden whitespace-normal break-keep pt-[2px] text-[15px] leading-[1.6] sm:pt-[4px] sm:text-[16px] sm:leading-[1.6] transition-colors duration-200 ${
+        className={`flex-1 overflow-hidden whitespace-pre-wrap break-keep pt-[2px] text-[15px] leading-[1.6] sm:pt-[4px] sm:text-[16px] sm:leading-[1.6] transition-colors duration-200 ${
           selected ? 'text-blue-950 font-medium' : 'text-slate-700 group-hover:text-slate-900'
         }`}
         style={{
