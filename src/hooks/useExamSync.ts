@@ -56,9 +56,10 @@ export function useExamSync(sessionUserId: string | null, isAnonymous: boolean) 
         });
 
         const serverIds = new Set(serverExams.map(e => e.id));
-        // 로컬에는 있지만 서버에 없는 레코드만 업로드 대상 (healedLocals는 서버에서 온 것이라 재업로드 불필요)
+        // local-xxx ID를 가진 레코드만 업로드 대상으로 제한
+        // (UUID가 있지만 서버에 없는 레코드는 다른 사용자 데이터이거나 이전 버그로 생셃된 것이다)
         const missingFromServer = localExams
-          .filter(e => !serverIds.has(e.id))
+          .filter(e => !serverIds.has(e.id) && e.id.startsWith('local-'))
           .map(e => ({ ...e, isSynced: false }));
         
         const merged = mergeExamRecords([...serverExams, ...missingFromServer]);
