@@ -107,7 +107,19 @@ export function normalizeChoiceText(value: unknown) {
     return '';
   }
 
-  const normalizedWhitespace = normalizeWhitespace(value);
+  // 1. 유니코드 이스케이프 및 수식 기호 정규화 (UI 렌더러와 동일하게)
+  let normalized = value
+    .replace(/\\u221a/gi, '√')
+    .replace(/\\u03c0/gi, 'π')
+    .replace(/\\u03b1/gi, 'α')
+    .replace(/\\u03b2/gi, 'β')
+    .replace(/\\u00b1/gi, '±');
+
+  // √ 기호와 명령어 사이의 일관성 유지
+  normalized = normalized.replace(/√\s*(\d+|{[^}]*})/g, '\\sqrt{$1}')
+                         .replace(/√/g, '\\sqrt');
+
+  const normalizedWhitespace = normalizeWhitespace(normalized);
   if (isMeaninglessPlaceholder(normalizedWhitespace)) {
     return '';
   }

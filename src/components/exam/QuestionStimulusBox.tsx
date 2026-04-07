@@ -1,5 +1,6 @@
 import { FileText } from 'lucide-react';
 import { hasStimulus } from '../../lib/question/hasStimulus';
+import { MathRenderer } from '../ui/MathRenderer';
 
 type QuestionStimulusBoxProps = {
   content?: string | null;
@@ -30,9 +31,9 @@ export function QuestionStimulusBox({ content }: QuestionStimulusBoxProps) {
       <div className="px-4 py-4 sm:px-5 sm:py-5">
         <div className="space-y-3 text-[15px] leading-[1.7] text-slate-800 sm:text-[16px] sm:leading-[1.8]">
           {paragraphs.map((paragraph, index) => (
-            <p key={`${index}-${paragraph}`} className="whitespace-pre-wrap break-words break-keep">
-              {paragraph}
-            </p>
+            <div key={`${index}-${paragraph}`} className="whitespace-pre-wrap break-words break-keep">
+              <MathRenderer text={paragraph} />
+            </div>
           ))}
         </div>
       </div>

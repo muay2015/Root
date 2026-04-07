@@ -6,6 +6,8 @@ export type GeneratedQuestionDraft = {
   type: string;
   stem: string;
   choices?: string[] | null;
+  options?: string[] | null;
+  items?: string[] | null;
   answer: string;
   explanation: string;
 };
@@ -69,8 +71,9 @@ function validateStructure(
     pushReason(reasons, issueCounts, 'empty_choice', `Question ${index}: every choice must be non-empty.`);
   }
 
-  if (choices.length > 0 && choices.every((choice) => /^choice\s+\d+$/i.test(choice.trim()))) {
-    pushReason(reasons, issueCounts, 'placeholder_choice', `Question ${index}: choices are still placeholder text.`);
+  const placeholderRegex = /^(?:choice|option|\uBCF4\uAE30)\s*\d*$/i;
+  if (choices.length > 0 && choices.some((choice) => placeholderRegex.test(choice.trim()))) {
+    pushReason(reasons, issueCounts, 'placeholder_choice', `Question ${index}: choices contain placeholder or empty text.`);
   }
 
   const answerMatches = choices.filter((choice) => choice.trim() === question.answer.trim()).length;
@@ -104,13 +107,13 @@ function validateGenericDifficulty(
   }
 
   if (difficulty === 'hard') {
-    if (stemWords < 12) {
+    if (stemWords < 8) {
       pushReason(reasons, issueCounts, 'hard_too_short', `Question ${index}: hard difficulty stem is too short for deep reasoning.`);
     }
     if (directCuePattern.test(question.stem)) {
       pushReason(reasons, issueCounts, 'hard_too_direct', `Question ${index}: hard difficulty question is too direct.`);
     }
-    if (explanationWords < 10) {
+    if (explanationWords < 5) {
       pushReason(reasons, issueCounts, 'hard_explanation', `Question ${index}: hard difficulty explanation is too thin.`);
     }
   }

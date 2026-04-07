@@ -31,8 +31,10 @@
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
+    "@types/katex": "^0.16.8",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
+    "katex": "^0.16.45",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",

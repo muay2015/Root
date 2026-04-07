@@ -7,10 +7,12 @@ export function BottomNavigation({
   current,
   onNavigate,
   isAnonymous,
+  className = '',
 }: {
   current: Screen;
   onNavigate: (screen: Screen) => void;
   isAnonymous: boolean;
+  className?: string;
 }) {
   if (current === 'taking') {
     return null;
@@ -25,7 +27,7 @@ export function BottomNavigation({
   ];
 
   return (
-    <nav className="glass-nav shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
+    <nav className={`glass-nav shadow-[0_-4px_20px_rgba(0,0,0,0.03)] ${className}`}>
       <div className="mx-auto flex max-w-xl justify-around px-2 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
         {items.map((item) => {
           const active = current === item.id;

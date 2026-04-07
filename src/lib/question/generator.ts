@@ -63,6 +63,8 @@ type ModelQuestion =
       stem?: string;
       question?: string;
       choices?: string[] | null;
+      options?: string[] | null;
+      items?: string[] | null;
       answer: string | number;
       explanation: string;
       number?: number;
@@ -122,7 +124,8 @@ function normalizeQuestion(
   index: number,
   input: GenerateValidatedQuestionsInput,
 ): GeneratedQuestion {
-  const choices = normalizeChoices(raw.choices);
+  const rawChoices = raw.choices ?? raw.options ?? ('items' in raw ? raw.items : undefined);
+  const choices = normalizeChoices(Array.isArray(rawChoices) ? rawChoices : undefined);
   const rawAnswer = normalizeInlineText(String(raw.answer));
   const exactChoice = choices.find((choice) => choice.trim() === rawAnswer);
   const numericAnswer = Number(rawAnswer);
@@ -174,6 +177,18 @@ function getDefaultTitle(input: GenerateValidatedQuestionsInput) {
   return input.title || [input.subject, selectionValue, input.schoolLevel, input.difficulty].filter(Boolean).join('-');
 }
 
+function extractJson(text: string) {
+  let clean = text.trim();
+  if (clean.startsWith('```')) {
+    const match = clean.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+    if (match) clean = match[1].trim();
+  }
+
+  // Self-healing: JSON에서 허용되지 않는 \ 기호(수식용 \sqrt 등)를 자동으로 이중 역슬래시로 변환
+  // 이를 방지하기 위해 이스케이프되지 않은 단일 \ 를 \\ 로 교체
+  return clean.replace(/(?<!\\)\\(?![\\"/bfnrtu])/g, '\\\\');
+}
+
 async function requestQuestionsFromModel(
   input: GenerateValidatedQuestionsInput,
   validationFeedback: string[],
@@ -212,8 +227,32 @@ async function requestQuestionsFromModel(
     text: { verbosity: 'low' },
   });
 
-  const parsed = JSON.parse(response.output_text) as ModelQuestion[];
-  return Array.isArray(parsed) ? parsed.map((item, itemIndex) => normalizeQuestion(item, itemIndex, input)) : [];
+  const rawJson = extractJson(response.output_text);
+  let parsed: ModelQuestion[];
+  try {
+    parsed = JSON.parse(rawJson);
+  } catch (e) {
+    console.warn('First JSON parse failed, attempting auto-repair...', e);
+    // 가장 흔한 문제인 이스케이프되지 않은 단일 역슬래시(\)들을 모두 이중(\\)으로 강제 치환
+    const repairedJson = rawJson.replace(/(?<!\\)\\(?![\\"/bfnrtu])/g, '\\\\');
+    try {
+      parsed = JSON.parse(repairedJson);
+    } catch (e2) {
+      // 2차 시도도 실패했다면 더 공격적으로 모든 \를 \\로 치환 (리터럴 \n, \t 등까지 모두 문자화)
+      const aggressiveRepairedJson = rawJson.replace(/\\/g, '\\\\');
+      try {
+        parsed = JSON.parse(aggressiveRepairedJson);
+      } catch (e3) {
+        throw new Error(`JSON 파싱 최종 실패: ${e instanceof Error ? e.message : '알 수 없는 형식'}`);
+      }
+    }
+  }
+
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new Error('AI가 유효한 문항 배열을 반환하지 않았습니다. (JSON 형식은 유효하나 배열이 비어있음)');
+  }
+
+  return parsed.map((item, itemIndex) => normalizeQuestion(item, itemIndex, input));
 }
 
 async function generateValidatedQuestionBatch(
@@ -229,35 +268,52 @@ async function generateValidatedQuestionBatch(
   let validationFeedback: string[] = [];
 
   for (let attempt = 1; attempt <= 3; attempt += 1) {
-    latestQuestions = await requestQuestionsFromModel(input, validationFeedback);
-    latestValidation = validateGeneratedQuestions({
-      questions: latestQuestions,
-      count: input.count,
-      subject: input.subject,
-      questionType: input.questionType,
-      format: input.format,
-      difficulty: input.difficulty,
-      schoolLevel: input.schoolLevel,
-      title: input.title,
-      topic: input.topic,
-    });
-
-    if (latestValidation.isValid) {
-      return {
-        title: getDefaultTitle(input),
+    try {
+      latestQuestions = await requestQuestionsFromModel(input, validationFeedback);
+      latestValidation = validateGeneratedQuestions({
         questions: latestQuestions,
-        source: 'ai',
-        attempts: attempt,
-        validation: latestValidation,
-      };
-    }
+        count: input.count,
+        subject: input.subject,
+        questionType: input.questionType,
+        format: input.format,
+        difficulty: input.difficulty,
+        schoolLevel: input.schoolLevel,
+        title: input.title,
+        topic: input.topic,
+      });
 
-    validationFeedback = latestValidation.reasons;
+      if (latestValidation.isValid) {
+        return {
+          title: getDefaultTitle(input),
+          questions: latestQuestions,
+          source: 'ai',
+          attempts: attempt,
+          validation: latestValidation,
+        };
+      }
+
+      validationFeedback = latestValidation.reasons;
+    } catch (e) {
+      console.warn(`Attempt ${attempt} failed with error:`, e);
+      const errorMessage = `네트워크 또는 파싱 오류: ${e instanceof Error ? e.message : String(e)}`;
+      latestValidation = {
+        isValid: false,
+        reasons: [errorMessage],
+        warnings: [],
+        issueCounts: { error: 1 }
+      };
+      validationFeedback = [errorMessage];
+    }
   }
 
+  const reasons = latestValidation.reasons || [];
+  const detailedReason = reasons.length > 0
+    ? `${reasons[0]}${reasons.length > 1 ? ' 외 ' + (reasons.length - 1) + '건' : ''}`
+    : '빈 문항 또는 placeholder가 감지되었습니다.';
+
   throw new QuestionGenerationError(
-    '문제 생성 결과가 유효하지 않아 중단했습니다. placeholder 보기 또는 빈 문항이 감지되었습니다.',
-    latestValidation.reasons,
+    `문제 생성 결과가 유효하지 않아 중단했습니다. (상세 사유: ${detailedReason})`,
+    reasons,
   );
 }
 

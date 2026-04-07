@@ -121,19 +121,23 @@ export default function App() {
           sessionUserAvatar={auth.sessionUserAvatar}
           onSignOut={auth.handleSignOut}
         />
-        <main className="min-h-screen bg-slate-100 px-3 pb-24 pt-4 text-slate-900 sm:px-5 sm:pt-6">
-          <div className="mx-auto flex max-w-[980px] flex-col gap-4">
-            <ExamHeader
-              title={session.examTitle}
-              subjectLabel={SUBJECT_CONFIG[session.examMeta.subject].label}
-              schoolLevelLabel={getSchoolLevelLabel(session.examMeta.schoolLevel)}
-              difficultyLabel={getDifficultyLabel(session.examMeta.difficulty)}
-              currentIndex={session.currentQuestionIndex}
-              totalCount={session.questions.length}
-              answeredCount={session.answeredIds.size}
-            />
-            <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
-              <div className="space-y-4">
+        <main className="min-h-screen bg-slate-50 px-4 pb-20 pt-4 text-slate-900 sm:px-6 sm:pt-6 lg:pb-10">
+          <div className="mx-auto flex max-w-[1280px] flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
+            {/* 왼쪽: 메인 문제 영역 */}
+            <div className="flex-1 space-y-6">
+              <div className="lg:hidden">
+                <ExamHeader
+                  title={session.examTitle}
+                  subjectLabel={SUBJECT_CONFIG[session.examMeta.subject].label}
+                  schoolLevelLabel={getSchoolLevelLabel(session.examMeta.schoolLevel)}
+                  difficultyLabel={getDifficultyLabel(session.examMeta.difficulty)}
+                  currentIndex={session.currentQuestionIndex}
+                  totalCount={session.questions.length}
+                  answeredCount={session.answeredIds.size}
+                />
+              </div>
+              
+              <div className="bg-white p-2 shadow-sm ring-1 ring-slate-200/60 sm:rounded-2xl sm:p-4">
                 <ExamQuestionList
                   questions={session.questions}
                   responses={session.responses}
@@ -142,6 +146,9 @@ export default function App() {
                   onSelectChoice={(id, choice) => session.setResponses(prev => ({ ...prev, [id]: choice }))}
                   onChangeText={(id, val) => session.setResponses(prev => ({ ...prev, [id]: val }))}
                 />
+              </div>
+
+              <div className="bg-white p-6 shadow-sm ring-1 ring-slate-200/60 sm:rounded-2xl">
                 <ExamNavigation
                   answeredCount={session.answeredIds.size}
                   totalCount={session.questions.length}
@@ -149,7 +156,25 @@ export default function App() {
                   onScrollTop={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                 />
               </div>
-              <div className="space-y-4 lg:sticky lg:top-6">
+            </div>
+
+            {/* 오른쪽: 데스크탑용 사이드바 (정보 및 OMR) */}
+            <aside className="w-full space-y-6 lg:sticky lg:top-6 lg:w-[320px]">
+              <div className="hidden lg:block lg:rounded-2xl lg:bg-white lg:p-6 lg:shadow-sm lg:ring-1 lg:ring-slate-200/60">
+                <ExamHeader
+                  title={session.examTitle}
+                  subjectLabel={SUBJECT_CONFIG[session.examMeta.subject].label}
+                  schoolLevelLabel={getSchoolLevelLabel(session.examMeta.schoolLevel)}
+                  difficultyLabel={getDifficultyLabel(session.examMeta.difficulty)}
+                  currentIndex={session.currentQuestionIndex}
+                  totalCount={session.questions.length}
+                  answeredCount={session.answeredIds.size}
+                  isSidebar={true}
+                />
+              </div>
+
+              <div className="bg-white p-6 shadow-sm ring-1 ring-slate-200/60 sm:rounded-2xl">
+                <h3 className="mb-4 text-[13px] font-bold uppercase tracking-wider text-slate-400">문항 네비게이터 (OMR)</h3>
                 <QuestionPalette
                   totalCount={session.questions.length}
                   currentIndex={session.currentQuestionIndex}
@@ -160,7 +185,7 @@ export default function App() {
                   }}
                 />
               </div>
-            </div>
+            </aside>
           </div>
         </main>
       </>
@@ -168,61 +193,69 @@ export default function App() {
   }
 
   const renderContent = () => {
-    switch (screen) {
-      case 'landing': return <LandingScreen onNavigate={navigate} isAnonymous={auth.isAnonymous} />;
-      case 'dashboard': return <DashboardScreen exams={sync.savedExams} onOpenExam={onOpenSavedExam} />;
-      case 'create':
-        return (
-          <CreateScreen
-            {...{ ...generator, onSelectSubject: generator.handleSubjectSelect, onGenerate, ready: generator.readyToGenerate }}
-          />
-        );
-      case 'result':
-        return <ResultScreen examTitle={session.examTitle} summary={session.summary} questions={session.questions} responses={session.responses} onBack={() => navigate('landing')} onWrong={() => navigate('wrong')} />;
-      case 'saved':
-        return (
-          <SavedScreen
-            exams={sync.savedExams}
-            onOpen={onOpenSavedExam}
-            onDelete={sync.removeSavedExam}
-            onContinueGenerate={onContinueGenerate}
-            onCreate={() => navigate('create')}
-            onLogin={() => navigate('account')}
-            isAnonymous={auth.isAnonymous}
-            syncMessage={auth.syncMessage}
-          />
-        );
-      case 'account':
-        return auth.sessionUserId && !auth.isAnonymous ? (
-          <AccountScreen 
-            userId={auth.sessionUserId}
-            email={auth.sessionUserEmail} 
-            initialDisplayName={auth.sessionDisplayName} 
-            initialAvatarUrl={auth.sessionUserAvatar}
-            syncMessage={auth.syncMessage} 
-            onDisplayNameChange={auth.setSessionDisplayName} 
-            onAvatarChange={auth.setSessionUserAvatar}
-            onSignOut={auth.handleSignOut} 
-          />
-        ) : (
-          <AuthScreen onSuccess={() => window.location.reload()} />
-        );
-      case 'wrong':
-        return (
-          <WrongListScreen
-            wrongNotes={sync.wrongNotes}
-            savedExams={sync.savedExams}
-            syncMessage={auth.syncMessage}
-            onBack={handleBack}
-            onRetry={() => {
-              session.setCurrentQuestionIndex(1);
-              navigate('taking');
-            }}
-            onDelete={sync.removeWrongNote}
-          />
-        );
-      default: return null;
-    }
+    return (
+      <main className="min-h-screen bg-slate-50 px-4 pb-24 pt-6 sm:px-6 lg:pb-10">
+        <div className="mx-auto max-w-[1280px]">
+          {(() => {
+            switch (screen) {
+              case 'landing': return <LandingScreen onNavigate={navigate} isAnonymous={auth.isAnonymous} />;
+              case 'dashboard': return <DashboardScreen exams={sync.savedExams} onOpenExam={onOpenSavedExam} />;
+              case 'create':
+                return (
+                  <CreateScreen
+                    {...{ ...generator, onSelectSubject: generator.handleSubjectSelect, onGenerate, ready: generator.readyToGenerate }}
+                  />
+                );
+              case 'result':
+                return <ResultScreen examTitle={session.examTitle} summary={session.summary} questions={session.questions} responses={session.responses} onBack={() => navigate('landing')} onWrong={() => navigate('wrong')} />;
+              case 'saved':
+                return (
+                  <SavedScreen
+                    exams={sync.savedExams}
+                    onOpen={onOpenSavedExam}
+                    onDelete={sync.removeSavedExam}
+                    onContinueGenerate={onContinueGenerate}
+                    onCreate={() => navigate('create')}
+                    onLogin={() => navigate('account')}
+                    isAnonymous={auth.isAnonymous}
+                    syncMessage={auth.syncMessage}
+                  />
+                );
+              case 'account':
+                return auth.sessionUserId && !auth.isAnonymous ? (
+                  <AccountScreen 
+                    userId={auth.sessionUserId}
+                    email={auth.sessionUserEmail} 
+                    initialDisplayName={auth.sessionDisplayName} 
+                    initialAvatarUrl={auth.sessionUserAvatar}
+                    syncMessage={auth.syncMessage} 
+                    onDisplayNameChange={auth.setSessionDisplayName} 
+                    onAvatarChange={auth.setSessionUserAvatar}
+                    onSignOut={auth.handleSignOut} 
+                  />
+                ) : (
+                  <AuthScreen onSuccess={() => window.location.reload()} />
+                );
+              case 'wrong':
+                return (
+                  <WrongListScreen
+                    wrongNotes={sync.wrongNotes}
+                    savedExams={sync.savedExams}
+                    syncMessage={auth.syncMessage}
+                    onBack={handleBack}
+                    onRetry={() => {
+                      session.setCurrentQuestionIndex(1);
+                      navigate('taking');
+                    }}
+                    onDelete={sync.removeWrongNote}
+                  />
+                );
+              default: return null;
+            }
+          })()}
+        </div>
+      </main>
+    );
   };
 
   return (
@@ -237,7 +270,7 @@ export default function App() {
         onSignOut={auth.handleSignOut}
       />
       {renderContent()}
-      <BottomNavigation current={screen} onNavigate={navigate} isAnonymous={auth.isAnonymous} />
+      <BottomNavigation current={screen} onNavigate={navigate} isAnonymous={auth.isAnonymous} className="lg:hidden" />
     </>
   );
 }

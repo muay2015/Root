@@ -1,4 +1,5 @@
 import { Check } from 'lucide-react';
+import { MathRenderer } from '../ui/MathRenderer';
 
 type ChoiceItemProps = {
   number: number;
@@ -38,7 +39,7 @@ export function ChoiceItem({ number, text, selected, onSelect }: ChoiceItemProps
           overflowWrap: 'break-word',
         }}
       >
-        {text}
+        <MathRenderer text={text} />
       </div>
     </button>
   );

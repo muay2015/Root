@@ -53,6 +53,6 @@ app.post('/api/ai/generate-exam', async (req, res) => {
   res.status(result.status).json(result.body);
 });
 
-app.listen(port, () => {
-  console.log(`ROOT API server listening on http://localhost:${port}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`ROOT API server listening on http://0.0.0.0:${port}`);
 });
