@@ -66,6 +66,9 @@ export function CreateScreen(props: CreateScreenProps) {
     onGenerate,
   } = props;
 
+  const [isParsing, setIsParsing] = React.useState(false);
+  const [lastParsedFile, setLastParsedFile] = React.useState<string | null>(null);
+
   const selectionLabel = getSubjectSelectionLabel(subject, questionType, format);
   const hideSelector = usesNoSelector(subject);
   const questionTypeOptions = getSubjectQuestionTypes(subject);
@@ -267,17 +270,36 @@ export function CreateScreen(props: CreateScreenProps) {
                       const file = e.target.files?.[0];
                       if (file) {
                         try {
+                          setIsParsing(true);
+                          setLastParsedFile(null);
                           const separator = materialText ? '\n\n' : '';
                           const content = await parseFileToText(file);
                           setMaterialText(`${materialText}${separator}[자료: ${file.name}]\n${content}`);
+                          setLastParsedFile(file.name);
                         } catch (error) {
                           alert(error instanceof Error ? error.message : '파일 파싱 오류');
+                        } finally {
+                          setIsParsing(false);
                         }
                       }
                     }}
                   />
                 </label>
               </div>
+              
+              {isParsing && (
+                <div className="mb-4 flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-2 text-[13px] font-bold text-blue-600 animate-pulse">
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                  <span>자료를 정밀 분석 중입니다... 잠시만 기다려 주세요.</span>
+                </div>
+              )}
+              
+              {!isParsing && lastParsedFile && (
+                <div className="mb-4 flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2 text-[13px] font-bold text-emerald-600 shadow-sm ring-1 ring-emerald-100 animate-in fade-in slide-in-from-top-1">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>분석 완료: {lastParsedFile}</span>
+                </div>
+              )}
               <textarea
                 value={materialText}
                 onChange={(event) => setMaterialText(event.target.value)}
