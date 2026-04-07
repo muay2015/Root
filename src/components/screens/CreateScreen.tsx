@@ -5,6 +5,7 @@ import type { BuilderMode, DifficultyLevel, SchoolLevel } from '../../lib/examTy
 import { SelectorPanel } from '../ui/SelectorPanel';
 import { UploadPanel } from '../ui/UploadPanel';
 import { Sparkles, FileUp, Settings2, CheckCircle2 } from 'lucide-react';
+import { parseFileToText } from '../../lib/fileParser';
 
 export interface CreateScreenProps {
   mode: BuilderMode;
@@ -261,17 +262,17 @@ export function CreateScreen(props: CreateScreenProps) {
                   <input 
                     type="file" 
                     className="hidden" 
-                    accept=".txt,.md,.json,.csv"
-                    onChange={(e) => {
+                    accept=".txt,.md,.json,.csv,.pdf,.docx,.hwp,.hwpx"
+                    onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                          const content = event.target?.result as string;
+                        try {
                           const separator = materialText ? '\n\n' : '';
+                          const content = await parseFileToText(file);
                           setMaterialText(`${materialText}${separator}[자료: ${file.name}]\n${content}`);
-                        };
-                        reader.readAsText(file);
+                        } catch (error) {
+                          alert(error instanceof Error ? error.message : '파일 파싱 오류');
+                        }
                       }
                     }}
                   />
