@@ -67,7 +67,7 @@ export function CreateScreen(props: CreateScreenProps) {
   } = props;
 
   const [isParsing, setIsParsing] = React.useState(false);
-  const [lastParsedFile, setLastParsedFile] = React.useState<string | null>(null);
+  const [parsedFiles, setParsedFiles] = React.useState<string[]>([]);
 
   const selectionLabel = getSubjectSelectionLabel(subject, questionType, format);
   const hideSelector = usesNoSelector(subject);
@@ -271,11 +271,10 @@ export function CreateScreen(props: CreateScreenProps) {
                       if (file) {
                         try {
                           setIsParsing(true);
-                          setLastParsedFile(null);
                           const separator = materialText ? '\n\n' : '';
                           const content = await parseFileToText(file);
                           setMaterialText(`${materialText}${separator}[자료: ${file.name}]\n${content}`);
-                          setLastParsedFile(file.name);
+                          setParsedFiles(prev => Array.from(new Set([...prev, file.name])));
                         } catch (error) {
                           alert(error instanceof Error ? error.message : '파일 파싱 오류');
                         } finally {
@@ -288,16 +287,20 @@ export function CreateScreen(props: CreateScreenProps) {
               </div>
               
               {isParsing && (
-                <div className="mb-4 flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-2 text-[13px] font-bold text-blue-600 animate-pulse">
-                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                  <span>자료를 정밀 분석 중입니다... 잠시만 기다려 주세요.</span>
+                <div className="mb-4 flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-2.5 text-[13px] font-bold text-blue-600 animate-pulse ring-1 ring-blue-100 shadow-sm">
+                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                  <span>새로운 지식 자료를 정밀 분석 중입니다...</span>
                 </div>
               )}
               
-              {!isParsing && lastParsedFile && (
-                <div className="mb-4 flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2 text-[13px] font-bold text-emerald-600 shadow-sm ring-1 ring-emerald-100 animate-in fade-in slide-in-from-top-1">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span>분석 완료: {lastParsedFile}</span>
+              {parsedFiles.length > 0 && (
+                <div className="mb-4 flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-1">
+                  {parsedFiles.map((name, i) => (
+                    <div key={i} className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-black text-emerald-600 ring-1 ring-emerald-100 shadow-sm">
+                      <CheckCircle2 className="h-3 w-3" />
+                      <span>반영 완료: {name}</span>
+                    </div>
+                  ))}
                 </div>
               )}
               <textarea
