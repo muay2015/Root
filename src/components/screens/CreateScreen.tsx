@@ -253,12 +253,35 @@ export function CreateScreen(props: CreateScreenProps) {
             </section>
 
             <section className="premium-card p-6">
-              <h2 className="text-sm font-black uppercase tracking-wider text-slate-400">학습 내용 추가 (선택)</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-black uppercase tracking-wider text-slate-400">학습 내용 추가 (선택)</h2>
+                <label className="flex cursor-pointer items-center gap-2 rounded-xl bg-blue-50 px-4 py-2 text-xs font-bold text-blue-600 ring-1 ring-blue-100 hover:bg-blue-100 transition-all active:scale-95 shadow-sm">
+                  <FileUp className="h-4 w-4" />
+                  <span>자료 업로드</span>
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    accept=".txt,.md,.json,.csv"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          const content = event.target?.result as string;
+                          const separator = materialText ? '\n\n' : '';
+                          setMaterialText(`${materialText}${separator}[자료: ${file.name}]\n${content}`);
+                        };
+                        reader.readAsText(file);
+                      }
+                    }}
+                  />
+                </label>
+              </div>
               <textarea
                 value={materialText}
                 onChange={(event) => setMaterialText(event.target.value)}
-                placeholder="특정 지문이나 학습 내용을 문제에 반영하고 싶을 때 입력하세요. 미입력 시 AI가 표준 단원 데이터를 기반으로 출제합니다."
-                className="mt-4 min-h-40 w-full rounded-2xl bg-slate-50 border-none px-5 py-5 text-[15px] font-medium leading-relaxed text-slate-900 outline-none ring-1 ring-slate-100 focus:ring-2 focus:ring-accent transition-all resize-none"
+                placeholder="특정 지문이나 학습 내용을 문제에 반영하고 싶을 때 입력하세요. 파일을 업로드하여 내용을 채울 수도 있습니다."
+                className="min-h-40 w-full rounded-2xl bg-slate-50 border-none px-5 py-5 text-[15px] font-medium leading-relaxed text-slate-900 outline-none ring-1 ring-slate-100 focus:ring-2 focus:ring-accent transition-all resize-none"
               />
             </section>
           </section>
