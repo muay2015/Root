@@ -274,20 +274,28 @@ export function CreateScreen(props: CreateScreenProps) {
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (file) {
+                        console.log(`[FileParser] Start parsing: ${file.name}`);
                         try {
                           setIsParsing(true);
                           setSuccessFile(null);
                           setShowSuccess(false);
+                          
                           const separator = materialText ? '\n\n' : '';
                           const content = await parseFileToText(file);
-                          setMaterialText(`${materialText}${separator}[자료: ${file.name}]\n${content}`);
-                          setParsedFiles(prev => Array.from(new Set([...prev, file.name])));
+                          console.log(`[FileParser] Content extracted (${content.length} chars)`);
                           
-                          // 업로드 성공 알림 트리거
+                          setMaterialText(`${materialText}${separator}[자료: ${file.name}]\n${content}`);
+                          setParsedFiles(prev => {
+                            const next = Array.from(new Set([...prev, file.name]));
+                            console.log(`[FileParser] Current parsed files: ${next.join(', ')}`);
+                            return next;
+                          });
+                          
                           setSuccessFile(file.name);
                           setShowSuccess(true);
-                          setTimeout(() => setShowSuccess(false), 3500);
+                          setTimeout(() => setShowSuccess(false), 4000);
                         } catch (error) {
+                          console.error('[FileParser] Error:', error);
                           alert(error instanceof Error ? error.message : '파일 파싱 오류');
                         } finally {
                           setIsParsing(false);
@@ -298,35 +306,42 @@ export function CreateScreen(props: CreateScreenProps) {
                 </label>
               </div>
               
-              {isParsing && (
-                <div className="mb-4 flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-3 text-[13px] font-bold text-blue-600 animate-pulse ring-1 ring-blue-100 shadow-sm transition-all">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                  <span>새로운 지식 자료를 정밀 분석 중입니다...</span>
-                </div>
-              )}
+              {/* 파일 분석 진행/완료 표시부 (강제 노출 테스트 포함) */}
+              <div className="min-h-[40px] flex flex-col gap-2 mb-2">
+                {isParsing && (
+                  <div className="flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-3 text-[13px] font-bold text-blue-600 animate-pulse ring-1 ring-blue-100 shadow-sm">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                    <span>AI가 자료를 읽고 있습니다... (잠시만 기다려 주세요)</span>
+                  </div>
+                )}
 
-              {showSuccess && (
-                <div className="mb-4 flex items-center justify-between rounded-xl bg-emerald-500 px-5 py-3 text-[13px] font-black text-white shadow-lg shadow-emerald-900/10 animate-in zoom-in-95 slide-in-from-top-2 duration-300">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5" strokeWidth={3} />
-                    <span>학습 자료 업로드 완료 : {successFile}</span>
-                  </div>
-                  <div className="h-1 w-12 rounded-full bg-white/30 overflow-hidden">
-                    <div className="h-full bg-white animate-[progress_3.5s_linear_forwards]" />
-                  </div>
-                </div>
-              )}
-              
-              {parsedFiles.length > 0 && (
-                <div className="mb-4 flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-1">
-                  {parsedFiles.map((name, i) => (
-                    <div key={i} className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-black text-emerald-600 ring-1 ring-emerald-100 shadow-sm">
-                      <CheckCircle2 className="h-3 w-3" />
-                      <span>반영됨: {name}</span>
+                {showSuccess && (
+                  <div className="flex items-center justify-between rounded-xl bg-emerald-500 px-5 py-3 text-[13px] font-black text-white shadow-lg shadow-emerald-900/10 animate-in zoom-in-95 slide-in-from-top-2 duration-300">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-5 w-5" strokeWidth={3} />
+                      <span>업로드 완료: {successFile}</span>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <div className="h-1 w-12 rounded-full bg-white/30 overflow-hidden">
+                      <div className="h-full bg-white animate-[progress_4s_linear_forwards]" />
+                    </div>
+                  </div>
+                )}
+                
+                {parsedFiles.length > 0 ? (
+                  <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-1">
+                    {parsedFiles.map((name, i) => (
+                      <div key={i} className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-black text-emerald-600 ring-1 ring-emerald-100 shadow-sm">
+                        <CheckCircle2 className="h-3 w-3" />
+                        <span>학습자료 반영됨: {name}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : !isParsing && (
+                  <div className="text-[11px] font-bold text-slate-300 ml-1">
+                    자료를 업로드하면 여기에 표시됩니다.
+                  </div>
+                )}
+              </div>
               <textarea
                 value={materialText}
                 onChange={(event) => setMaterialText(event.target.value)}
