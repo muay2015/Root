@@ -9,9 +9,9 @@ interface LandingScreenProps {
 
 export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
   return (
-    <main className="min-h-screen bg-surface pb-28 pt-16 sm:pt-20">
+    <main className="min-h-screen bg-surface pb-28 pt-0">
       {/* Hero Section */}
-      <section className="premium-gradient relative overflow-hidden px-4 py-16 text-white sm:px-6 sm:py-24">
+      <section className="premium-gradient relative overflow-hidden px-4 pb-16 pt-28 text-white sm:px-6 sm:pb-24 sm:pt-40">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute -left-10 -top-10 h-64 w-64 rounded-full bg-white blur-3xl" />
           <div className="absolute -right-10 bottom-10 h-96 w-96 rounded-full bg-blue-400 blur-3xl" />
