@@ -71,6 +71,8 @@ export function CreateScreen(props: CreateScreenProps) {
   } = props;
 
   const [isParsing, setIsParsing] = React.useState(false);
+  const [showSuccess, setShowSuccess] = React.useState(false);
+  const [successFile, setSuccessFile] = React.useState<string | null>(null);
 
   const selectionLabel = getSubjectSelectionLabel(subject, questionType, format);
   const hideSelector = usesNoSelector(subject);
@@ -274,10 +276,17 @@ export function CreateScreen(props: CreateScreenProps) {
                       if (file) {
                         try {
                           setIsParsing(true);
+                          setSuccessFile(null);
+                          setShowSuccess(false);
                           const separator = materialText ? '\n\n' : '';
                           const content = await parseFileToText(file);
                           setMaterialText(`${materialText}${separator}[자료: ${file.name}]\n${content}`);
                           setParsedFiles(prev => Array.from(new Set([...prev, file.name])));
+                          
+                          // 업로드 성공 알림 트리거
+                          setSuccessFile(file.name);
+                          setShowSuccess(true);
+                          setTimeout(() => setShowSuccess(false), 3500);
                         } catch (error) {
                           alert(error instanceof Error ? error.message : '파일 파싱 오류');
                         } finally {
@@ -290,9 +299,21 @@ export function CreateScreen(props: CreateScreenProps) {
               </div>
               
               {isParsing && (
-                <div className="mb-4 flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-2.5 text-[13px] font-bold text-blue-600 animate-pulse ring-1 ring-blue-100 shadow-sm">
-                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                <div className="mb-4 flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-3 text-[13px] font-bold text-blue-600 animate-pulse ring-1 ring-blue-100 shadow-sm transition-all">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
                   <span>새로운 지식 자료를 정밀 분석 중입니다...</span>
+                </div>
+              )}
+
+              {showSuccess && (
+                <div className="mb-4 flex items-center justify-between rounded-xl bg-emerald-500 px-5 py-3 text-[13px] font-black text-white shadow-lg shadow-emerald-900/10 animate-in zoom-in-95 slide-in-from-top-2 duration-300">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5" strokeWidth={3} />
+                    <span>학습 자료 업로드 완료 : {successFile}</span>
+                  </div>
+                  <div className="h-1 w-12 rounded-full bg-white/30 overflow-hidden">
+                    <div className="h-full bg-white animate-[progress_3.5s_linear_forwards]" />
+                  </div>
                 </div>
               )}
               
@@ -301,7 +322,7 @@ export function CreateScreen(props: CreateScreenProps) {
                   {parsedFiles.map((name, i) => (
                     <div key={i} className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-black text-emerald-600 ring-1 ring-emerald-100 shadow-sm">
                       <CheckCircle2 className="h-3 w-3" />
-                      <span>반영 완료: {name}</span>
+                      <span>반영됨: {name}</span>
                     </div>
                   ))}
                 </div>
