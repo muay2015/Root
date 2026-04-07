@@ -71,6 +71,7 @@ export function CreateScreen(props: CreateScreenProps) {
   } = props;
 
   const [isParsing, setIsParsing] = React.useState(false);
+  const [parsingProgress, setParsingProgress] = React.useState('');
   const [showSuccess, setShowSuccess] = React.useState(false);
   const [successFile, setSuccessFile] = React.useState<string | null>(null);
 
@@ -277,11 +278,16 @@ export function CreateScreen(props: CreateScreenProps) {
                         console.log(`[FileParser] Start parsing: ${file.name}`);
                         try {
                           setIsParsing(true);
+                          setParsingProgress('업로드를 준비 중입니다...');
                           setSuccessFile(null);
                           setShowSuccess(false);
                           
                           const separator = materialText ? '\n\n' : '';
-                          const content = await parseFileToText(file);
+                          const content = await parseFileToText(file, (msg) => {
+                            setParsingProgress(msg);
+                            console.log(`[FileParser Progress] ${msg}`);
+                          });
+                          
                           console.log(`[FileParser] Content extracted (${content.length} chars)`);
                           
                           setMaterialText(`${materialText}${separator}[자료: ${file.name}]\n${content}`);
@@ -293,12 +299,14 @@ export function CreateScreen(props: CreateScreenProps) {
                           
                           setSuccessFile(file.name);
                           setShowSuccess(true);
+                          setParsingProgress('');
                           setTimeout(() => setShowSuccess(false), 4000);
                         } catch (error) {
-                          console.error('[FileParser] Error:', error);
-                          alert(error instanceof Error ? error.message : '파일 파싱 오류');
+                          console.error('[FileParser] Fatal Error:', error);
+                          alert(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
                         } finally {
                           setIsParsing(false);
+                          setParsingProgress('');
                         }
                       }
                     }}
@@ -306,12 +314,17 @@ export function CreateScreen(props: CreateScreenProps) {
                 </label>
               </div>
               
-              {/* 파일 분석 진행/완료 표시부 (강제 노출 테스트 포함) */}
+              {/* 파일 분석 진행/완료 표시부 (진행 상황 메시지 강화) */}
               <div className="min-h-[40px] flex flex-col gap-2 mb-2">
                 {isParsing && (
-                  <div className="flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-3 text-[13px] font-bold text-blue-600 animate-pulse ring-1 ring-blue-100 shadow-sm">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                    <span>AI가 자료를 읽고 있습니다... (잠시만 기다려 주세요)</span>
+                  <div className="flex flex-col gap-1.5 rounded-xl bg-blue-50 px-5 py-4 ring-1 ring-blue-100 shadow-sm animate-in fade-in duration-300">
+                    <div className="flex items-center gap-3 text-[13px] font-bold text-blue-600">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                      <span>{parsingProgress || '자료를 정밀 분석하고 있습니다...'}</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-blue-200/50 rounded-full overflow-hidden mt-1">
+                      <div className="h-full bg-blue-500 animate-[progress_10s_ease-in-out_infinite]" />
+                    </div>
                   </div>
                 )}
 
