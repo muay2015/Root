@@ -80,6 +80,18 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
           <p className="mt-6 font-semibold text-slate-900 border-t border-slate-100 pt-6">
             스스로 학습하고, 부모는 결과를 확인할 수 있습니다
           </p>
+
+          {isAnonymous && (
+            <div className="mt-12 flex justify-center">
+              <button
+                onClick={() => onNavigate('account')}
+                className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-primary px-10 text-base font-bold text-white shadow-xl shadow-primary/20 transition-all hover:scale-105 hover:bg-primary-container active:scale-95"
+              >
+                <PlusCircle className="h-5 w-5" />
+                지금 회원가입 하기
+              </button>
+            </div>
+          )}
         </div>
       </section>
     </main>

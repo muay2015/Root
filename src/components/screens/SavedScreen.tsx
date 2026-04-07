@@ -81,6 +81,13 @@ export function SavedScreen({
   return (
     <main className="min-h-screen bg-surface px-4 pb-28 pt-8 sm:px-6 sm:pt-10">
       <div className="mx-auto max-w-5xl space-y-8">
+        {/* 메뉴 오픈 시 외부 클릭을 감지하기 위한 투명 오버레이 */}
+        {openMenuId && (
+          <div 
+            className="fixed inset-0 z-[15] bg-transparent" 
+            onClick={() => setOpenMenuId(null)}
+          />
+        )}
         {/* Header Area */}
         <header className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
@@ -99,7 +106,7 @@ export function SavedScreen({
               className="hidden sm:flex h-12 items-center gap-2 rounded-2xl premium-gradient px-6 text-sm font-black text-white shadow-lg shadow-blue-900/10 transition-all hover:scale-105 active:scale-95"
             >
               <Plus className="h-5 w-5" />
-              새 평가 설계
+              새 문제 생성
             </button>
           </div>
 
@@ -157,45 +164,38 @@ export function SavedScreen({
               {selectedSubject === '전체' ? '보관된 데이터가 없습니다.' : `'${selectedSubject}' 관련 자료를 찾을 수 없습니다.`}
             </p>
             <button onClick={onCreate} className="mt-6 text-sm font-black text-accent hover:underline">
-              첫 평가 설계 시작하기
+              첫 문제 생성 시작하기
             </button>
           </section>
         ) : (
           <div className="space-y-10">
             {groupedBySubject.map(([subjectLabel, examList]) => (
               <section key={subjectLabel} className="space-y-4">
-                <div className="flex items-center gap-3 px-1">
-                  <div className="h-1 w-1 rounded-full bg-accent" />
-                  <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">
-                    {subjectLabel}
-                  </h2>
-                </div>
-                
                 <div className="grid gap-4 sm:grid-cols-2">
                   {examList.map((exam) => (
-                    <article key={exam.id} className="premium-card group relative p-6 transition-all hover:ring-2 hover:ring-accent/20">
+                    <article key={exam.id} className="premium-card group relative p-5 transition-all hover:ring-2 hover:ring-accent/20">
                       <div className="flex flex-col h-full">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex flex-col gap-2">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex flex-col gap-1.5 min-w-0">
                              <div className="flex items-center gap-2">
                                <SubjectTag subject={exam.subject} title={exam.title} />
-                               <span className="text-[11px] font-bold text-slate-300">/</span>
-                               <span className="text-[11px] font-bold text-slate-400">{formatSavedDate(exam.created_at)}</span>
+                               <span className="text-[10px] font-bold text-slate-300">/</span>
+                               <span className="text-[10px] font-bold text-slate-400">{formatSavedDate(exam.created_at)}</span>
                              </div>
-                             <h3 className="line-clamp-2 text-lg font-black text-slate-900 group-hover:text-accent transition-colors">
+                             <h3 className="line-clamp-2 text-[16px] font-black leading-snug text-slate-900 group-hover:text-accent transition-colors">
                                {exam.title}
                              </h3>
                           </div>
                           
-                          <div className="relative">
+                          <div className="relative shrink-0">
                             <button
                               onClick={() => setOpenMenuId((current) => (current === exam.id ? null : exam.id))}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-900 transition-all"
+                              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-900 transition-all"
                             >
-                              <EllipsisVertical className="h-4 w-4" />
+                              <EllipsisVertical className="h-3.5 w-3.5" />
                             </button>
                             {openMenuId === exam.id && (
-                              <div className="absolute right-0 top-10 z-20 flex min-w-[160px] flex-col rounded-2xl bg-white p-1.5 shadow-2xl ring-1 ring-outline animate-in fade-in zoom-in-95 duration-200">
+                              <div className="absolute right-0 top-9 z-20 flex min-w-[160px] flex-col rounded-2xl bg-white p-1.5 shadow-2xl ring-1 ring-outline animate-in fade-in zoom-in-95 duration-200">
                                 {exam.source_text?.trim() && (
                                   <button
                                     onClick={() => {
@@ -211,7 +211,7 @@ export function SavedScreen({
                                   onClick={() => onContinueGenerate(exam)}
                                   className="rounded-xl px-3 py-2 text-left text-[13px] font-bold text-slate-600 hover:bg-slate-50"
                                 >
-                                  유사 문항 설계
+                                  유사 문항 생성
                                 </button>
                                 <div className="my-1 border-t border-outline" />
                                 <button
@@ -227,9 +227,9 @@ export function SavedScreen({
                             )}
                           </div>
                         </div>
-
-                        <div className="mt-auto flex items-center justify-between">
-                          <div className="flex gap-3 text-[12px] font-bold text-slate-400">
+ 
+                        <div className="mt-auto flex items-center justify-between pt-3 border-t border-slate-50/50">
+                          <div className="flex gap-2.5 text-[11px] font-bold text-slate-400">
                             <span>{isSchoolLevel(exam.exam_format) ? getSchoolLevelLabel(exam.exam_format) : exam.exam_format}</span>
                             <span className="opacity-30">•</span>
                             <span>{isDifficultyLevel(exam.difficulty) ? getDifficultyLabel(exam.difficulty) : exam.difficulty}</span>
@@ -239,9 +239,9 @@ export function SavedScreen({
                           
                           <button
                             onClick={() => onOpen(exam)}
-                            className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-lg shadow-slate-900/10 transition-all hover:scale-110 active:scale-95"
+                            className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white shadow-lg shadow-slate-900/10 transition-all hover:scale-110 active:scale-95"
                           >
-                            <ChevronRight className="h-5 w-5" />
+                            <ChevronRight className="h-4 w-4" />
                           </button>
                         </div>
 
@@ -272,5 +272,3 @@ export function SavedScreen({
     </main>
   );
 }
-
-

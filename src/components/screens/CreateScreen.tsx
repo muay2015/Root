@@ -1,5 +1,5 @@
 import React, { type ChangeEvent } from 'react';
-import { SUBJECT_CONFIG, getSubjectFormats, getSubjectQuestionTypes, getSubjectSelectionLabel, usesNoSelector, type SelectionFormat, type SubjectKey } from '../../lib/question/subjectConfig';
+import { SUBJECT_CONFIG, getSubjectFormats, getSubjectQuestionTypes, getSubjectSelectionDefaults, getSubjectSelectionLabel, usesNoSelector, type SelectionFormat, type SubjectKey } from '../../lib/question/subjectConfig';
 import { getDifficultyLabel, getSchoolLevelLabel } from '../../lib/examUtils';
 import type { BuilderMode, DifficultyLevel, SchoolLevel } from '../../lib/examTypes';
 import { SelectorPanel } from '../ui/SelectorPanel';
@@ -76,6 +76,24 @@ export function CreateScreen(props: CreateScreenProps) {
       ? '유효한 문항 데이터와 정답지가 모두 필요합니다.'
       : '주제 또는 핵심 단원명을 입력해 주세요.';
 
+  const handleSelectSubject = (key: SubjectKey) => {
+    onSelectSubject(key);
+    const defaults = getSubjectSelectionDefaults(key);
+    setQuestionType(defaults.questionType);
+    setFormat(defaults.format);
+  };
+
+  React.useEffect(() => {
+    if (!SUBJECT_CONFIG[subject].supportedLevels.includes(schoolLevel)) {
+      const firstSupported = (Object.keys(SUBJECT_CONFIG) as SubjectKey[]).find(
+        (key) => SUBJECT_CONFIG[key].supportedLevels.includes(schoolLevel)
+      );
+      if (firstSupported) {
+        handleSelectSubject(firstSupported);
+      }
+    }
+  }, [schoolLevel]);
+
   const handleFileChange = (
     event: ChangeEvent<HTMLInputElement>,
     target: 'question' | 'answer',
@@ -93,7 +111,7 @@ export function CreateScreen(props: CreateScreenProps) {
       <div className="mx-auto max-w-5xl space-y-8">
         {/* Header Section */}
         <header className="flex flex-col gap-2">
-          <h1 className="text-3xl font-black tracking-tight text-slate-900">지능형 평가 설계</h1>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900">지능형 문제 생성</h1>
           <p className="text-sm font-medium text-slate-500">
             학습 목표에 최적화된 평가 환경을 구성합니다. 모든 문항은 정밀 파싱 로직을 거칩니다.
           </p>
@@ -123,14 +141,36 @@ export function CreateScreen(props: CreateScreenProps) {
           </div>
         </section>
 
+        {/* 대상 학년/과정 선택 */}
+        <section className="premium-card p-6">
+          <h2 className="text-sm font-black uppercase tracking-wider text-slate-400 mb-4">대상 학년/과정</h2>
+          <div className="flex flex-wrap gap-2.5">
+            {(['middle', 'high', 'csat'] as SchoolLevel[]).map((level) => (
+              <button
+                key={level}
+                onClick={() => setSchoolLevel(level)}
+                className={`rounded-2xl px-6 py-3.5 text-sm font-bold transition-all duration-300 ${
+                  schoolLevel === level 
+                    ? 'premium-gradient text-white shadow-md' 
+                    : 'bg-slate-50 text-slate-600 ring-1 ring-outline hover:bg-white hover:shadow-sm'
+                }`}
+              >
+                {{ middle: '중등 과정', high: '고등 과정', csat: '수능/대입' }[level]}
+              </button>
+            ))}
+          </div>
+        </section>
+
         {/* 과목 선택 */}
         <section className="premium-card p-6">
           <h2 className="text-sm font-black uppercase tracking-wider text-slate-400 mb-4">학습 카테고리</h2>
           <div className="flex flex-wrap gap-2.5">
-            {(Object.keys(SUBJECT_CONFIG) as SubjectKey[]).map((key) => (
+            {(Object.keys(SUBJECT_CONFIG) as SubjectKey[])
+              .filter((key) => SUBJECT_CONFIG[key].supportedLevels.includes(schoolLevel))
+              .map((key) => (
               <button
                 key={key}
-                onClick={() => onSelectSubject(key)}
+                onClick={() => handleSelectSubject(key)}
                 className={`rounded-2xl px-6 py-3.5 text-sm font-bold transition-all duration-300 ${
                   subject === key 
                     ? 'premium-gradient text-white shadow-md' 
@@ -168,16 +208,9 @@ export function CreateScreen(props: CreateScreenProps) {
             options={['easy', 'medium', 'hard']}
             value={difficulty}
             onSelect={(value) => setDifficulty(value as DifficultyLevel)}
-            labelMap={{ easy: '기초(Easy)', medium: '표준(Medium)', hard: '심화(Hard)' }}
+            labelMap={{ easy: '기초', medium: '표준', hard: '심화' }}
           />
 
-          <SelectorPanel
-            title="대상 학년/과정"
-            options={['middle', 'high', 'csat']}
-            value={schoolLevel}
-            onSelect={(value) => setSchoolLevel(value as SchoolLevel)}
-            labelMap={{ middle: '중등 과정', high: '고등 과정', csat: '수능/대입' }}
-          />
 
           <section className="premium-card p-6">
             <h2 className="text-sm font-black uppercase tracking-wider text-slate-400">평가 문항 구성</h2>
@@ -214,17 +247,17 @@ export function CreateScreen(props: CreateScreenProps) {
               <input
                 value={generationTopic}
                 onChange={(event) => setGenerationTopic(event.target.value)}
-                placeholder={subject === 'korean_history' ? '예: 조선 중앙 정치 조직, 일제 독립 투쟁사' : '예: 근대 민주주의의 발전, 유전성의 원리'}
+                placeholder={SUBJECT_CONFIG[subject].exampleTopic}
                 className="mt-4 w-full rounded-2xl bg-slate-50 border-none px-5 py-4 text-[15px] font-medium text-slate-900 outline-none ring-1 ring-slate-100 focus:ring-2 focus:ring-accent transition-all"
               />
             </section>
 
             <section className="premium-card p-6">
-              <h2 className="text-sm font-black uppercase tracking-wider text-slate-400">추가 참조 사료 (선택)</h2>
+              <h2 className="text-sm font-black uppercase tracking-wider text-slate-400">학습 내용 추가 (선택)</h2>
               <textarea
                 value={materialText}
                 onChange={(event) => setMaterialText(event.target.value)}
-                placeholder="특정 지문이나 고난도 사료를 문제에 포함하고 싶을 때 입력하세요. 미입력 시 AI가 표준 단원 데이터를 기반으로 출제합니다."
+                placeholder="특정 지문이나 학습 내용을 문제에 반영하고 싶을 때 입력하세요. 미입력 시 AI가 표준 단원 데이터를 기반으로 출제합니다."
                 className="mt-4 min-h-40 w-full rounded-2xl bg-slate-50 border-none px-5 py-5 text-[15px] font-medium leading-relaxed text-slate-900 outline-none ring-1 ring-slate-100 focus:ring-2 focus:ring-accent transition-all resize-none"
               />
             </section>
@@ -264,7 +297,7 @@ export function CreateScreen(props: CreateScreenProps) {
               ) : (
                 <>
                   <Sparkles className="h-5 w-5" />
-                  <span>평가 생성 시작하기</span>
+                  <span>문제 생성 시작하기</span>
                   <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-[shimmer_1.5s_infinite]" />
                 </>
               )}
