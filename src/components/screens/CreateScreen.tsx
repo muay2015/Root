@@ -26,6 +26,8 @@ export interface CreateScreenProps {
   setGenerationTopic: (value: string) => void;
   materialText: string;
   setMaterialText: (value: string) => void;
+  parsedFiles: string[];
+  setParsedFiles: React.Dispatch<React.SetStateAction<string[]>>;
   questionFiles: string[];
   answerFiles: string[];
   setQuestionFiles: (value: string[]) => void;
@@ -56,6 +58,8 @@ export function CreateScreen(props: CreateScreenProps) {
     setGenerationTopic,
     materialText,
     setMaterialText,
+    parsedFiles,
+    setParsedFiles,
     questionFiles,
     answerFiles,
     setQuestionFiles,
@@ -67,7 +71,6 @@ export function CreateScreen(props: CreateScreenProps) {
   } = props;
 
   const [isParsing, setIsParsing] = React.useState(false);
-  const [parsedFiles, setParsedFiles] = React.useState<string[]>([]);
 
   const selectionLabel = getSubjectSelectionLabel(subject, questionType, format);
   const hideSelector = usesNoSelector(subject);

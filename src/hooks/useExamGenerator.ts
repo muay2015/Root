@@ -45,6 +45,7 @@ export function useExamGenerator(
   const [count, setCount] = useState(12);
   const [generationTopic, setGenerationTopic] = useState('');
   const [materialText, setMaterialText] = useState('');
+  const [parsedFiles, setParsedFiles] = useState<string[]>([]);
   const [questionFiles, setQuestionFiles] = useState<string[]>([]);
   const [answerFiles, setAnswerFiles] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -158,6 +159,7 @@ export function useExamGenerator(
     // 필드 초기화
     setGenerationTopic('');
     setMaterialText('');
+    setParsedFiles([]);
     setQuestionFiles([]);
     setAnswerFiles([]);
     
@@ -168,6 +170,7 @@ export function useExamGenerator(
     mode, setMode, subject, handleSubjectSelect, questionType, setQuestionType,
     format, setFormat, difficulty, setDifficulty, schoolLevel, setSchoolLevel,
     count, setCount, generationTopic, setGenerationTopic, materialText, setMaterialText,
+    parsedFiles, setParsedFiles,
     questionFiles, answerFiles, setQuestionFiles, setAnswerFiles,
     isGenerating, generationError, readyToGenerate, selectionLabel, generateExam,
   };
