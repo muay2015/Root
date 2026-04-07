@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Mail, Lock, User, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
 import { requestPasswordReset, signInWithEmail, signUpWithEmail } from '../../lib/rootPersistence';
 import { isSupabaseConfigured } from '../../lib/supabase';
 
@@ -115,8 +116,8 @@ export function AuthScreen({ onSuccess = () => window.location.reload() }: { onS
            setTimeout(() => onSuccess(), 1000);
         }
       } else {
-        setMessage('로그인되었습니다.');
-        setTimeout(() => onSuccess(), 500);
+        setMessage('로그인되었습니다. 대시보드로 이동합니다.');
+        setTimeout(() => onSuccess(), 800);
       }
     } finally {
       setIsSubmitting(false);
@@ -132,138 +133,187 @@ export function AuthScreen({ onSuccess = () => window.location.reload() }: { onS
         : '재설정 메일 보내기';
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 pb-28 pt-10 text-slate-900 sm:px-6">
-      <div className="mx-auto max-w-md">
-        <section className="border border-slate-200 bg-white px-6 py-8 sm:px-8">
-          <div className="grid grid-cols-3 gap-2">
-            <ModeButton active={mode === 'sign_in'} label="로그인" onClick={() => switchMode('sign_in')} />
-            <ModeButton active={mode === 'sign_up'} label="회원가입" onClick={() => switchMode('sign_up')} />
-            <ModeButton active={mode === 'reset_password'} label="비번 재설정" onClick={() => switchMode('reset_password')} />
+    <main className="min-h-screen bg-slate-50/50 px-4 pb-28 pt-12 sm:px-6 sm:pt-20">
+      <div className="mx-auto max-w-lg">
+        {/* Auth Card */}
+        <div className="premium-card overflow-hidden transition-all duration-500 shadow-2xl shadow-slate-200/50">
+          {/* Header/Tabs */}
+          <div className="flex border-b border-slate-100 bg-slate-50/50 p-1">
+            <ModeTab active={mode === 'sign_in'} label="로그인" onClick={() => switchMode('sign_in')} />
+            <ModeTab active={mode === 'sign_up'} label="회원가입" onClick={() => switchMode('sign_up')} />
+            <ModeTab active={mode === 'reset_password'} label="비번 재설정" onClick={() => switchMode('reset_password')} />
           </div>
 
-          <div className="mt-6 space-y-4">
-            {isSignUp ? (
-              <label className="block">
-                <span className="text-sm font-semibold text-slate-700">닉네임</span>
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={(event) => setDisplayName(event.target.value)}
-                  placeholder="예: 민지"
-                  className="mt-2 w-full border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900"
-                />
-              </label>
-            ) : null}
+          <div className="px-6 py-10 sm:px-10">
+            <div className="mb-8 text-center sm:text-left">
+              <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+                {mode === 'sign_in' ? '반가워요!' : mode === 'sign_up' ? '시작해볼까요?' : '비밀번호 찾기'}
+              </h2>
+              <p className="mt-2 text-slate-500">
+                {mode === 'sign_in' 
+                  ? '내 계정으로 로그인하여 학습 기록을 관리하세요.' 
+                  : mode === 'sign_up' 
+                    ? 'ROOT CBT와 함께 지능형 학습을 시작하세요.'
+                    : '가입하신 이메일을 입력하시면 재설정 링크를 보내드립니다.'}
+              </p>
+            </div>
 
-            <label className="block">
-              <span className="text-sm font-semibold text-slate-700">이메일</span>
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@example.com"
-                className="mt-2 w-full border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900"
-              />
-            </label>
-
-            {needsPassword ? (
-              <label className="block">
-                <span className="text-sm font-semibold text-slate-700">비밀번호</span>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder={isSignUp ? '영문+숫자 포함 8자 이상' : '비밀번호 입력'}
-                  className="mt-2 w-full border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900"
-                />
-              </label>
-            ) : null}
-
-            {isSignUp ? (
-              <>
-                <label className="block">
-                  <span className="text-sm font-semibold text-slate-700">비밀번호 확인</span>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    placeholder="비밀번호를 다시 입력"
-                    className="mt-2 w-full border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900"
-                  />
-                </label>
-
-                <div className="border border-slate-200 bg-slate-50 px-4 py-4">
-                  <p className="text-sm font-semibold text-slate-800">비밀번호 조건</p>
-                  <ul className="mt-3 space-y-2 text-sm text-slate-600">
-                    <li className={checks.hasMinLength ? 'text-emerald-700' : ''}>8자 이상</li>
-                    <li className={checks.hasLetter ? 'text-emerald-700' : ''}>영문 포함</li>
-                    <li className={checks.hasNumber ? 'text-emerald-700' : ''}>숫자 포함</li>
-                  </ul>
+            <div className="space-y-5">
+              {isSignUp ? (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-bold text-slate-700 ml-1">닉네임</label>
+                  <div className="relative group">
+                    <User className="absolute left-4 top-3.5 h-5 w-5 text-slate-400 group-focus-within:text-primary transition-colors" />
+                    <input
+                      type="text"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      placeholder="칭찬받고 싶은 이름 (예: 민지)"
+                      className="w-full rounded-2xl bg-slate-50 border border-slate-200 pl-11 pr-4 py-3.5 text-sm transition-all focus:bg-white focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none"
+                    />
+                  </div>
                 </div>
+              ) : null}
 
-                <label className="flex items-start gap-3 border border-slate-200 bg-slate-50 px-4 py-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-slate-700 ml-1">이메일</label>
+                <div className="relative group">
+                  <Mail className="absolute left-4 top-3.5 h-5 w-5 text-slate-400 group-focus-within:text-primary transition-colors" />
                   <input
-                    type="checkbox"
-                    checked={agreeToStorage}
-                    onChange={(event) => setAgreeToStorage(event.target.checked)}
-                    className="mt-1 h-4 w-4"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full rounded-2xl bg-slate-50 border border-slate-200 pl-11 pr-4 py-3.5 text-sm transition-all focus:bg-white focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none"
                   />
-                  <span className="text-sm leading-6 text-slate-600">
-                    시험 기록, 오답노트, 계정 프로필이 로그인 계정 기준으로 저장되는 것에 동의합니다.
-                  </span>
-                </label>
-              </>
-            ) : null}
+                </div>
+              </div>
 
-            {mode === 'reset_password' ? (
-              <p className="text-sm leading-6 text-slate-500">
-                입력한 이메일로 비밀번호 재설정 링크를 보냅니다. 메일을 열면 새 비밀번호 설정 화면으로 이동합니다.
-              </p>
-            ) : null}
+              {needsPassword ? (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-bold text-slate-700 ml-1">비밀번호</label>
+                  <div className="relative group">
+                    <Lock className="absolute left-4 top-3.5 h-5 w-5 text-slate-400 group-focus-within:text-primary transition-colors" />
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={isSignUp ? '영문+숫자 포함 8자 이상' : '비밀번호를 입력하세요'}
+                      className="w-full rounded-2xl bg-slate-50 border border-slate-200 pl-11 pr-4 py-3.5 text-sm transition-all focus:bg-white focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none"
+                    />
+                  </div>
+                </div>
+              ) : null}
 
-            {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
-            {error ? <p className="text-sm text-red-700">{error}</p> : null}
-            {!isSupabaseConfigured ? (
-              <p className="text-sm text-red-700">
-                Supabase 환경변수가 없어 인증을 사용할 수 없습니다. `VITE_SUPABASE_URL`과 `VITE_SUPABASE_PUBLISHABLE_KEY`를 먼저 설정하세요.
-              </p>
-            ) : null}
+              {isSignUp ? (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-slate-700 ml-1">비밀번호 확인</label>
+                    <div className="relative group">
+                      <Lock className="absolute left-4 top-3.5 h-5 w-5 text-slate-400 group-focus-within:text-primary transition-colors" />
+                      <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="비밀번호를 한 번 더 입력하세요"
+                        className="w-full rounded-2xl bg-slate-50 border border-slate-200 pl-11 pr-4 py-3.5 text-sm transition-all focus:bg-white focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none"
+                      />
+                    </div>
+                  </div>
 
-            <button
-              type="button"
-              onClick={() => void handleSubmit()}
-              disabled={isSubmitting || !isSupabaseConfigured}
-              className="w-full bg-slate-900 px-4 py-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-            >
-              {submitLabel}
-            </button>
+                  <div className="rounded-2xl bg-indigo-50/50 border border-indigo-100/50 p-4 mt-2">
+                    <div className="flex items-center gap-2 mb-3 text-indigo-900 font-bold text-sm">
+                      <CheckCircle2 className="h-4 w-4" />
+                      보안 조건 확인
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <PasswordCheckItem fulfilled={checks.hasMinLength} label="8자 이상" />
+                      <PasswordCheckItem fulfilled={checks.hasLetter} label="영문 포함" />
+                      <PasswordCheckItem fulfilled={checks.hasNumber} label="숫자 포함" />
+                    </div>
+                  </div>
+
+                  <label className="flex items-start gap-3 rounded-2xl bg-slate-50 border border-slate-100 p-4 cursor-pointer group transition-colors hover:bg-white hover:border-slate-200">
+                    <input
+                      type="checkbox"
+                      checked={agreeToStorage}
+                      onChange={(e) => setAgreeToStorage(e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                    />
+                    <span className="text-xs sm:text-sm leading-5 text-slate-600 group-hover:text-slate-900 transition-colors">
+                      시험 기록, 오답노트, 프로필이 안전하게 동기화되는 것에 동의합니다.
+                    </span>
+                  </label>
+                </>
+              ) : null}
+
+              {/* Status Messages */}
+              {message && (
+                <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 border border-emerald-100 p-4 text-sm text-emerald-800 animate-in fade-in slide-in-from-top-2">
+                  <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
+                  {message}
+                </div>
+              )}
+              {error && (
+                <div className="flex items-center gap-3 rounded-2xl bg-red-50 border border-red-100 p-4 text-sm text-red-800 animate-in fade-in slide-in-from-top-2">
+                  <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                  {error}
+                </div>
+              )}
+              {!isSupabaseConfigured && (
+                <div className="flex items-center gap-3 rounded-2xl bg-amber-50 border border-amber-100 p-4 text-sm text-amber-800">
+                  <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                  서버 연결 설정이 필요합니다. 관리자에게 문의하세요.
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => void handleSubmit()}
+                disabled={isSubmitting || !isSupabaseConfigured}
+                className="group relative w-full overflow-hidden rounded-2xl bg-slate-900 py-4 font-bold text-white shadow-xl shadow-slate-200 transition-all hover:bg-slate-800 hover:-translate-y-1 active:translate-y-0 disabled:bg-slate-300 disabled:shadow-none disabled:translate-y-0"
+              >
+                <div className="relative z-10 flex items-center justify-center gap-2">
+                  {submitLabel}
+                  {!isSubmitting && <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />}
+                </div>
+              </button>
+            </div>
           </div>
-        </section>
+        </div>
       </div>
     </main>
   );
 }
 
-function ModeButton({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
+function ModeTab({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`px-1 py-3 text-xs font-semibold sm:px-4 sm:text-sm ${
-        active ? 'bg-slate-900 text-white' : 'border border-slate-300 bg-white text-slate-700'
+      className={`relative flex-1 py-3.5 text-sm font-bold transition-all rounded-xl ${
+        active 
+          ? 'bg-white text-slate-900 shadow-sm' 
+          : 'text-slate-500 hover:text-slate-700'
       }`}
     >
       {label}
+      {active && (
+        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-primary" />
+      )}
     </button>
   );
 }
 
-
+function PasswordCheckItem({ fulfilled, label }: { fulfilled: boolean; label: string }) {
+  return (
+    <div className={`flex items-center justify-center gap-1.5 py-1.5 rounded-xl border text-[11px] font-bold transition-all duration-300 ${
+      fulfilled 
+        ? 'bg-emerald-500 text-white border-emerald-500' 
+        : 'bg-white text-slate-400 border-slate-100'
+    }`}>
+      <CheckCircle2 className={`h-3 w-3 ${fulfilled ? 'text-white' : 'text-slate-200'}`} />
+      {label}
+    </div>
+  );
+}

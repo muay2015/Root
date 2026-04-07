@@ -7,6 +7,7 @@ export function useAuth() {
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [sessionUserEmail, setSessionUserEmail] = useState<string | null>(null);
   const [sessionDisplayName, setSessionDisplayName] = useState('사용자');
+  const [sessionUserAvatar, setSessionUserAvatar] = useState<string | null>(null);
   const [syncMessage, setSyncMessage] = useState('Supabase 연결 상태 확인 중...');
 
   useEffect(() => {
@@ -21,6 +22,7 @@ export function useAuth() {
       setIsAnonymous(auth.data.is_anonymous ?? true);
       setSessionUserEmail(auth.data.email ?? null);
       setSessionDisplayName(String(auth.data.user_metadata?.display_name ?? '사용자'));
+      setSessionUserAvatar(auth.data.user_metadata?.avatar_url ?? null);
       setSyncMessage('Supabase 세션 연결 완료');
     })();
   }, []);
@@ -33,6 +35,7 @@ export function useAuth() {
       setSessionUserId(null);
       setSessionUserEmail('');
       setSessionDisplayName('사용자');
+      setSessionUserAvatar(null);
       setIsAnonymous(true);
       
       setSyncMessage('로그아웃 완료');
@@ -48,9 +51,11 @@ export function useAuth() {
     isAnonymous,
     sessionUserEmail,
     sessionDisplayName,
+    sessionUserAvatar,
     syncMessage,
     setSyncMessage,
     setSessionDisplayName,
+    setSessionUserAvatar,
     handleSignOut,
   };
 }

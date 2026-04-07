@@ -1,9 +1,10 @@
-import type { ChangeEvent } from 'react';
+import React, { type ChangeEvent } from 'react';
 import { SUBJECT_CONFIG, getSubjectFormats, getSubjectQuestionTypes, getSubjectSelectionLabel, usesNoSelector, type SelectionFormat, type SubjectKey } from '../../lib/question/subjectConfig';
 import { getDifficultyLabel, getSchoolLevelLabel } from '../../lib/examUtils';
 import type { BuilderMode, DifficultyLevel, SchoolLevel } from '../../lib/examTypes';
 import { SelectorPanel } from '../ui/SelectorPanel';
 import { UploadPanel } from '../ui/UploadPanel';
+import { Sparkles, FileUp, Settings2, CheckCircle2 } from 'lucide-react';
 
 export interface CreateScreenProps {
   mode: BuilderMode;
@@ -70,10 +71,10 @@ export function CreateScreen(props: CreateScreenProps) {
   const formatOptions = getSubjectFormats(subject);
 
   const readyHint = ready
-    ? '현재 설정으로 문제 생성이 가능합니다.'
+    ? '설계가 완료되었습니다. 평가 생성을 시작할 수 있습니다.'
     : mode === 'upload'
-      ? '문제 파일과 정답 파일을 모두 업로드해야 합니다.'
-      : '단원명 또는 추가 정보를 입력해야 합니다.';
+      ? '유효한 문항 데이터와 정답지가 모두 필요합니다.'
+      : '주제 또는 핵심 단원명을 입력해 주세요.';
 
   const handleFileChange = (
     event: ChangeEvent<HTMLInputElement>,
@@ -88,43 +89,52 @@ export function CreateScreen(props: CreateScreenProps) {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 pb-28 pt-8 text-slate-900 sm:px-6">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
-          <h1 className="text-3xl font-bold">CBT 생성</h1>
-          <p className="mt-2 text-sm text-slate-500">
-            과목, 학교급, 난이도, 문항 수를 기준으로 실제 시험 흐름에 맞는 문제 세트를 만듭니다.
+    <main className="min-h-screen bg-surface px-4 pb-28 pt-8 sm:px-6 sm:pt-10">
+      <div className="mx-auto max-w-5xl space-y-8">
+        {/* Header Section */}
+        <header className="flex flex-col gap-2">
+          <h1 className="text-3xl font-black tracking-tight text-slate-900">지능형 평가 설계</h1>
+          <p className="text-sm font-medium text-slate-500">
+            학습 목표에 최적화된 평가 환경을 구성합니다. 모든 문항은 정밀 파싱 로직을 거칩니다.
           </p>
-        </section>
+        </header>
 
-        {/* 모드 선택 */}
-        <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => setMode('upload')}
-              className={`border px-4 py-3 text-sm font-semibold ${mode === 'upload' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700'}`}
-            >
-              업로드형
-            </button>
-            <button
-              onClick={() => setMode('ai')}
-              className={`border px-4 py-3 text-sm font-semibold ${mode === 'ai' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700'}`}
-            >
-              AI 생성형
-            </button>
+        {/* 생성 모드 선택 */}
+        <section className="premium-card p-6 border-none shadow-lg shadow-blue-900/5">
+          <div className="flex items-center gap-2 mb-4">
+            <Settings2 className="h-4 w-4 text-blue-500" />
+            <h2 className="text-sm font-black uppercase tracking-wider text-slate-400">설계 방식 선택</h2>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <ModeButton 
+              active={mode === 'ai'} 
+              onClick={() => setMode('ai')} 
+              icon={<Sparkles className="h-5 w-5" />}
+              label="AI 지능형 생성" 
+              sub="주제 기반 자동 출제"
+            />
+            <ModeButton 
+              active={mode === 'upload'} 
+              onClick={() => setMode('upload')} 
+              icon={<FileUp className="h-5 w-5" />}
+              label="데이터 업로드" 
+              sub="기존 자료 디지털화"
+            />
           </div>
         </section>
 
         {/* 과목 선택 */}
-        <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
-          <h2 className="text-sm font-semibold text-slate-700">과목 선택</h2>
-          <div className="mt-4 flex flex-wrap gap-2">
+        <section className="premium-card p-6">
+          <h2 className="text-sm font-black uppercase tracking-wider text-slate-400 mb-4">학습 카테고리</h2>
+          <div className="flex flex-wrap gap-2.5">
             {(Object.keys(SUBJECT_CONFIG) as SubjectKey[]).map((key) => (
               <button
                 key={key}
                 onClick={() => onSelectSubject(key)}
-                className={`border px-4 py-3 text-sm font-semibold ${
-                  subject === key ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700'
+                className={`rounded-2xl px-6 py-3.5 text-sm font-bold transition-all duration-300 ${
+                  subject === key 
+                    ? 'premium-gradient text-white shadow-md' 
+                    : 'bg-slate-50 text-slate-600 ring-1 ring-outline hover:bg-white hover:shadow-sm'
                 }`}
               >
                 {SUBJECT_CONFIG[key].label}
@@ -133,118 +143,174 @@ export function CreateScreen(props: CreateScreenProps) {
           </div>
         </section>
 
-        {/* 세부 설정 */}
-        <section className="grid gap-4 lg:grid-cols-2">
-          {!hideSelector && questionTypeOptions.length > 0 ? (
+        {/* 세부 구성 설정 */}
+        <section className="grid gap-6 lg:grid-cols-2">
+          {!hideSelector && questionTypeOptions.length > 0 && (
             <SelectorPanel
-              title="문제유형"
+              title="문항 유형 설계"
               options={questionTypeOptions}
               value={questionType}
               onSelect={setQuestionType}
             />
-          ) : null}
+          )}
 
-          {!hideSelector && formatOptions.length > 0 ? (
+          {!hideSelector && formatOptions.length > 0 && (
             <SelectorPanel
-              title="문제 방식"
+              title="지문 구성 방식"
               options={formatOptions}
               value={format}
               onSelect={(value) => setFormat(value as SelectionFormat)}
             />
-          ) : null}
+          )}
 
           <SelectorPanel
-            title="난이도"
+            title="평가 난이도"
             options={['easy', 'medium', 'hard']}
             value={difficulty}
             onSelect={(value) => setDifficulty(value as DifficultyLevel)}
-            labelMap={{ easy: '쉬움', medium: '보통', hard: '어려움' }}
+            labelMap={{ easy: '기초(Easy)', medium: '표준(Medium)', hard: '심화(Hard)' }}
           />
 
           <SelectorPanel
-            title="학교급"
+            title="대상 학년/과정"
             options={['middle', 'high', 'csat']}
             value={schoolLevel}
             onSelect={(value) => setSchoolLevel(value as SchoolLevel)}
-            labelMap={{ middle: '중등', high: '고등', csat: '수능' }}
+            labelMap={{ middle: '중등 과정', high: '고등 과정', csat: '수능/대입' }}
           />
 
-          <section className="border border-slate-200 bg-white px-5 py-5">
-            <h2 className="text-sm font-semibold text-slate-700">문항 수</h2>
-            <input
-              type="range"
-              min={5}
-              max={30}
-              value={count}
-              onChange={(event) => setCount(Number(event.target.value))}
-              className="mt-4 w-full"
-            />
-            <div className="mt-3 text-sm font-medium text-slate-700">{count}문항</div>
+          <section className="premium-card p-6">
+            <h2 className="text-sm font-black uppercase tracking-wider text-slate-400">평가 문항 구성</h2>
+            <div className="mt-6 flex flex-col gap-6">
+              <input
+                type="range"
+                min={5}
+                max={30}
+                value={count}
+                onChange={(event) => setCount(Number(event.target.value))}
+                className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-slate-400">최소 5문항</span>
+                <div className="flex h-12 w-24 items-center justify-center rounded-2xl bg-blue-50 text-xl font-black text-blue-600 ring-1 ring-blue-100">
+                  {count}
+                </div>
+                <span className="text-sm font-bold text-slate-400">최대 30문항</span>
+              </div>
+            </div>
           </section>
         </section>
 
-        {/* 자료 입력 / 파일 업로드 */}
+        {/* 상세 정보 입력 */}
         {mode === 'upload' ? (
-          <section className="grid gap-4 lg:grid-cols-2">
-            <UploadPanel title="문제 파일" files={questionFiles} onChange={(event) => handleFileChange(event, 'question')} />
-            <UploadPanel title="정답 파일" files={answerFiles} onChange={(event) => handleFileChange(event, 'answer')} />
+          <section className="grid gap-6 lg:grid-cols-2">
+            <UploadPanel title="평가 문항지" files={questionFiles} onChange={(event) => handleFileChange(event, 'question')} />
+            <UploadPanel title="정답/해설지" files={answerFiles} onChange={(event) => handleFileChange(event, 'answer')} />
           </section>
         ) : (
-          <section className="grid gap-4">
-            <section className="border border-slate-200 bg-white px-5 py-5">
-              <h2 className="text-sm font-semibold text-slate-700">
-                {subject === 'korean_history' ? '단원명 / 시대 (필수)' : '단원명 / 주제 (필수)'}
-              </h2>
+          <section className="space-y-6">
+            <section className="premium-card p-6">
+              <h2 className="text-sm font-black uppercase tracking-wider text-slate-400">핵심 단원 및 주제 (필수)</h2>
               <input
                 value={generationTopic}
                 onChange={(event) => setGenerationTopic(event.target.value)}
-                placeholder={subject === 'korean_history' ? '예: 조선 전기 통치 체제, 일제 강점기 경제' : '예: 근대 사회의 변화, 세포의 구조'}
-                className="mt-4 w-full border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-900"
+                placeholder={subject === 'korean_history' ? '예: 조선 중앙 정치 조직, 일제 독립 투쟁사' : '예: 근대 민주주의의 발전, 유전성의 원리'}
+                className="mt-4 w-full rounded-2xl bg-slate-50 border-none px-5 py-4 text-[15px] font-medium text-slate-900 outline-none ring-1 ring-slate-100 focus:ring-2 focus:ring-accent transition-all"
               />
             </section>
 
-            <section className="border border-slate-200 bg-white px-5 py-5">
-              <h2 className="text-sm font-semibold text-slate-700">
-                추가 상세 정보 (선택 사항)
-              </h2>
+            <section className="premium-card p-6">
+              <h2 className="text-sm font-black uppercase tracking-wider text-slate-400">추가 참조 사료 (선택)</h2>
               <textarea
                 value={materialText}
                 onChange={(event) => setMaterialText(event.target.value)}
-                placeholder="특정 지문이나 사료를 문제에 포함하고 싶을 때만 입력하세요. 비워두시면 AI가 단원명에 맞춰 핵심 위주로 자동 생성합니다."
-                className="mt-4 min-h-44 w-full border border-slate-300 px-4 py-4 text-sm leading-7 outline-none focus:border-slate-900"
+                placeholder="특정 지문이나 고난도 사료를 문제에 포함하고 싶을 때 입력하세요. 미입력 시 AI가 표준 단원 데이터를 기반으로 출제합니다."
+                className="mt-4 min-h-40 w-full rounded-2xl bg-slate-50 border-none px-5 py-5 text-[15px] font-medium leading-relaxed text-slate-900 outline-none ring-1 ring-slate-100 focus:ring-2 focus:ring-accent transition-all resize-none"
               />
             </section>
           </section>
         )}
 
-        {/* 생성 버튼 */}
-        <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-slate-700">현재 설정</p>
-              <p className="mt-2 text-sm leading-7 text-slate-600">
-                {SUBJECT_CONFIG[subject].label}
-                {selectionLabel ? ` / ${selectionLabel}` : ''}
-                {' / '}
-                {getSchoolLevelLabel(schoolLevel)}
-                {' / '}
-                {getDifficultyLabel(difficulty)}
-                {' / '}
-                {count}문항
-              </p>
-              <p className="mt-2 text-sm text-slate-500">{readyHint}</p>
-              {generationError ? <p className="mt-3 text-sm text-red-700">{generationError}</p> : null}
+        {/* 생성 실행바 */}
+        <section className={`premium-card p-6 border-none transition-all duration-500 overflow-hidden ${ready ? 'ring-2 ring-accent shadow-xl shadow-blue-900/10' : 'opacity-80'}`}>
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-4">
+              <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${ready ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-800">최종 평가 구성 확인</p>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+                  <ConfigTag label={SUBJECT_CONFIG[subject].label} />
+                  {selectionLabel && <ConfigTag label={selectionLabel} />}
+                  <ConfigTag label={getSchoolLevelLabel(schoolLevel)} />
+                  <ConfigTag label={getDifficultyLabel(difficulty)} />
+                  <ConfigTag label={`${count}문항`} />
+                </div>
+                <p className={`mt-2 text-xs font-bold ${ready ? 'text-blue-500' : 'text-slate-400'}`}>{readyHint}</p>
+              </div>
             </div>
+            
             <button
               onClick={onGenerate}
               disabled={!ready || isGenerating}
-              className="bg-slate-900 px-6 py-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+              className="relative flex h-14 items-center justify-center gap-3 rounded-2xl premium-gradient px-10 text-base font-black text-white shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02] active:scale-95 disabled:scale-100 disabled:bg-slate-200 disabled:shadow-none disabled:cursor-not-allowed group overflow-hidden"
             >
-              {isGenerating ? '생성 중...' : 'CBT 생성하기'}
+              {isGenerating ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  <span>AI 알고리즘 구동 중...</span>
+                </div>
+              ) : (
+                <>
+                  <Sparkles className="h-5 w-5" />
+                  <span>평가 생성 시작하기</span>
+                  <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-[shimmer_1.5s_infinite]" />
+                </>
+              )}
             </button>
           </div>
+          {generationError && (
+             <div className="mt-4 rounded-xl bg-red-50 p-4 text-[13px] font-bold text-red-600 ring-1 ring-red-100">
+               {generationError}
+             </div>
+          )}
         </section>
       </div>
     </main>
+  );
+}
+
+function ModeButton({ active, onClick, icon, label, sub }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string, sub: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`relative flex flex-col items-center gap-2 rounded-2xl p-6 transition-all duration-300 ${
+        active 
+          ? 'bg-blue-50 ring-2 ring-accent' 
+          : 'bg-white ring-1 ring-slate-100 hover:bg-slate-50'
+      }`}
+    >
+      <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${active ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-400'}`}>
+        {icon}
+      </div>
+      <div className="text-center">
+        <p className={`text-sm font-black ${active ? 'text-primary' : 'text-slate-600'}`}>{label}</p>
+        <p className="text-[11px] font-bold text-slate-400 mt-0.5">{sub}</p>
+      </div>
+      {active && (
+        <div className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-white">
+          <CheckCircle2 className="h-3 w-3" strokeWidth={4} />
+        </div>
+      )}
+    </button>
+  );
+}
+
+function ConfigTag({ label }: { label: string }) {
+  return (
+    <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500 ring-1 ring-slate-200">
+      {label}
+    </span>
   );
 }

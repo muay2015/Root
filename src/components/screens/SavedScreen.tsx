@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { EllipsisVertical, Info, RefreshCw } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { EllipsisVertical, Info, RefreshCw, FileText, Search, Plus, LogIn, ChevronRight } from 'lucide-react';
 import { SUBJECT_CONFIG } from '../../lib/question/subjectConfig';
 import { 
   formatSavedDate, 
@@ -37,7 +37,6 @@ export function SavedScreen({
   const [previewExamId, setPreviewExamId] = useState<string | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<string>('전체');
 
-  // 추출된 전체 과목 리스트 (기타 과목 제외)
   const allSubjects = useMemo(() => {
     const list = new Set<string>(['전체']);
     for (const exam of exams) {
@@ -79,47 +78,69 @@ export function SavedScreen({
   }, [filteredExams]);
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 pb-28 pt-8 text-slate-900 sm:px-6">
-      <div className="mx-auto max-w-4xl space-y-6">
-        <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
+    <main className="min-h-screen bg-surface px-4 pb-28 pt-8 sm:px-6 sm:pt-10">
+      <div className="mx-auto max-w-5xl space-y-8">
+        {/* Header Area */}
+        <header className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold">문제함</h1>
-            {syncMessage && (
-              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 animate-pulse">
-                <RefreshCw className="h-3 w-3 animate-spin" />
-                {syncMessage}
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-outline text-primary">
+                <FileText className="h-6 w-6" />
               </div>
-            )}
+              <div>
+                <h1 className="text-3xl font-black tracking-tight text-slate-900">나의 학습 보관함</h1>
+                <p className="text-sm font-medium text-slate-500">생성된 모든 평가 데이터가 안전하게 보관 중입니다.</p>
+              </div>
+            </div>
+            
+            <button 
+              onClick={onCreate}
+              className="hidden sm:flex h-12 items-center gap-2 rounded-2xl premium-gradient px-6 text-sm font-black text-white shadow-lg shadow-blue-900/10 transition-all hover:scale-105 active:scale-95"
+            >
+              <Plus className="h-5 w-5" />
+              새 평가 설계
+            </button>
           </div>
-          <p className="mt-2 text-sm text-slate-500">문제가 생성되면 자동으로 이 목록에 저장됩니다.</p>
+
+          {syncMessage && (
+            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-1.5 text-[11px] font-bold text-accent ring-1 ring-blue-100">
+              <RefreshCw className="h-3 w-3 animate-spin" />
+              {syncMessage}
+            </div>
+          )}
 
           {isAnonymous && (
-            <div className="mt-4 flex items-start gap-3 bg-blue-50 p-4 border border-blue-100">
-              <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-blue-900">로그인이 필요합니다</p>
-                <p className="mt-1 text-xs text-blue-700 leading-relaxed">
-                  로그인하시면 PC나 다른 기기에서 생성한 모든 문제를 동기화하여 볼 수 있습니다. 현재는 이 기기에 저장된 문제만 표시됩니다.
+            <div className="premium-card bg-accent/5 border-accent/10 p-5 flex items-start gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-accent shadow-sm ring-1 ring-accent/10">
+                <LogIn className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-black text-slate-900">클라우드 동기화가 활성화되지 않았습니다</p>
+                <p className="mt-1 text-[13px] font-medium leading-relaxed text-slate-500">
+                  로그인하시면 모바일과 PC를 넘나들며 모든 학습 데이터를 실시간으로 공유할 수 있습니다.
                 </p>
                 <button
-                  onClick={() => onLogin()}
-                  className="mt-2.5 text-xs font-bold text-blue-600 hover:text-blue-800 underline underline-offset-4"
+                  onClick={onLogin}
+                  className="mt-3 text-[13px] font-black text-accent hover:underline underline-offset-4"
                 >
-                  지금 로그인하기
+                  동기화 계정으로 로그인하기
                 </button>
               </div>
             </div>
           )}
-          
-          <div className="mt-6 flex flex-wrap gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        </header>
+
+        {/* Filters */}
+        <section className="sticky top-[72px] z-10 -mx-4 bg-surface/80 px-4 py-4 backdrop-blur-md sm:mx-0 sm:px-0">
+          <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
             {allSubjects.map((subj) => (
               <button
                 key={subj}
                 onClick={() => setSelectedSubject(subj)}
-                className={`whitespace-nowrap px-4 py-2 text-sm font-semibold transition-colors ${
+                className={`whitespace-nowrap rounded-xl px-5 py-2.5 text-[13px] font-black transition-all ${
                   selectedSubject === subj
-                    ? 'bg-slate-900 text-white shadow-sm'
-                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                    ? 'premium-gradient text-white shadow-md'
+                    : 'bg-white text-slate-500 ring-1 ring-outline hover:bg-slate-50'
                 }`}
               >
                 {subj}
@@ -129,107 +150,106 @@ export function SavedScreen({
         </section>
 
         {filteredExams.length === 0 ? (
-          <section className="border border-dashed border-slate-300 bg-white px-5 py-10 text-center text-sm text-slate-500">
-            {selectedSubject === '전체' ? '저장된 문제가 없습니다.' : `'${selectedSubject}' 과목의 문제가 없습니다.`}
+          <section className="premium-card flex flex-col items-center justify-center py-24 text-center">
+            <Search className="mb-4 h-12 w-12 text-slate-200" />
+            <p className="text-lg font-bold text-slate-400">
+              {selectedSubject === '전체' ? '보관된 데이터가 없습니다.' : `'${selectedSubject}' 관련 자료를 찾을 수 없습니다.`}
+            </p>
+            <button onClick={onCreate} className="mt-6 text-sm font-black text-accent hover:underline">
+              첫 평가 설계 시작하기
+            </button>
           </section>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-10">
             {groupedBySubject.map(([subjectLabel, examList]) => (
-              <section key={subjectLabel}>
-                {subjectLabel !== '기타 과목' && (
-                  <h2 className="mb-3 text-[15px] font-bold text-slate-800 px-1 border-b border-slate-200 pb-2">
+              <section key={subjectLabel} className="space-y-4">
+                <div className="flex items-center gap-3 px-1">
+                  <div className="h-1 w-1 rounded-full bg-accent" />
+                  <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">
                     {subjectLabel}
                   </h2>
-                )}
-                <div className="space-y-4">
+                </div>
+                
+                <div className="grid gap-4 sm:grid-cols-2">
                   {examList.map((exam) => (
-                    <article key={exam.id} className="relative border border-slate-200 bg-white px-5 py-5 sm:px-6">
-                      <button
-                        onClick={() => setOpenMenuId((current) => (current === exam.id ? null : exam.id))}
-                        className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center text-slate-500 hover:text-slate-900 sm:right-4 sm:top-4"
-                        aria-label="문제함 메뉴"
-                      >
-                        <EllipsisVertical className="h-4 w-4" />
-                      </button>
-
-                      {openMenuId === exam.id ? (
-                        <div className="absolute right-3 top-12 z-10 flex min-w-44 flex-col border border-slate-200 bg-white p-1 shadow-sm sm:right-4 sm:top-13">
-                          {exam.source_text?.trim() ? (
+                    <article key={exam.id} className="premium-card group relative p-6 transition-all hover:ring-2 hover:ring-accent/20">
+                      <div className="flex flex-col h-full">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex flex-col gap-2">
+                             <div className="flex items-center gap-2">
+                               <SubjectTag subject={exam.subject} title={exam.title} />
+                               <span className="text-[11px] font-bold text-slate-300">/</span>
+                               <span className="text-[11px] font-bold text-slate-400">{formatSavedDate(exam.created_at)}</span>
+                             </div>
+                             <h3 className="line-clamp-2 text-lg font-black text-slate-900 group-hover:text-accent transition-colors">
+                               {exam.title}
+                             </h3>
+                          </div>
+                          
+                          <div className="relative">
                             <button
-                              onClick={() => {
-                                setPreviewExamId((current) => (current === exam.id ? null : exam.id));
-                                setOpenMenuId(null);
-                              }}
-                              className="px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                              onClick={() => setOpenMenuId((current) => (current === exam.id ? null : exam.id))}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-900 transition-all"
                             >
-                              {previewExamId === exam.id ? '입력 텍스트 숨기기' : '입력 텍스트 보기'}
+                              <EllipsisVertical className="h-4 w-4" />
                             </button>
-                          ) : null}
-                          <button
-                            onClick={() => onContinueGenerate(exam)}
-                            className="px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-                          >
-                            추가 문제 생성
-                          </button>
-                          <button
-                            onClick={() => {
-                              onDelete(exam.id);
-                              setPreviewExamId((current) => (current === exam.id ? null : current));
-                              setOpenMenuId(null);
-                            }}
-                            className="px-3 py-2 text-left text-sm text-red-700 hover:bg-red-50"
-                          >
-                            삭제
-                          </button>
+                            {openMenuId === exam.id && (
+                              <div className="absolute right-0 top-10 z-20 flex min-w-[160px] flex-col rounded-2xl bg-white p-1.5 shadow-2xl ring-1 ring-outline animate-in fade-in zoom-in-95 duration-200">
+                                {exam.source_text?.trim() && (
+                                  <button
+                                    onClick={() => {
+                                      setPreviewExamId((current) => (current === exam.id ? null : exam.id));
+                                      setOpenMenuId(null);
+                                    }}
+                                    className="rounded-xl px-3 py-2 text-left text-[13px] font-bold text-slate-600 hover:bg-slate-50"
+                                  >
+                                    원문 텍스트 {previewExamId === exam.id ? '숨기기' : '미리보기'}
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => onContinueGenerate(exam)}
+                                  className="rounded-xl px-3 py-2 text-left text-[13px] font-bold text-slate-600 hover:bg-slate-50"
+                                >
+                                  유사 문항 설계
+                                </button>
+                                <div className="my-1 border-t border-outline" />
+                                <button
+                                  onClick={() => {
+                                    onDelete(exam.id);
+                                    setOpenMenuId(null);
+                                  }}
+                                  className="rounded-xl px-3 py-2 text-left text-[13px] font-bold text-red-500 hover:bg-red-50"
+                                >
+                                  영구 삭제
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      ) : null}
 
-                      <div className="space-y-4 pr-8 sm:pr-10">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                             {(() => {
-                               const subjectKey = normalizeToSubjectKey(exam.subject, exam.title);
-                               if (!subjectKey) return null; // 유추 실패 항목은 배지도 노출 안함 (이미 필터링됨)
-                               
-                               const label = SUBJECT_CONFIG[subjectKey].label;
-                               const colorClass = subjectKey === 'social' ? 'bg-amber-100 text-amber-700' : 
-                                                 subjectKey === 'korean_history' ? 'bg-orange-100 text-orange-700' :
-                                                 subjectKey === 'english' ? 'bg-blue-100 text-blue-700' :
-                                                 subjectKey === 'math' ? 'bg-indigo-100 text-indigo-700' :
-                                                 subjectKey === 'science' ? 'bg-emerald-100 text-emerald-700' :
-                                                 subjectKey === 'korean' ? 'bg-rose-100 text-rose-700' :
-                                                 'bg-slate-100 text-slate-600';
-                               return (
-                                 <span className={`px-2 py-0.5 text-[11px] font-bold rounded-sm ${colorClass}`}>
-                                   {label}
-                                 </span>
-                               );
-                             })()}
-                             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{formatSavedDate(exam.created_at)}</p>
-                          </div>
-                          <h2 className="text-lg font-semibold text-slate-900">{exam.title}</h2>
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
+                        <div className="mt-auto flex items-center justify-between">
+                          <div className="flex gap-3 text-[12px] font-bold text-slate-400">
                             <span>{isSchoolLevel(exam.exam_format) ? getSchoolLevelLabel(exam.exam_format) : exam.exam_format}</span>
-                            <span className="text-slate-300">|</span>
+                            <span className="opacity-30">•</span>
                             <span>{isDifficultyLevel(exam.difficulty) ? getDifficultyLabel(exam.difficulty) : exam.difficulty}</span>
-                            <span className="text-slate-300">|</span>
-                            <span>{exam.question_count}문항</span>
+                            <span className="opacity-30">•</span>
+                            <span className="text-slate-600">{exam.question_count}문항</span>
                           </div>
-                          {previewExamId === exam.id && getSourcePreview(exam.source_text, 1200) ? (
-                            <div className="border-l border-slate-300 bg-slate-50/70 pl-3 pt-1">
-                              <p className="text-[11px] font-semibold tracking-[0.08em] text-slate-500">입력 텍스트</p>
-                              <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">{getSourcePreview(exam.source_text, 1200)}</p>
-                            </div>
-                          ) : null}
-                        </div>
-                        <div className="flex flex-wrap gap-2">
+                          
                           <button
                             onClick={() => onOpen(exam)}
-                            className="border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700"
+                            className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-lg shadow-slate-900/10 transition-all hover:scale-110 active:scale-95"
                           >
-                            열기
+                            <ChevronRight className="h-5 w-5" />
                           </button>
                         </div>
+
+                        {previewExamId === exam.id && exam.source_text && (
+                          <div className="mt-6 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">Source Insight</p>
+                            <p className="text-[13px] leading-relaxed text-slate-600 line-clamp-5">{getSourcePreview(exam.source_text, 1200)}</p>
+                          </div>
+                        )}
                       </div>
                     </article>
                   ))}
@@ -238,11 +258,38 @@ export function SavedScreen({
             ))}
           </div>
         )}
-
-        <button onClick={onCreate} className="bg-slate-900 px-5 py-3 text-sm font-semibold text-white">
-          새 문제 생성
-        </button>
+        
+        <div className="sm:hidden fixed bottom-24 right-4 z-40">
+          <button 
+            onClick={onCreate}
+            className="flex h-14 w-14 items-center justify-center rounded-2xl premium-gradient text-white shadow-2xl transition-all active:scale-90"
+          >
+            <Plus className="h-6 w-6" />
+          </button>
+        </div>
       </div>
     </main>
+  );
+}
+
+function SubjectTag({ subject, title }: { subject: string, title: string }) {
+  const subjectKey = normalizeToSubjectKey(subject, title);
+  if (!subjectKey) return null;
+  
+  const label = SUBJECT_CONFIG[subjectKey].label;
+  const colors = {
+    social: 'bg-amber-100 text-amber-700 ring-amber-200/50',
+    korean_history: 'bg-orange-100 text-orange-700 ring-orange-200/50',
+    english: 'bg-blue-100 text-blue-700 ring-blue-200/50',
+    math: 'bg-indigo-100 text-indigo-700 ring-indigo-200/50',
+    science: 'bg-emerald-100 text-emerald-700 ring-emerald-200/50',
+    korean: 'bg-rose-100 text-rose-700 ring-rose-200/50',
+    general: 'bg-slate-100 text-slate-600 ring-slate-200/50'
+  } as Record<string, string>;
+  
+  return (
+    <span className={`rounded-md px-2 py-0.5 text-[10px] font-black ring-1 ${colors[subjectKey] || colors.general}`}>
+      {label}
+    </span>
   );
 }

@@ -118,6 +118,7 @@ export default function App() {
           onBack={handleBack}
           isAnonymous={auth.isAnonymous}
           sessionDisplayName={auth.sessionDisplayName}
+          sessionUserAvatar={auth.sessionUserAvatar}
           onSignOut={auth.handleSignOut}
         />
         <main className="min-h-screen bg-slate-100 px-3 pb-24 pt-4 text-slate-900 sm:px-5 sm:pt-6">
@@ -193,7 +194,16 @@ export default function App() {
         );
       case 'account':
         return auth.sessionUserId && !auth.isAnonymous ? (
-          <AccountScreen email={auth.sessionUserEmail} initialDisplayName={auth.sessionDisplayName} syncMessage={auth.syncMessage} onDisplayNameChange={auth.setSessionDisplayName} onSignOut={auth.handleSignOut} />
+          <AccountScreen 
+            userId={auth.sessionUserId}
+            email={auth.sessionUserEmail} 
+            initialDisplayName={auth.sessionDisplayName} 
+            initialAvatarUrl={auth.sessionUserAvatar}
+            syncMessage={auth.syncMessage} 
+            onDisplayNameChange={auth.setSessionDisplayName} 
+            onAvatarChange={auth.setSessionUserAvatar}
+            onSignOut={auth.handleSignOut} 
+          />
         ) : (
           <AuthScreen onSuccess={() => window.location.reload()} />
         );
@@ -223,6 +233,7 @@ export default function App() {
         onBack={handleBack}
         isAnonymous={auth.isAnonymous}
         sessionDisplayName={auth.sessionDisplayName}
+        sessionUserAvatar={auth.sessionUserAvatar}
         onSignOut={auth.handleSignOut}
       />
       {renderContent()}

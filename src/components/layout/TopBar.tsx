@@ -1,4 +1,5 @@
-import { ArrowLeft, Bot, Settings, LogOut } from 'lucide-react';
+import React from 'react';
+import { ArrowLeft, Bot, Settings } from 'lucide-react';
 import type { Screen } from '../../lib/examTypes';
 
 export function TopBar({
@@ -7,6 +8,7 @@ export function TopBar({
   onBack,
   isAnonymous,
   sessionDisplayName,
+  sessionUserAvatar,
   onSignOut,
 }: {
   current: Screen;
@@ -14,78 +16,57 @@ export function TopBar({
   onBack: () => void;
   isAnonymous: boolean;
   sessionDisplayName: string;
+  sessionUserAvatar?: string | null;
   onSignOut: () => void;
 }) {
-  const currentLabel =
-    current === 'landing' ? '홈' :
-    current === 'dashboard' ? '대시보드' :
-    current === 'create' ? '문제 생성' : // 하단 메뉴와 통일
-    current === 'taking' ? '응시' :
-    current === 'result' ? '결과' :
-    current === 'saved' ? '문제함' :
-    current === 'account' ? '내 계정' :
-    '오답노트';
-
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-2.5 sm:px-6 sm:py-4">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <button
-            onClick={() => (current === 'landing' ? undefined : onBack())}
-            className={`flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center border transition-all ${
-              current === 'landing'
-                ? 'border-slate-900 bg-slate-900 text-white'
-                : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
-            }`}
-          >
-            <Bot className="h-5 w-5 sm:h-6 sm:h-6" />
-          </button>
-          
+    <header className="glass-header shadow-sm">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-2.5 sm:px-6 sm:py-3.5">
+        <div className="flex items-center gap-2">
           {current !== 'landing' && (
             <button
               onClick={onBack}
-              className="group flex h-9 w-9 items-center justify-center border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 sm:h-10 sm:w-auto sm:px-3 sm:gap-1.5"
-              title="뒤로 가기"
+              className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-slate-600 ring-1 ring-slate-200/60 transition-all hover:bg-slate-50 active:scale-95"
+              aria-label="뒤로 가기"
             >
-              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
-              <span className="hidden sm:inline text-sm font-semibold">뒤로</span>
+              <ArrowLeft className="h-5 w-5" />
             </button>
           )}
-          
-          <span className="text-[17px] sm:text-lg font-bold tracking-tight text-slate-900 ml-1">
-            {currentLabel}
-          </span>
-        </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2">
+          <button
+            onClick={() => onNavigate('landing')}
+            className="group relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl transition-all active:scale-95"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-700 to-primary opacity-90 transition-all group-hover:scale-110 group-hover:opacity-100" />
+            <div className="absolute inset-0 shadow-[inset_0_1px_2px_rgba(255,255,255,0.4)]" />
+            <Bot className="relative h-6 w-6 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)] transition-transform group-hover:rotate-6" />
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
           {isAnonymous ? (
             <button
               onClick={() => onNavigate('account')}
-              className="flex h-9 items-center gap-2 border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 sm:h-10 sm:px-4"
+              className="flex h-11 items-center gap-2 rounded-2xl bg-primary px-5 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary-container active:scale-95"
             >
               <Settings className="h-4 w-4" />
-              <span className="hidden xs:inline">로그인</span>
+              로그인
             </button>
           ) : (
-            <>
-              <button
-                onClick={() => onNavigate('account')}
-                className="flex h-9 items-center gap-1.5 border border-slate-300 bg-white px-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 sm:h-10 sm:gap-2 sm:px-4"
-              >
-                <Settings className="h-4 w-4" />
-                <span className="truncate max-w-[50px] xs:max-w-[80px] sm:max-w-none">
-                  {sessionDisplayName}
-                </span>
-              </button>
-              <button
-                onClick={onSignOut}
-                className="flex h-9 w-9 items-center justify-center border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 sm:h-10 sm:w-auto sm:px-3 sm:gap-2"
-                title="로그아웃"
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline text-sm font-semibold">로그아웃</span>
-              </button>
-            </>
+            <button
+              onClick={() => onNavigate('account')}
+              className="group flex h-11 items-center gap-3 rounded-2xl bg-slate-50/50 pl-1.5 pr-4 text-sm font-bold text-slate-700 ring-1 ring-slate-200/60 transition-all hover:bg-white hover:ring-slate-300 active:scale-95"
+            >
+              <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 text-[12px] font-black text-white shadow-sm transition-transform group-hover:scale-110">
+                {sessionUserAvatar ? (
+                  <img src={sessionUserAvatar} alt={sessionDisplayName} className="h-full w-full object-cover" />
+                ) : (
+                  sessionDisplayName.charAt(0)
+                )}
+              </div>
+              <span className="max-w-[80px] truncate sm:max-w-none">
+                {sessionDisplayName}
+              </span>
+            </button>
           )}
         </div>
       </div>

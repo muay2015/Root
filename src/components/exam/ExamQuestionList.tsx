@@ -55,9 +55,9 @@ export function ExamQuestionList(props: ExamQuestionListProps) {
   }, [questions, onVisibleChange]);
 
   return (
-    <section className="border border-slate-200 bg-white">
+    <section className="w-full min-w-0 space-y-5 sm:space-y-8">
       {questions.map((question, index) => (
-        <div key={question.id}>
+        <div key={question.id} className="w-full min-w-0">
           <ExamQuestionItem
             question={question}
             questionNumber={index + 1}

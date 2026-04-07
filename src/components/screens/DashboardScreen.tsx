@@ -1,6 +1,6 @@
-import { BarChart, Trophy, Target, History } from 'lucide-react';
+import React from 'react';
+import { BarChart, Trophy, Target, History, TrendingUp, Award, Calendar } from 'lucide-react';
 import type { PersistedExamRecord } from '../../lib/rootPersistence';
-import { Metric } from '../ui/Metric';
 import { SUBJECT_CONFIG } from '../../lib/question/subjectConfig';
 import { isSubjectKey } from '../../lib/examUtils';
 
@@ -29,95 +29,166 @@ export function DashboardScreen({ exams, onOpenExam }: DashboardScreenProps) {
   }, {} as Record<string, { total: number; scoreSum: number }>);
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 pb-28 pt-8 text-slate-900 sm:px-6">
-      <div className="mx-auto max-w-4xl space-y-6">
-        <section className="border border-slate-200 bg-white px-5 py-6 sm:px-8">
+    <main className="min-h-screen bg-surface px-4 pb-28 pt-8 sm:px-6 sm:pt-10">
+      <div className="mx-auto max-w-5xl space-y-8">
+        {/* Header Section */}
+        <header className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
-            <BarChart className="h-6 w-6 text-slate-900" />
-            <h1 className="text-3xl font-bold">학습 대시보드</h1>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl premium-gradient text-white shadow-lg">
+              <TrendingUp className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-black tracking-tight text-slate-900">학습 성과 리포트</h1>
+              <p className="text-sm font-medium text-slate-500">지능형 분석으로 도출된 당신의 학습 데이터입니다.</p>
+            </div>
           </div>
-          <p className="mt-2 text-sm text-slate-500">지금까지의 성취를 데이터로 확인하세요.</p>
-        </section>
+        </header>
 
-        {/* 주요 지표 */}
+        {/* Highlight Metrics */}
         <div className="grid gap-4 sm:grid-cols-3">
-          <Metric label="전체 응시" value={`${totalExams}회`} />
-          <Metric label="평균 점수" value={`${averageScore}점`} />
-          <Metric label="최고 점수" value={`${totalExams > 0 ? Math.max(...submittedExams.map(e => e.score || 0)) : 0}점`} />
+          <MetricCard 
+            label="누적 평가 응시" 
+            value={totalExams} 
+            suffix="회" 
+            icon={<Calendar className="h-5 w-5 text-blue-600" />} 
+          />
+          <MetricCard 
+            label="평균 성취도" 
+            value={averageScore} 
+            suffix="점" 
+            icon={<Target className="h-5 w-5 text-emerald-600" />} 
+          />
+          <MetricCard 
+            label="역대 최고 점수" 
+            value={totalExams > 0 ? Math.max(...submittedExams.map(e => e.score || 0)) : 0} 
+            suffix="점" 
+            icon={<Award className="h-5 w-5 text-amber-600" />} 
+          />
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* 최근 응시 기록 */}
-          <section className="border border-slate-200 bg-white p-5">
-            <div className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
-              <History className="h-4 w-4 text-slate-500" />
-              <h2 className="text-sm font-bold text-slate-700">최근 학습 추이</h2>
+        <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+          {/* 최근 학습 추이 */}
+          <section className="premium-card p-6 sm:p-8">
+            <div className="mb-6 flex items-center justify-between border-b border-slate-50 pb-4">
+              <div className="flex items-center gap-2">
+                <History className="h-5 w-5 text-slate-400" />
+                <h2 className="text-lg font-bold text-slate-800">최근 학습 히스토리</h2>
+              </div>
             </div>
+            
             {recentExams.length === 0 ? (
-              <p className="py-10 text-center text-sm text-slate-400">아직 응시 기록이 없습니다.</p>
+              <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                <BarChart className="mb-3 h-12 w-12 opacity-20" />
+                <p className="text-sm font-medium">아직 생성된 학습 데이터가 없습니다.</p>
+              </div>
             ) : (
               <div className="space-y-4">
                 {recentExams.map((exam) => (
-                  <div key={exam.id} className="flex items-center justify-between">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-slate-900">{exam.title}</p>
-                      <p className="text-xs text-slate-500">{new Date(exam.created_at).toLocaleDateString()}</p>
+                  <button 
+                    key={exam.id} 
+                    onClick={() => onOpenExam(exam)}
+                    className="group flex w-full items-center justify-between rounded-2xl bg-slate-50/50 p-4 transition-all hover:bg-white hover:shadow-md ring-1 ring-transparent hover:ring-blue-100"
+                  >
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white font-bold text-blue-600 ring-1 ring-slate-200">
+                        {SUBJECT_CONFIG[isSubjectKey(exam.subject) ? exam.subject : 'korean_history']?.label.charAt(0)}
+                      </div>
+                      <div className="text-left min-w-0">
+                        <p className="truncate text-sm font-bold text-slate-900">{exam.title}</p>
+                        <p className="text-xs font-medium text-slate-500">{new Date(exam.created_at).toLocaleDateString()}</p>
+                      </div>
                     </div>
-                    <span className={`ml-4 text-sm font-bold ${Number(exam.score) >= 80 ? 'text-blue-600' : 'text-slate-900'}`}>
-                      {exam.score}점
-                    </span>
-                  </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-lg font-black ${Number(exam.score) >= 80 ? 'text-blue-600' : 'text-slate-800'}`}>
+                        {exam.score}
+                      </span>
+                      <div className="h-2 w-2 rounded-full bg-slate-200 group-hover:bg-blue-400 transition-colors" />
+                    </div>
+                  </button>
                 ))}
               </div>
             )}
           </section>
 
-          {/* 과목별 분석 */}
-          <section className="border border-slate-200 bg-white p-5">
-            <div className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
-              <Target className="h-4 w-4 text-slate-500" />
-              <h2 className="text-sm font-bold text-slate-700">과목별 성취도</h2>
-            </div>
-            {Object.keys(subjectStats).length === 0 ? (
-              <p className="py-10 text-center text-sm text-slate-400">데이터가 부족합니다.</p>
-            ) : (
-              <div className="space-y-5">
-                {Object.entries(subjectStats).map(([key, stat]) => {
-                  const label = isSubjectKey(key) ? SUBJECT_CONFIG[key].label : '기타';
-                  const avg = Math.round(stat.scoreSum / stat.total);
-                  return (
-                    <div key={key}>
-                      <div className="mb-1 flex justify-between text-xs font-semibold">
-                        <span className="text-slate-600">{label}</span>
-                        <span className="text-slate-900">{avg}% 완료</span>
-                      </div>
-                      <div className="h-2 w-full bg-slate-100">
-                        <div 
-                          className="h-full bg-slate-900 transition-all duration-500" 
-                          style={{ width: `${avg}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
+          {/* 과목별 성취도 */}
+          <div className="space-y-6">
+            <section className="premium-card p-6">
+              <div className="mb-6 flex items-center gap-2 border-b border-slate-50 pb-4">
+                <Target className="h-5 w-5 text-slate-400" />
+                <h2 className="text-lg font-bold text-slate-800">과목별 성취 분석</h2>
               </div>
-            )}
-          </section>
-        </div>
+              
+              {Object.keys(subjectStats).length === 0 ? (
+                <p className="py-10 text-center text-sm font-medium text-slate-400">데이터를 수집 중입니다.</p>
+              ) : (
+                <div className="space-y-6">
+                  {Object.entries(subjectStats).map(([key, stat]) => {
+                    const label = isSubjectKey(key) ? SUBJECT_CONFIG[key].label : '기타';
+                    const avg = Math.round(stat.scoreSum / stat.total);
+                    return (
+                      <div key={key} className="space-y-2">
+                        <div className="flex justify-between text-sm font-bold">
+                          <span className="text-slate-600">{label}</span>
+                          <span className="text-blue-600">{avg}%</span>
+                        </div>
+                        <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                          <div 
+                            className="h-full premium-gradient transition-all duration-1000 ease-out" 
+                            style={{ width: `${avg}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
 
-        {/* 하단 배지 섹션 (예시) */}
-        <section className="border border-slate-200 bg-white p-5">
-          <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
-            <Trophy className="h-4 w-4 text-amber-500" />
-            <h2 className="text-sm font-bold text-slate-700">획득 칭호</h2>
+            {/* Achievements */}
+            <section className="premium-card p-6">
+              <div className="mb-4 flex items-center gap-2 border-b border-slate-50 pb-4">
+                <Trophy className="h-5 w-5 text-amber-500" />
+                <h2 className="text-lg font-bold text-slate-800">나의 배지</h2>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge label="성실한 학습자" theme="slate" />
+                {averageScore >= 90 && <Badge label="마스터 에디션" theme="blue" />}
+                {totalExams >= 10 && <Badge label="학습 열정 폭발" theme="amber" />}
+              </div>
+            </section>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <span className="border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600">성실한 학습자</span>
-            {averageScore >= 90 && <span className="border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">고득점 고수</span>}
-            {totalExams >= 10 && <span className="border border-amber-100 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">열정적인 응시자</span>}
-          </div>
-        </section>
+        </div>
       </div>
     </main>
+  );
+}
+
+function MetricCard({ label, value, suffix, icon }: { label: string, value: number, suffix: string, icon: React.ReactNode }) {
+  return (
+    <div className="premium-card p-6">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 ring-1 ring-slate-100">
+          {icon}
+        </div>
+        <span className="text-sm font-bold text-slate-500">{label}</span>
+      </div>
+      <div className="mt-4 flex items-baseline gap-1">
+        <span className="text-3xl font-black tracking-tight text-slate-900">{value}</span>
+        <span className="text-sm font-bold text-slate-400">{suffix}</span>
+      </div>
+    </div>
+  );
+}
+
+function Badge({ label, theme }: { label: string, theme: 'slate' | 'blue' | 'amber' }) {
+  const styles = {
+    slate: 'bg-slate-50 text-slate-600 border-slate-100',
+    blue: 'bg-blue-50 text-blue-700 border-blue-100',
+    amber: 'bg-amber-50 text-amber-700 border-amber-100'
+  };
+  return (
+    <span className={`rounded-xl border px-3 py-1.5 text-[11px] font-black uppercase tracking-wider ${styles[theme]}`}>
+      {label}
+    </span>
   );
 }

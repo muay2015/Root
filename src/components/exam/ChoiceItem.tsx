@@ -1,3 +1,5 @@
+import { Check } from 'lucide-react';
+
 type ChoiceItemProps = {
   number: number;
   text: string;
@@ -11,36 +13,32 @@ export function ChoiceItem({ number, text, selected, onSelect }: ChoiceItemProps
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      className={`block w-full rounded-sm px-2 py-3 text-left transition sm:px-3 ${
+      className={`group relative flex w-full items-start gap-3 rounded-xl border p-3.5 text-left transition-all duration-200 sm:gap-4 sm:p-4 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
         selected
-          ? 'bg-blue-50 text-slate-900'
-          : 'bg-transparent text-slate-700 hover:bg-slate-50'
+          ? 'border-blue-600 bg-blue-50/80 shadow-[0_0_0_1px_rgba(37,99,235,1)] z-10'
+          : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50/80 hover:shadow-sm'
       }`}
     >
-      <div className="flex w-full min-w-0 -translate-x-[2px] items-start gap-2 sm:-translate-x-[3px] sm:gap-3">
-        <div
-          className={`mt-[1px] flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-[14px] font-bold leading-none sm:mt-[2px] sm:h-9 sm:w-9 sm:text-[15px] ${
-            selected
-              ? 'border-blue-700 bg-blue-700 text-white'
-              : 'border-slate-300 bg-white text-slate-700'
-          }`}
-        >
-          {number}
-        </div>
-        <div
-          className="mt-[4px] min-w-0 flex-1 overflow-hidden whitespace-normal break-keep text-[14px] leading-6 sm:mt-[5px] sm:text-[15px] sm:leading-7"
-          style={{
-            width: '100%',
-            minWidth: 0,
-            maxWidth: '100%',
-            wordBreak: 'keep-all',
-            overflowWrap: 'break-word',
-            writingMode: 'horizontal-tb',
-            textOrientation: 'mixed',
-          }}
-        >
-          {text}
-        </div>
+      <div
+        className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[14px] font-bold transition-colors duration-200 sm:h-8 sm:w-8 sm:text-[15px] ${
+          selected
+            ? 'bg-blue-600 text-white shadow-sm'
+            : 'bg-slate-100 text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600'
+        }`}
+      >
+        {selected ? <Check className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={3} /> : number}
+      </div>
+      
+      <div
+        className={`flex-1 overflow-hidden whitespace-normal break-keep pt-[2px] text-[15px] leading-[1.6] sm:pt-[4px] sm:text-[16px] sm:leading-[1.6] transition-colors duration-200 ${
+          selected ? 'text-blue-950 font-medium' : 'text-slate-700 group-hover:text-slate-900'
+        }`}
+        style={{
+          wordBreak: 'keep-all',
+          overflowWrap: 'break-word',
+        }}
+      >
+        {text}
       </div>
     </button>
   );

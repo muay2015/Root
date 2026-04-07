@@ -1,3 +1,5 @@
+import React from 'react';
+
 // 선택 패널 컴포넌트
 export function SelectorPanel({
   title,
@@ -13,15 +15,18 @@ export function SelectorPanel({
   labelMap?: Record<string, string>;
 }) {
   return (
-    <section className="border border-slate-200 bg-white px-5 py-5">
-      <h2 className="text-sm font-semibold text-slate-700">{title}</h2>
-      <div className="mt-4 flex flex-wrap gap-2">
+    <section className="premium-card p-5 sm:p-6 ring-1 ring-slate-100/50 bg-white">
+      <h2 className="text-sm font-black uppercase tracking-wider text-slate-400">{title}</h2>
+      <div className="mt-4 flex flex-wrap gap-2.5">
         {options.map((option) => (
           <button
             key={option}
+            type="button"
             onClick={() => onSelect(option)}
-            className={`border px-4 py-3 text-sm font-semibold ${
-              value === option ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700'
+            className={`rounded-xl px-5 py-3 text-[14px] font-bold transition-all duration-300 ${
+              value === option 
+                ? 'premium-gradient text-white shadow-md' 
+                : 'bg-slate-50 text-slate-600 ring-1 ring-outline hover:bg-white hover:shadow-sm'
             }`}
           >
             {labelMap?.[option] ?? option}

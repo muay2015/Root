@@ -1,10 +1,9 @@
+import { FileText } from 'lucide-react';
 import { hasStimulus } from '../../lib/question/hasStimulus';
 
 type QuestionStimulusBoxProps = {
   content?: string | null;
 };
-
-const HANGUL_ITEM_MARKERS = ['ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
 
 function splitStimulusParagraphs(content: string) {
   return content
@@ -13,44 +12,29 @@ function splitStimulusParagraphs(content: string) {
     .filter(Boolean);
 }
 
-function stripLeadingMarker(value: string) {
-  return value
-    .replace(
-      /^(?:[-*•·▪■]|(?:\(?\d+\)?[.)]?)|(?:[①-⑳])|(?:\(?[가-힣ㄱ-ㅎA-Za-z]\)?[.)]?)|(?:[ㄱ-ㅎ][.)]))\s*/u,
-      '',
-    )
-    .trim();
-}
-
-function formatStimulusParagraphs(paragraphs: string[]) {
-  if (paragraphs.length <= 1) {
-    return paragraphs;
-  }
-
-  return paragraphs.map((paragraph, index) => {
-    const marker = HANGUL_ITEM_MARKERS[index] ?? `${index + 1}`;
-    return `${marker}. ${stripLeadingMarker(paragraph)}`;
-  });
-}
-
 export function QuestionStimulusBox({ content }: QuestionStimulusBoxProps) {
   if (!hasStimulus(content)) {
     return null;
   }
 
-  const paragraphs = formatStimulusParagraphs(splitStimulusParagraphs(content));
+  const paragraphs = splitStimulusParagraphs(content);
 
   return (
-    <div className="border-l border-slate-300 bg-slate-50/60 pl-4 sm:pl-5">
-      <div className="mb-3 text-[11px] font-semibold tracking-[0.08em] text-slate-500">
-        제시문 / 조건
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-sm mt-2 mb-1">
+      <div className="flex items-center gap-1.5 border-b border-slate-200/60 bg-slate-100/50 px-4 py-2.5 sm:px-5">
+        <FileText className="h-4 w-4 text-slate-500" strokeWidth={2.5} />
+        <span className="text-[12px] font-bold tracking-[0.05em] text-slate-600">
+          제시문 / 조건
+        </span>
       </div>
-      <div className="space-y-2.5 text-[14px] leading-7 text-slate-700 sm:text-[15px] sm:leading-8">
-        {paragraphs.map((paragraph, index) => (
-          <p key={`${index}-${paragraph}`} className="whitespace-pre-wrap break-words break-keep">
-            {paragraph}
-          </p>
-        ))}
+      <div className="px-4 py-4 sm:px-5 sm:py-5">
+        <div className="space-y-3 text-[15px] leading-[1.7] text-slate-800 sm:text-[16px] sm:leading-[1.8]">
+          {paragraphs.map((paragraph, index) => (
+            <p key={`${index}-${paragraph}`} className="whitespace-pre-wrap break-words break-keep">
+              {paragraph}
+            </p>
+          ))}
+        </div>
       </div>
     </div>
   );
