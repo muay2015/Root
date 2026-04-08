@@ -1,6 +1,6 @@
 import React, { type ChangeEvent } from 'react';
 import { SUBJECT_CONFIG, getSubjectSelectionDefaults, getSubjectSelectionLabel, usesNoSelector, getSubjectQuestionTypes, getSubjectFormats, type SelectionFormat, type SubjectKey } from '../../lib/question/subjectConfig';
-import type { BuilderMode, DifficultyLevel, SchoolLevel, MathGrade } from '../../lib/examTypes';
+import type { BuilderMode, DifficultyLevel, SchoolLevel, DetailedGrade } from '../../lib/examTypes';
 import { UploadPanel } from '../ui/UploadPanel';
 import { parseFileToText } from '../../lib/fileParser';
 
@@ -25,8 +25,8 @@ export interface CreateScreenProps {
   setDifficulty: (value: DifficultyLevel) => void;
   schoolLevel: SchoolLevel;
   setSchoolLevel: (value: SchoolLevel) => void;
-  mathGrade: MathGrade;
-  setMathGrade: (value: MathGrade) => void;
+  detailedGrade: DetailedGrade;
+  setDetailedGrade: (value: DetailedGrade) => void;
   count: number;
   setCount: (value: number) => void;
   generationTopic: string;
@@ -53,7 +53,7 @@ export function CreateScreen(props: CreateScreenProps) {
   const {
     mode, setMode, subject, onSelectSubject, questionType, setQuestionType,
     format, setFormat, difficulty, setDifficulty, schoolLevel, setSchoolLevel,
-    mathGrade, setMathGrade,
+    detailedGrade, setDetailedGrade,
     count, setCount, generationTopic, setGenerationTopic, materialText, setMaterialText,
     parsedFiles, setParsedFiles, questionFiles, answerFiles, setQuestionFiles, setAnswerFiles,
     ready, isGenerating, generationError, onGenerate,
@@ -74,7 +74,9 @@ export function CreateScreen(props: CreateScreenProps) {
 
   const readyHint = ready
     ? '설정이 완료되었습니다. 문제 생성을 시작할 수 있습니다.'
-    : '주제 또는 핵심 단원명을 입력해 주세요.';
+    : SUBJECT_CONFIG[subject].uploadRecommendation === 'REQUIRED'
+      ? '학습할 지문 자료를 업로드하거나 텍스트를 입력해 주세요.'
+      : '주제 또는 핵심 단원명을 입력해 주세요.';
 
   const handleSelectSubject = (key: SubjectKey) => {
     onSelectSubject(key);
@@ -135,10 +137,10 @@ export function CreateScreen(props: CreateScreenProps) {
           mode={mode} 
           value={schoolLevel} 
           onChange={setSchoolLevel} 
-          mathGrade={mathGrade}
-          onMathGradeChange={setMathGrade}
+          detailedGrade={detailedGrade}
+          onDetailedGradeChange={setDetailedGrade}
         />
-        <SubjectSelector mode={mode} schoolLevel={schoolLevel} subject={subject} onSelectSubject={handleSelectSubject} />
+        <SubjectSelector mode={mode} schoolLevel={schoolLevel} detailedGrade={detailedGrade} subject={subject} onSelectSubject={handleSelectSubject} />
         
         <GenerationSettings 
           hideSelector={hideSelector}
@@ -153,16 +155,18 @@ export function CreateScreen(props: CreateScreenProps) {
           count={count}
           setCount={setCount}
           subject={subject}
-          mathGrade={mathGrade}
+          detailedGrade={detailedGrade}
+          setDetailedGrade={setDetailedGrade}
           generationTopic={generationTopic}
           setGenerationTopic={setGenerationTopic}
+          mode={mode}
         />
 
         <AIDetailsInput 
           mode={mode}
           subject={subject}
           questionType={questionType}
-          mathGrade={mathGrade}
+          detailedGrade={detailedGrade}
           generationTopic={generationTopic}
           setGenerationTopic={setGenerationTopic}
           materialText={materialText}
@@ -195,6 +199,7 @@ export function CreateScreen(props: CreateScreenProps) {
           count={count}
           readyHint={readyHint}
           onGenerate={onGenerate}
+          mode={mode}
         />
       </div>
     </main>

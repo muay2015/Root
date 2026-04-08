@@ -1,15 +1,16 @@
 import React from 'react';
 import { type SubjectKey, SUBJECT_CONFIG, CATEGORY_CONFIG, type SubjectCategory } from '../../lib/question/subjectConfig';
-import { type SchoolLevel, type BuilderMode } from '../../lib/examTypes';
+import { type SchoolLevel, type BuilderMode, type DetailedGrade } from '../../lib/examTypes';
 
 interface SubjectSelectorProps {
   mode: BuilderMode;
   schoolLevel: SchoolLevel;
+  detailedGrade: DetailedGrade;
   subject: SubjectKey;
   onSelectSubject: (key: SubjectKey) => void;
 }
 
-export function SubjectSelector({ mode, schoolLevel, subject, onSelectSubject }: SubjectSelectorProps) {
+export function SubjectSelector({ mode, schoolLevel, detailedGrade, subject, onSelectSubject }: SubjectSelectorProps) {
   // 현재 선택된 과목의 카테고리를 초기 영역으로 설정
   const initialCategory = SUBJECT_CONFIG[subject].category;
   const [activeCategory, setActiveCategory] = React.useState<SubjectCategory>(initialCategory);
@@ -28,9 +29,9 @@ export function SubjectSelector({ mode, schoolLevel, subject, onSelectSubject }:
     return subjectsInCat.some((key) => {
       const config = SUBJECT_CONFIG[key];
       if (mode === 'csat') {
-        return config.supportedLevels.includes('high') || key.includes('_');
+        return config.supportedLevels.includes('high');
       }
-      return config.supportedLevels.includes(schoolLevel);
+      return config.supportedLevels.includes(schoolLevel) && config.supportedGrades.includes(detailedGrade);
     });
   });
 
@@ -40,9 +41,9 @@ export function SubjectSelector({ mode, schoolLevel, subject, onSelectSubject }:
     .filter((key) => {
       const config = SUBJECT_CONFIG[key];
       if (mode === 'csat') {
-        return config.supportedLevels.includes('high') || key.includes('_');
+        return config.supportedLevels.includes('high');
       }
-      return config.supportedLevels.includes(schoolLevel);
+      return config.supportedLevels.includes(schoolLevel) && config.supportedGrades.includes(detailedGrade);
     });
 
   const handleCategoryClick = (cat: SubjectCategory) => {
@@ -54,9 +55,9 @@ export function SubjectSelector({ mode, schoolLevel, subject, onSelectSubject }:
       .find((key) => {
         const config = SUBJECT_CONFIG[key];
         if (mode === 'csat') {
-          return config.supportedLevels.includes('high') || key.includes('_');
+          return config.supportedLevels.includes('high');
         }
-        return config.supportedLevels.includes(schoolLevel);
+        return config.supportedLevels.includes(schoolLevel) && config.supportedGrades.includes(detailedGrade);
       });
 
     if (firstSubjectInCat && firstSubjectInCat !== subject) {

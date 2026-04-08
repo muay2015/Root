@@ -7,6 +7,7 @@ import {
   usesNoSelector,
   type SubjectKey,
   type SelectionFormat,
+  getUploadRecommendation,
 } from '../lib/question/subjectConfig';
 import {
   buildQuestions,
@@ -25,7 +26,7 @@ import {
   type PersistedExamRecord,
 } from '../lib/rootPersistence';
 import { mergeExamRecords } from '../lib/examUtils';
-import type { BuilderMode, DifficultyLevel, SchoolLevel, MathGrade } from '../lib/examTypes';
+import type { BuilderMode, DifficultyLevel, SchoolLevel, DetailedGrade } from '../lib/examTypes';
 import type { ExamQuestion } from '../components/exam/types';
 
 export function useExamGenerator(
@@ -42,7 +43,7 @@ export function useExamGenerator(
   const [format, setFormat] = useState<SelectionFormat>(defaultSelection.format);
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('hard');
   const [schoolLevel, setSchoolLevel] = useState<SchoolLevel>('high');
-  const [mathGrade, setMathGrade] = useState<MathGrade>('1학년');
+  const [detailedGrade, setDetailedGrade] = useState<DetailedGrade>('1학년');
   const [count, setCount] = useState(12);
   const [generationTopic, setGenerationTopic] = useState('');
   const [materialText, setMaterialText] = useState(''); // 파일 파싱용 텍스트 (레거시/공통용)
@@ -55,15 +56,28 @@ export function useExamGenerator(
   const [imageData, setImageData] = useState<{ mimeType: string; data: string }[]>([]);
 
   const selectionLabel = getSubjectSelectionLabel(subject, questionType, format);
+  const rec = SUBJECT_CONFIG[subject].uploadRecommendation;
+  const hasMaterial = materialText.trim().length >= 20 || ocrPages.some(p => p.text.trim().length > 20);
+  const hasTopic = generationTopic.trim().length >= 2;
+
   const readyToGenerate = mode === 'csat'
     ? true // 수능 모드에서는 주제 입력 없이도 전 범위 생성 가능
-    : (generationTopic.trim().length >= 2 || materialText.trim().length >= 20);
+    : rec === 'REQUIRED'
+      ? hasMaterial // 국어, 영어 등 자료 필수 과목은 자료가 있어야 함
+      : (hasTopic || hasMaterial); // 수학, 사회 등은 주제만으로도 가능
 
   const handleSubjectSelect = (nextSubject: SubjectKey) => {
     const nextDefaults = getSubjectSelectionDefaults(nextSubject);
     setSubject(nextSubject);
     setQuestionType(nextDefaults.questionType);
-    setFormat(nextDefaults.format);
+    
+    if (mode === 'csat') {
+      setFormat('객관식');
+      setSchoolLevel('high'); // 수능 모드는 항상 고등 레벨로 분류
+    } else {
+      setFormat(nextDefaults.format);
+    }
+    
     setGenerationError(null);
   };
 
@@ -76,8 +90,8 @@ export function useExamGenerator(
           // 수능 모드에서는 고등 과정 지원 과목 또는 세부 과목(_ 포함) 위주로 필터링
           return config.supportedLevels.includes('high') || key.includes('_');
         }
-        // 내신 모드에서는 현재 선택된 학교급(중등/고등)을 지원하는 과목만 필터링
-        return config.supportedLevels.includes(schoolLevel);
+        // 내신 모드에서는 현재 선택된 학교급(중등/고등)과 상세 학년(1/2/3)을 지원하는 과목만 필터링
+        return config.supportedLevels.includes(schoolLevel) && config.supportedGrades.includes(detailedGrade);
       });
 
     if (!availableSubjects.includes(subject)) {
@@ -101,17 +115,22 @@ export function useExamGenerator(
         // 모든 OCR 페이지 텍스트 합치기
         const combinedOcrText = ocrPages.map(p => p.text).join('\n\n');
         
-        const finalMaterialText = (materialText.trim().length < 20 && combinedOcrText.trim().length < 20 && generationTopic.trim().length >= 2)
-          ? `이 문제는 사용자가 입력한 단원명 '${generationTopic.trim()}'에 기초하여 생성되는 문제입니다.`
+        const finalMaterialText = (materialText.trim().length < 20 && combinedOcrText.trim().length < 20)
+          ? (generationTopic.trim().length >= 2 
+              ? `이 문제는 사용자가 입력한 단원명 '${generationTopic.trim()}'에 기초하여 생성되는 문제입니다.`
+              : mode === 'csat'
+                ? `이 문제는 ${SUBJECT_CONFIG[subject].label} 수능 및 모의고사 출제 경향을 반영하여 전 범위에서 고르게 출제되는 문제입니다.`
+                : `이 문제는 사용자가 업로드한 자료가 없으나, 선택한 과목의 교육과정에 기초하여 생성되는 문제입니다.`)
           : `${materialText}\n\n${combinedOcrText}`.trim();
 
         const result = await examService.generateAIExam({
           materialText: finalMaterialText,
           subject,
           questionType: usesNoSelector(subject) ? undefined : questionType,
-          format: usesNoSelector(subject) ? undefined : format,
+          format: mode === 'csat' ? '객관식' : (usesNoSelector(subject) ? undefined : format),
           difficulty,
           schoolLevel,
+          detailedGrade,
           count,
           title: nextTitle,
           topic: generationTopic.trim() || selectionLabel || SUBJECT_CONFIG[subject].label,
@@ -206,6 +225,6 @@ export function useExamGenerator(
     isGenerating, generationError, readyToGenerate, selectionLabel, generateExam,
     imageData, setImageData,
     ocrPages, setOcrPages,
-    mathGrade, setMathGrade,
+    detailedGrade, setDetailedGrade,
   };
 }

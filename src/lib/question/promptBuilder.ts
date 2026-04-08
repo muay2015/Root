@@ -31,14 +31,17 @@ function buildFeedbackBlock(validationFeedback?: string[]) {
 }
 
 function isSocialSubject(subject: SubjectKey): boolean {
-  return subject === 'social' || 
-         subject === 'middle_social' || 
-         subject === 'high_social' || 
-         subject.startsWith('social_') ||
-         subject.startsWith('geography_') ||
-         subject.startsWith('economics_') ||
-         subject.startsWith('politics_') ||
-         subject.startsWith('ethics_');
+  const s = subject.toString();
+  return (
+    s.includes('social') ||
+    s.includes('geography') ||
+    s.includes('economics') ||
+    s.includes('politics') ||
+    s.includes('ethics') ||
+    s.includes('social_culture') ||
+    s.includes('living_ethics') ||
+    s.includes('ethics_thought')
+  );
 }
 
 function buildGenericPrompt(input: PromptBuildInput) {
@@ -70,7 +73,7 @@ function buildGenericPrompt(input: PromptBuildInput) {
     '["topic", "type", "stem", "choices", "answer", "explanation"]',
     'Use "type" = "multiple".',
     'choices must contain exactly 5 strings.',
-    'answer must match exactly one choice string.',
+    '- [CRITICAL] "answer" must be a string that matches EXACTLY one of the values in the "choices" array. Copy the choice text exactly (including all characters and spaces) into the answer field.',
     '',
     `Subject: ${rules.subjectLabel}`,
     `${selectionLabel}: ${selectionValue}`,
@@ -92,6 +95,7 @@ function buildGenericPrompt(input: PromptBuildInput) {
     '- [CRITICAL] JSON 결과물 내의 모든 LaTeX 명령어(\\\\sqrt 등)와 구분자(\\\\(, \\\\))는 반드시 JSON 규격에 맞춰 이중 역슬래시(\\\\)를 사용해야 합니다. (예: "\\(n\\)"(X) -> "\\\\(n\\\\)"(O), "\\sqrt{x}"(X) -> "\\\\sqrt{x}"(O))',
     '- [CRITICAL] "Choice 1", "Placeholder", "내용 없음" 등의 임시 텍스트(Placeholder)를 절대 사용하지 마십시오. 모든 보기는 실제 출제될 유효한 텍스트여야 합니다.',
     '- [CRITICAL] 지문이나 발문 내에 불필요한 기호(예: 문장이나 시구 사이의 슬래시 "/" 등)를 사용하여 구분하지 마십시오. 줄바꿈이 필요한 경우 반드시 실제 줄바꿈 문자(\\n)를 사용하여 가독성을 확보하십시오.',
+    '- [CRITICAL] "밑줄 친 부분"의 의미나 역할을 묻는 문제 등에서 밑줄 표시가 필요한 경우, 반드시 해당 단어나 문장을 <u>와 </u> 태그로 감싸십시오. (예: <u>coordinate</u>)',
     '',
     buildFeedbackBlock(input.validationFeedback),
     '',
@@ -127,13 +131,15 @@ function buildHistoryPrompt(input: PromptBuildInput) {
     '공통 규칙:',
     '- 모든 문항은 객관식 5지선다형이며, 선택지(choices)는 반드시 유효한 내용으로 5개를 채워야 한다.',
     '- "Choice 1", "Placeholder", "준비 중" 등의 임시 텍스트를 절대로 사용하지 않는다.',
-    '- 정답은 1개만 존재하고 answer는 1~5 숫자여야 한다.',
+    '- [CRITICAL] "answer"는 반드시 선택지(choices) 중 하나의 내용과 글자 한 토씨 틀리지 않고 100% 정확하게 일치해야 한다. (예: 선택지가 "3"이면 정답도 "3", "3번"이면 안 됨)',
+    '- 정답은 1개만 존재하고 answer는 선택지 중 하나의 텍스트여야 한다.',
     '- 한국 중등 및 고등 역사 평가에 맞는 자연스러운 한국어 표현만 사용한다.',
     '- 외부 지식 없이도 제시문 또는 기본 학습 범위 안에서 풀 수 있어야 한다.',
     '- 문항 간 난이도 편차가 지나치게 크지 않도록 유지한다.',
     '- 해설은 정답 근거와 오답이 왜 틀렸는지까지 간단히 설명한다.',
     '- 사람이나 학생, 사상가 등을 고르는 문항(예: "학생은 누구인가?")의 경우, 반드시 선택지나 제시문에 해당 인물의 이름을 명시한다.',
     '- [필수] 모든 수학 기호와 수식은 반드시 LaTeX 형식을 사용한다. "루트"와 같은 한글 표현을 금지하고 \\sqrt{} 등을 사용하며, 모든 수식은 반드시 \\( 와 \\) 기호로 감싼다. (예: 5루트2 -> \\(5\\sqrt{2}\\))',
+    '- [필수] "밑줄 친 부분"과 같이 강조가 필요한 텍스트는 반드시 <u>와 </u> 태그를 사용한다. (예: <u>이순신</u>)',
     '- [중요] JSON 결과물 내의 모든 LaTeX 명령어(\\\\sqrt 등)와 구분자(\\\\(, \\\\))는 반드시 JSON 규격에 따라 이중 역슬래시(\\\\)로 작성해야 한다. (예: "\\(n\\)"(X) -> "\\\\(n\\\\)"(O), "\\sqrt{x}"(X) -> "\\\\sqrt{x}"(O))',
     '',
     '난이도 규칙:',
@@ -199,6 +205,7 @@ export function buildSummaryPrompt(input: PromptBuildInput) {
     '--------------------------------------------------',
     '당신은 오답 분석 및 약점 극복 전문가입니다.',
     '모든 결과물은 반드시 아래의 단일 JSON 객체 형식으로 반환하세요:',
+    '- [CRITICAL] "answer" 필드는 반드시 "choices" 배열 중 하나의 값과 글자 하나 틀리지 않고 100% 동일하게 작성하세요.',
     'Each generated question must include exactly 5 valid strings in "choices".',
     '{',
     '  "summary": "핵심 요약 텍스트 (Markdown 포함)",',
@@ -228,6 +235,7 @@ function buildCsatPrompt(input: PromptBuildInput) {
     '지엽적인 지식 암기가 아닌, 대학 교육에 필요한 "사고력"과 "문제 해결 능력"을 측정하는 고품질 문항을 생성하십시오.',
     '반드시 JSON 배열 형식으로만 반환하세요.',
     'JSON의 각 항목은 다음 키를 반드시 포함해야 합니다: ["topic", "type", "stem", "choices", "answer", "explanation"]',
+    '- [CRITICAL] "answer" 필드의 텍스트는 반드시 "choices" 배열의 값 중 하나와 토씨 하나 틀리지 않고 100% 일치해야 합니다.',
     '',
     `영역: ${rules.subjectLabel}`,
     `문항 성격: ${selectionValue}`,
@@ -243,6 +251,7 @@ function buildCsatPrompt(input: PromptBuildInput) {
     '- [지문/자료] 단순 발췌가 아닌, 여러 정보가 유기적으로 연결된 지문이나 <보기> 자료를 구성하십시오.',
     '- [선지] 정답과 매우 유사하여 정밀한 개념 이해 없이는 고르기 어려운 "매력적인 오답"을 반드시 포함하십시오.',
     '- [수식] 모든 수학적 표현은 반드시 LaTeX를 사용하며, \\\\( 와 \\\\) 로 감싸십시오. (예: \\\\(\\\\sin\\\\theta\\\\))',
+    '- [밑줄] "밑줄 친 부분"의 의미를 묻는 문제 등에서 밑줄이 필요한 경우 반드시 <u>와 </u> 태그를 사용하십시오. (예: <u>coordinate</u>)',
     '- [해설] 정답의 논리적 도출 과정뿐만 아니라, 가장 헷갈리기 쉬운 오답이 왜 정답이 될 수 없는지(오답 매력도 분석)를 반드시 포함하십시오.',
     '',
     buildFeedbackBlock(input.validationFeedback),

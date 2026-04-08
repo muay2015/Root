@@ -30,7 +30,14 @@ export function WrongListScreen({
   const allSubjects = useMemo(() => {
     const list = new Set<string>(['전체']);
     for (const note of wrongNotes) {
-      const subjectKey = normalizeToSubjectKey(note.subject || (note.id.includes('___') ? note.id.split('___')[0] : null), note.examTitle);
+      const examMatch = savedExams.find(e => e.title === note.examTitle);
+      const subjectKey = normalizeToSubjectKey(
+        note.subject || (note.id.includes('___') ? note.id.split('___')[0] : null), 
+        note.examTitle,
+        examMatch?.questions[0]?.topic,
+        examMatch?.questions,
+        examMatch?.exam_format
+      );
       const label = isSubjectKey(subjectKey) ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
       list.add(label);
     }
@@ -44,7 +51,14 @@ export function WrongListScreen({
   const filteredNotes = useMemo(() => {
     if (selectedSubject === '전체') return wrongNotes;
     return wrongNotes.filter((note) => {
-      const subjectKey = normalizeToSubjectKey(note.subject || (note.id.includes('___') ? note.id.split('___')[0] : null), note.examTitle);
+      const examMatch = savedExams.find(e => e.title === note.examTitle);
+      const subjectKey = normalizeToSubjectKey(
+        note.subject || (note.id.includes('___') ? note.id.split('___')[0] : null), 
+        note.examTitle,
+        examMatch?.questions[0]?.topic,
+        examMatch?.questions,
+        examMatch?.exam_format
+      );
       const label = isSubjectKey(subjectKey) ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
       return label === selectedSubject;
     });
@@ -61,7 +75,7 @@ export function WrongListScreen({
           subjectKey = note.id.split('___')[0];
         } else {
           const examMatch = savedExams.find(e => e.title === note.examTitle);
-          subjectKey = normalizeToSubjectKey(examMatch?.subject, note.examTitle);
+          subjectKey = normalizeToSubjectKey(examMatch?.subject, note.examTitle, examMatch?.questions[0]?.topic, examMatch?.questions, examMatch?.exam_format);
         }
       }
       

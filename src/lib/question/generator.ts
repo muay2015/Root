@@ -3,6 +3,7 @@ import { buildQuestionPrompt } from './promptBuilder.ts';
 import { validateGeneratedQuestions, type ValidationResult } from './validator.ts';
 import { type SubjectKey } from './subjectConfig.ts';
 import { normalizeChoiceText } from './normalizeChoiceText.ts';
+import { resolveAnswerFromChoices as resolveAnswerFromChoicesLoose } from './answerMatching.ts';
 
 export type GeneratedQuestion = {
   id: number;
@@ -67,24 +68,145 @@ function splitChoiceString(value: string) {
     .filter((part) => part.length > 0);
 }
 
+function splitChoiceStringSafely(value: string) {
+  const prepared = value
+    .replace(/\r\n/g, '\n')
+    .replace(/\s*\|\s*/g, '\n')
+    .replace(/\s\/\s/g, '\n')
+    .replace(/(?:^|\s)([\u2460-\u2464])\s+/gu, '\n$1 ')
+    .replace(/(?:^|\s)([1-5]|[A-Ea-e])[\.\)]\s+/g, '\n$1. ');
+
+  return prepared
+    .split(/\n+/)
+    .map((part) => normalizeChoiceText(part))
+    .filter((part) => part.length > 0);
+}
+
+function normalizeAnswerComparison(value: string) {
+  return normalizeChoiceText(value)
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/\\\(|\\\)|\\\[|\\\]|\$|\{|\}/g, '')
+    .replace(/\\text\{([^}]*)\}/g, '$1')
+    .replace(/\\sqrt/g, 'root')
+    .replace(/\\times/g, '*')
+    .replace(/\\div/g, '/')
+    .trim();
+}
+
+function parseLetterChoiceIndex(value: string): number | null {
+  const compact = value.trim().toUpperCase();
+  const match = compact.match(/^(?:ANSWER[:\s]*)?([A-E])(?:[.)])?$/);
+  if (!match) {
+    return null;
+  }
+
+  return match[1].charCodeAt(0) - 65;
+}
+
+function parseAnswerChoiceIndex(value: string): number | null {
+  const compact = value.trim().replace(/\s+/g, '');
+  const circledDigitMap: Record<string, number> = {
+    '①': 0,
+    '②': 1,
+    '③': 2,
+    '④': 3,
+    '⑤': 4,
+  };
+
+  if (compact in circledDigitMap) {
+    return circledDigitMap[compact];
+  }
+
+  if (/^[1-5][.)]?$/.test(compact)) {
+    return Number.parseInt(compact[0], 10) - 1;
+  }
+
+  const labeledDigit = compact.match(/^(?:[^0-9]*:)?[^0-9]*([1-5])(?:번|번이다|번임|번정답|번이정답)?$/u);
+  if (labeledDigit) {
+    return Number.parseInt(labeledDigit[1], 10) - 1;
+  }
+
+  return parseLetterChoiceIndex(compact);
+}
+
+function resolveAnswerFromChoices(rawAnswer: unknown, choices: string[]) {
+  if (typeof rawAnswer === 'number') {
+    const idx = Math.floor(rawAnswer) - 1;
+    return choices[idx] || '';
+  }
+
+  if (typeof rawAnswer !== 'string') {
+    return '';
+  }
+
+  const trimmed = rawAnswer.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  const numericIndex = parseAnswerChoiceIndex(trimmed);
+  if (numericIndex !== null) {
+    return choices[numericIndex] || '';
+  }
+
+  const answerWithoutLeadingLabel = trimmed
+    .replace(/^(?:answer|correct answer)\s*[:\-]?\s*/i, '')
+    .replace(/^(?:정답|답)\s*[:：\-]?\s*/u, '')
+    .trim();
+
+  const labeledIndex = parseAnswerChoiceIndex(answerWithoutLeadingLabel);
+  if (labeledIndex !== null) {
+    return choices[labeledIndex] || '';
+  }
+
+  const normalizedAnswer = normalizeAnswerComparison(answerWithoutLeadingLabel);
+  if (!normalizedAnswer) {
+    return normalizeChoiceText(answerWithoutLeadingLabel);
+  }
+
+  const exactMatches = choices.filter(
+    (choice) => normalizeAnswerComparison(choice) === normalizedAnswer,
+  );
+  if (exactMatches.length === 1) {
+    return exactMatches[0];
+  }
+
+  const containedMatches =
+    normalizedAnswer.length >= 2
+      ? choices.filter((choice) => {
+          const normalizedChoice = normalizeAnswerComparison(choice);
+          return (
+            normalizedChoice.includes(normalizedAnswer) ||
+            normalizedAnswer.includes(normalizedChoice)
+          );
+        })
+      : [];
+  if (containedMatches.length === 1) {
+    return containedMatches[0];
+  }
+
+  return normalizeChoiceText(answerWithoutLeadingLabel);
+}
+
 function extractRawChoices(raw: any): string[] {
   const candidate = raw.choices ?? raw.options ?? raw.items;
 
   if (Array.isArray(candidate)) {
     return candidate.flatMap((item) => {
       if (typeof item === 'string') {
-        return splitChoiceString(item);
+        return splitChoiceStringSafely(item);
       }
       if (item && typeof item === 'object') {
         const text = item.text ?? item.label ?? item.value ?? item.content;
-        return typeof text === 'string' ? splitChoiceString(text) : [];
+        return typeof text === 'string' ? splitChoiceStringSafely(text) : [];
       }
       return [];
     });
   }
 
   if (typeof candidate === 'string') {
-    return splitChoiceString(candidate);
+    return splitChoiceStringSafely(candidate);
   }
 
   return [];
@@ -97,19 +219,7 @@ function normalizeQuestion(raw: any, index: number): GeneratedQuestion {
     .filter((choice: string) => choice.length > 0)
     .slice(0, 5);
 
-  let answerStr = '';
-  const rawAnswer = raw.answer;
-  if (typeof rawAnswer === 'number') {
-    const idx = Math.floor(rawAnswer) - 1;
-    answerStr = choices[idx] || '';
-  } else if (typeof rawAnswer === 'string') {
-    const trimmed = rawAnswer.trim();
-    if (/^[1-5]$/.test(trimmed)) {
-      answerStr = choices[parseInt(trimmed, 10) - 1] || '';
-    } else {
-      answerStr = normalizeChoiceText(trimmed);
-    }
-  }
+  const answerStr = resolveAnswerFromChoicesLoose(raw.answer, choices);
 
   return {
     id: index + 1,

@@ -86,7 +86,20 @@ export function MathRenderer({ text, className = '', inline = true }: MathRender
         } else {
           // 일반 텍스트의 경우 불필요하게 남은 닫는 괄호 등 정리
           const cleanText = part.replace(/\\\)/g, '').replace(/\\\(/g, '');
-          fragment.appendChild(document.createTextNode(cleanText));
+          
+          // 밑줄(<u>) 태그 처리
+          const underlineRegex = /(<u>[\s\S]*?<\/u>)/g;
+          const textParts = cleanText.split(underlineRegex);
+          
+          textParts.forEach(t => {
+            if (t.startsWith('<u>') && t.endsWith('</u>')) {
+              const u = document.createElement('u');
+              u.textContent = t.slice(3, -4);
+              fragment.appendChild(u);
+            } else if (t) {
+              fragment.appendChild(document.createTextNode(t));
+            }
+          });
         }
       });
 

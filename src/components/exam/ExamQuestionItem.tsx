@@ -49,7 +49,11 @@ function PromptText({ text }: { text: string }) {
           );
         }
 
-        return <MathRenderer key={`${part}-${index}`} text={part} />;
+        return (
+          <span key={`${part}-${index}`}>
+            <MathRenderer text={part} />
+          </span>
+        );
       })}
     </>
   );

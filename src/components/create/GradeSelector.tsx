@@ -1,21 +1,21 @@
-import { type SchoolLevel, type BuilderMode, type MathGrade } from '../../lib/examTypes';
+import { type SchoolLevel, type BuilderMode, type DetailedGrade } from '../../lib/examTypes';
 
 interface GradeSelectorProps {
   mode: BuilderMode;
   value: SchoolLevel;
   onChange: (val: SchoolLevel) => void;
-  mathGrade: MathGrade;
-  onMathGradeChange: (val: MathGrade) => void;
+  detailedGrade: DetailedGrade;
+  onDetailedGradeChange: (val: DetailedGrade) => void;
 }
 
-export function GradeSelector({ mode, value, onChange, mathGrade, onMathGradeChange }: GradeSelectorProps) {
+export function GradeSelector({ mode, value, onChange, detailedGrade, onDetailedGradeChange }: GradeSelectorProps) {
   const levels: SchoolLevel[] = ['middle', 'high'];
   const labels: Record<SchoolLevel, string> = {
     middle: '중등 과정',
     high: '고등 과정'
   };
 
-  const mathGrades: MathGrade[] = ['1학년', '2학년', '3학년'];
+  const detailedGrades: DetailedGrade[] = ['1학년', '2학년', '3학년'];
 
   return (
     <section className="premium-card p-6 flex flex-col gap-6">
@@ -44,16 +44,16 @@ export function GradeSelector({ mode, value, onChange, mathGrade, onMathGradeCha
         </div>
       </div>
 
-      {value === 'middle' && mode !== 'csat' && (
+      {mode !== 'csat' && (
         <div className="animate-in slide-in-from-top-2 duration-300 pt-2">
           <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 ml-1">상세 학년 선택</h2>
           <div className="flex gap-2">
-            {mathGrades.map((g) => (
+            {detailedGrades.map((g) => (
               <button
                 key={g}
-                onClick={() => onMathGradeChange(g)}
+                onClick={() => onDetailedGradeChange(g)}
                 className={`px-6 py-2 rounded-xl text-sm font-black transition-all ${
-                  mathGrade === g 
+                  detailedGrade === g 
                     ? 'bg-slate-900 text-white shadow-lg scale-105' 
                     : 'bg-white text-slate-400 ring-1 ring-slate-200 hover:ring-slate-300'
                 }`}

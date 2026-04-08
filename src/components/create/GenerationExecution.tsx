@@ -3,7 +3,7 @@ import { CheckCircle2, Sparkles } from 'lucide-react';
 import { ConfigTag } from '../ui/ConfigTag';
 import { SUBJECT_CONFIG, type SubjectKey } from '../../lib/question/subjectConfig';
 import { getSchoolLevelLabel, getDifficultyLabel } from '../../lib/examUtils';
-import type { SchoolLevel, DifficultyLevel } from '../../lib/examTypes';
+import type { SchoolLevel, DifficultyLevel, BuilderMode } from '../../lib/examTypes';
 
 interface GenerationExecutionProps {
   ready: boolean;
@@ -16,6 +16,7 @@ interface GenerationExecutionProps {
   count: number;
   readyHint: string;
   onGenerate: () => void;
+  mode: BuilderMode;
 }
 
 export function GenerationExecution(props: GenerationExecutionProps) {
@@ -29,8 +30,18 @@ export function GenerationExecution(props: GenerationExecutionProps) {
     difficulty,
     count,
     readyHint,
-    onGenerate
+    onGenerate,
+    mode
   } = props;
+
+  const getExecutionDifficultyLabel = () => {
+    if (mode === 'csat') {
+      if (difficulty === 'easy') return '고1 모의고사 수준';
+      if (difficulty === 'medium') return '고2 모의고사 수준';
+      if (difficulty === 'hard') return '고3·수능 수준';
+    }
+    return getDifficultyLabel(difficulty);
+  };
 
   return (
     <section className={`premium-card p-6 border-none transition-all duration-500 overflow-hidden ${ready ? 'ring-2 ring-accent shadow-xl shadow-blue-900/10' : 'opacity-80'}`}>
@@ -45,7 +56,7 @@ export function GenerationExecution(props: GenerationExecutionProps) {
               <ConfigTag label={SUBJECT_CONFIG[subject].label} />
               {selectionLabel && <ConfigTag label={selectionLabel} />}
               <ConfigTag label={getSchoolLevelLabel(schoolLevel)} />
-              <ConfigTag label={getDifficultyLabel(difficulty)} />
+              <ConfigTag label={getExecutionDifficultyLabel()} />
               <ConfigTag label={`${count}문항`} />
             </div>
             <p className={`mt-2 text-xs font-bold ${ready ? 'text-blue-500' : 'text-slate-400'}`}>{readyHint}</p>

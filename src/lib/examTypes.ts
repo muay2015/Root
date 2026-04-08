@@ -5,7 +5,7 @@ export type Screen = 'landing' | 'create' | 'taking' | 'result' | 'wrong' | 'sav
 export type BuilderMode = 'school' | 'csat';
 export type DifficultyLevel = 'easy' | 'medium' | 'hard';
 export type SchoolLevel = 'middle' | 'high';
-export type MathGrade = '1학년' | '2학년' | '3학년';
+export type DetailedGrade = '1학년' | '2학년' | '3학년';
 
 export type WrongNote = {
   id: string;

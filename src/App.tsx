@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { SUBJECT_CONFIG, getSubjectSelectionDefaults, type SubjectKey } from './lib/question/subjectConfig';
-import { getSchoolLevelLabel, getDifficultyLabel } from './lib/examUtils';
+import { getSchoolLevelLabel, getDifficultyLabel, normalizeToSubjectKey } from './lib/examUtils';
 
 // 분리된 컴포넌트들
 import { ExamHeader } from './components/exam/ExamHeader';
@@ -67,6 +67,12 @@ export default function App() {
   };
 
   useEffect(() => {
+    // 새로고침 시 최상단으로 이동
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+    window.scrollTo(0, 0);
+
     const handlePopState = (event: PopStateEvent) => {
       if (event.state && event.state.screen) {
         setScreen(event.state.screen as Screen);
@@ -85,7 +91,8 @@ export default function App() {
     if (result.success && result.record) {
       session.startExam(result.record);
       // 자동 과목 필터 동기화
-      const label = SUBJECT_CONFIG[result.record.subject as SubjectKey]?.label || '기타 과목';
+      const subjectKey = normalizeToSubjectKey(result.record.subject, result.record.title, result.record.questions?.[0]?.topic, result.record.questions, result.record.exam_format);
+      const label = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
       setSavedScreenSubject(label);
       navigate('taking');
     }
@@ -94,7 +101,8 @@ export default function App() {
   const onOpenSavedExam = (record: any) => {
     session.startExam(record);
     // 자동 과목 필터 동기화
-    const label = SUBJECT_CONFIG[record.subject as SubjectKey]?.label || '기타 과목';
+    const subjectKey = normalizeToSubjectKey(record.subject, record.title, record.questions?.[0]?.topic, record.questions, record.exam_format);
+    const label = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
     setSavedScreenSubject(label);
     navigate('taking');
   };

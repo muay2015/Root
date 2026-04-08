@@ -1,7 +1,7 @@
 import React from 'react';
-import { FileUp, CheckCircle2, X, Camera, Image as ImageIcon, AlertCircle, Info, Lightbulb } from 'lucide-react';
+import { FileUp, CheckCircle2, X, Camera, Image as ImageIcon, AlertCircle, Info, Lightbulb, Sparkles } from 'lucide-react';
 import { fileToBase64, optimizeImage } from '../../lib/imageUtils';
-import { type MathGrade, type BuilderMode } from '../../lib/examTypes';
+import { type DetailedGrade, type BuilderMode } from '../../lib/examTypes';
 import { type SubjectKey, SUBJECT_CONFIG, getUploadRecommendation } from '../../lib/question/subjectConfig';
 import { MIDDLE_MATH_CURRICULUM } from '../../lib/question/mathCurriculum';
 import { ocrService } from '../../services/ocrService';
@@ -10,7 +10,7 @@ interface AIDetailsInputProps {
   mode: BuilderMode;
   subject: SubjectKey;
   questionType: string;
-  mathGrade: MathGrade;
+  detailedGrade: DetailedGrade;
   generationTopic: string;
   setGenerationTopic: (val: string) => void;
   materialText: string;
@@ -45,7 +45,7 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
     mode,
     subject,
     questionType,
-    mathGrade,
+    detailedGrade,
     generationTopic,
     setGenerationTopic,
     materialText,
@@ -129,34 +129,8 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
       <section className="premium-card p-6 shadow-sm border border-slate-100">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-black uppercase tracking-wider text-slate-400">
-            핵심 단원 및 주제
+            학습 집중 영역 (단원/주제)
           </h2>
-          
-          {subject !== 'middle_math' && (() => {
-            const rec = getUploadRecommendation(subject);
-            if (rec === 'REQUIRED') {
-              return (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 ring-1 ring-red-100 animate-in fade-in slide-in-from-right-2 duration-500">
-                  <AlertCircle className="h-3.5 w-3.5" />
-                  <span className="text-[11px] font-black">자료 업로드 필수</span>
-                </div>
-              );
-            }
-            if (rec === 'RECOMMENDED') {
-              return (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-600 ring-1 ring-amber-100 animate-in fade-in slide-in-from-right-2 duration-500">
-                  <Lightbulb className="h-3.5 w-3.5" />
-                  <span className="text-[11px] font-black">자료 업로드 권장</span>
-                </div>
-              );
-            }
-            return (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 ring-1 ring-blue-100 animate-in fade-in slide-in-from-right-2 duration-500">
-                <Info className="h-3.5 w-3.5" />
-                <span className="text-[11px] font-black">주제만으로 생성 가능</span>
-              </div>
-            );
-          })()}
         </div>
         <input
           value={generationTopic}
@@ -170,11 +144,10 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
           }
           className="mt-4 w-full rounded-2xl bg-slate-50 border-none px-5 py-4 text-[15px] font-medium text-slate-900 outline-none ring-1 ring-slate-100 focus:ring-2 focus:ring-accent transition-all placeholder:text-slate-300"
         />
-        {subject === 'middle_math' && questionType && (
-          <p className="mt-2 text-[10px] font-bold text-slate-400 pl-1 animate-in fade-in slide-in-from-top-1 duration-300">
-            * {questionType} 영역의 세부 단원을 입력하면 더 정확한 문제가 생성됩니다.
-          </p>
-        )}
+        <p className="mt-2.5 text-[11px] font-bold text-blue-500/80 pl-1 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 duration-500">
+          <Sparkles className="h-3 w-3" />
+          <span>입력하신 단원과 세부 주제에 집중된 문항이 생성됩니다.</span>
+        </p>
       </section>
 
       {/* 중등 수학이 아닐 때만 학습 자료 추가 섹션 표시 */}
@@ -185,12 +158,46 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
               <h2 className="text-sm font-black uppercase tracking-wider text-slate-400">학습 내용 추가</h2>
               
               {(() => {
-                const rec = getUploadRecommendation(subject);
+                const rawRec = getUploadRecommendation(subject);
+                const rec = (mode === 'csat' && rawRec === 'REQUIRED') ? 'RECOMMENDED' : rawRec;
+
+                if (rec === 'REQUIRED') {
+                  return (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 ring-1 ring-red-100 animate-in fade-in slide-in-from-right-2 duration-500">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                      <span className="text-[11px] font-black">지문·자료 첨부 필수</span>
+                    </div>
+                  );
+                }
+                if (rec === 'RECOMMENDED') {
+                  return (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-600 ring-1 ring-amber-100 animate-in fade-in slide-in-from-right-2 duration-500">
+                      <Lightbulb className="h-3.5 w-3.5" />
+                      <span className="text-[11px] font-black">{mode === 'csat' ? '추가 자료 활용 권장' : '지문·자료 첨부 권장'}</span>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 ring-1 ring-blue-100 animate-in fade-in slide-in-from-right-2 duration-500">
+                    <Info className="h-3.5 w-3.5" />
+                    <span className="text-[11px] font-black">현 상태로 생성 가능</span>
+                  </div>
+                );
+              })()}
+            </div>
+            
+            <div className="pl-1">
+              {(() => {
+                const rawRec = getUploadRecommendation(subject);
+                const rec = (mode === 'csat' && rawRec === 'REQUIRED') ? 'RECOMMENDED' : rawRec;
+                
                 if (rec === 'REQUIRED') {
                   return <p className="text-[11px] font-bold text-red-500">문학/독서/어학 과목은 지문 사진이 반드시 필요합니다.</p>;
                 }
                 if (rec === 'RECOMMENDED') {
-                  return <p className="text-[11px] font-bold text-amber-500">도표나 그래프가 포함된 자료를 올리면 더 정확합니다.</p>;
+                  return <p className="text-[11px] font-bold text-amber-500">
+                    {mode === 'csat' ? '특정 지문을 바탕으로 출제하고 싶다면 사진을 올려주세요.' : '도표나 그래프가 포함된 자료를 올리면 더 정확합니다.'}
+                  </p>;
                 }
                 return <p className="text-[11px] font-bold text-blue-500">교과서 내용이 있다면 올려주세요. 더 풍부한 문제가 나옵니다.</p>;
               })()}

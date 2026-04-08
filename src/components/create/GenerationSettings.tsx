@@ -2,8 +2,8 @@ import React from 'react';
 import { SelectorPanel } from '../ui/SelectorPanel';
 import { X } from 'lucide-react';
 import type { SubjectKey, SelectionFormat } from '../../lib/question/subjectConfig';
-import type { DifficultyLevel, MathGrade } from '../../lib/examTypes';
-import { MIDDLE_MATH_CURRICULUM } from '../../lib/question/mathCurriculum';
+import type { DifficultyLevel, DetailedGrade, BuilderMode } from '../../lib/examTypes';
+import { CURRICULUM_MAP, type CurriculumItem } from '../../lib/question/curriculumConfig';
 
 interface GenerationSettingsProps {
   hideSelector: boolean;
@@ -18,9 +18,11 @@ interface GenerationSettingsProps {
   count: number;
   setCount: (val: number) => void;
   subject: SubjectKey;
-  mathGrade: MathGrade;
+  detailedGrade: DetailedGrade;
+  setDetailedGrade: (val: DetailedGrade) => void;
   generationTopic: string;
   setGenerationTopic: (val: string) => void;
+  mode: BuilderMode;
 }
 
 export function GenerationSettings(props: GenerationSettingsProps) {
@@ -34,13 +36,17 @@ export function GenerationSettings(props: GenerationSettingsProps) {
     setFormat,
     difficulty,
     setDifficulty,
+    subject,
     count,
     setCount,
-    subject,
-    mathGrade,
+    detailedGrade,
+    setDetailedGrade,
     generationTopic,
-    setGenerationTopic
+    setGenerationTopic,
+    mode
   } = props;
+
+  const hasCurriculum = !!CURRICULUM_MAP[subject];
 
   // 헬퍼: 현재 선택된 단원들을 배열로 가져오기
   const getSelectedTopics = () => {
@@ -51,14 +57,13 @@ export function GenerationSettings(props: GenerationSettingsProps) {
     <section className="grid gap-6 lg:grid-cols-2">
       {!hideSelector && questionTypeOptions.length > 0 && (
         <SelectorPanel
-          title={subject === 'middle_math' ? "세부 영역 선택" : "문항 유형 설계"}
+          title={hasCurriculum ? "세부 영역 선택" : "문항 유형 설계"}
           options={questionTypeOptions}
           value={questionType}
           onSelect={(val) => {
-            if (subject === 'middle_math') {
+            if (hasCurriculum) {
               if (val === '전체') {
                 setQuestionType('전체');
-                // '전체'를 누르면 영역 선택뿐 아니라 테마/단원 선택도 초기화할지 결정 (일단 영역만 리셋)
               } else {
                 const currentAreas = (questionType && questionType !== '전체') 
                   ? questionType.split(',').map(t => t.trim()).filter(Boolean) 
@@ -78,11 +83,18 @@ export function GenerationSettings(props: GenerationSettingsProps) {
             }
           }}
         >
-          {/* 중등 수학일 경우 영역 선택 시 바로 아래에 세부 단원 칩 노출 */}
-          {subject === 'middle_math' && (
+          {/* 교육과정 데이터가 있는 과목일 경우 영역 선택 시 바로 아래에 세부 단원 칩 노출 */}
+          {hasCurriculum && (
             <div className="flex flex-col gap-5 animate-in fade-in slide-in-from-top-2 duration-300">
               {(() => {
-                const gradeData = MIDDLE_MATH_CURRICULUM.find(c => c.grade === mathGrade);
+                const gradeDataList = CURRICULUM_MAP[subject];
+                if (!gradeDataList) return null;
+
+                // 학년별 필터링 (중등 등 학년 구분이 필요한 경우)
+                const gradeData = gradeDataList.length > 1 
+                  ? gradeDataList.find(c => c.grade === detailedGrade)
+                  : gradeDataList[0];
+                
                 if (!gradeData) return null;
 
                 const selectedAreaNames = (questionType && questionType !== '전체') 
@@ -172,7 +184,7 @@ export function GenerationSettings(props: GenerationSettingsProps) {
         </SelectorPanel>
       )}
 
-      {!hideSelector && formatOptions.length > 0 && (
+      {!hideSelector && formatOptions.length > 0 && mode !== 'csat' && (
         <SelectorPanel
           title="지문 구성 방식"
           options={formatOptions}
@@ -182,11 +194,22 @@ export function GenerationSettings(props: GenerationSettingsProps) {
       )}
 
       <SelectorPanel
-        title="평가 난이도"
+        title={mode === 'csat' ? "모의고사 수준 선택" : "평가 난이도"}
         options={['easy', 'medium', 'hard']}
         value={difficulty}
-        onSelect={(value) => setDifficulty(value as DifficultyLevel)}
-        labelMap={{ easy: '기초', medium: '표준', hard: '심화' }}
+        onSelect={(value) => {
+          setDifficulty(value as DifficultyLevel);
+          if (mode === 'csat') {
+            // 수능 모드에서는 난이도가 곧 학년 수준으로 매핑됨
+            if (value === 'easy') setDetailedGrade('1학년');
+            if (value === 'medium') setDetailedGrade('2학년');
+            if (value === 'hard') setDetailedGrade('3학년');
+          }
+        }}
+        labelMap={mode === 'csat' 
+          ? { easy: '고1 모의고사', medium: '고2 모의고사', hard: '고3·수능' }
+          : { easy: '기초', medium: '표준', hard: '심화' }
+        }
       />
 
       <section className="premium-card p-6">

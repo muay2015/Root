@@ -2,7 +2,7 @@ import React from 'react';
 import { BarChart, Trophy, Target, History, TrendingUp, Award, Calendar } from 'lucide-react';
 import type { PersistedExamRecord } from '../../lib/rootPersistence';
 import { SUBJECT_CONFIG } from '../../lib/question/subjectConfig';
-import { isSubjectKey } from '../../lib/examUtils';
+import { isSubjectKey, normalizeToSubjectKey } from '../../lib/examUtils';
 import { MetricCard, Badge } from '../ui/DashboardUI';
 
 interface DashboardScreenProps {
@@ -22,7 +22,7 @@ export function DashboardScreen({ exams, onOpenExam }: DashboardScreenProps) {
 
   // 과목별 정답률 계산
   const subjectStats = submittedExams.reduce((acc, e) => {
-    const key = isSubjectKey(e.subject) ? e.subject : 'unknown';
+    const key = normalizeToSubjectKey(e.subject, e.title, e.questions?.[0]?.topic, e.questions, e.exam_format) || 'unknown';
     if (!acc[key]) acc[key] = { total: 0, scoreSum: 0 };
     acc[key].total += 1;
     acc[key].scoreSum += (e.score || 0);
@@ -84,29 +84,33 @@ export function DashboardScreen({ exams, onOpenExam }: DashboardScreenProps) {
               </div>
             ) : (
               <div className="space-y-4">
-                {recentExams.map((exam) => (
-                  <button 
-                    key={exam.id} 
-                    onClick={() => onOpenExam(exam)}
-                    className="group flex w-full items-center justify-between rounded-2xl bg-slate-50/50 p-4 transition-all hover:bg-white hover:shadow-md ring-1 ring-transparent hover:ring-blue-100"
-                  >
-                    <div className="flex items-center gap-4 min-w-0">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white font-bold text-blue-600 ring-1 ring-slate-200">
-                        {SUBJECT_CONFIG[isSubjectKey(exam.subject) ? exam.subject : 'korean_history']?.label.charAt(0)}
+                {recentExams.map((exam) => {
+                  const inferredKey = normalizeToSubjectKey(exam.subject, exam.title, exam.questions?.[0]?.topic, exam.questions, exam.exam_format);
+                  const config = inferredKey ? SUBJECT_CONFIG[inferredKey] : null;
+                  return (
+                    <button 
+                      key={exam.id} 
+                      onClick={() => onOpenExam(exam)}
+                      className="group flex w-full items-center justify-between rounded-2xl bg-slate-50/50 p-4 transition-all hover:bg-white hover:shadow-md ring-1 ring-transparent hover:ring-blue-100"
+                    >
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white font-bold text-blue-600 ring-1 ring-slate-200">
+                          {config ? config.label.charAt(0) : '기'}
+                        </div>
+                        <div className="text-left min-w-0">
+                          <p className="truncate text-sm font-bold text-slate-900">{exam.title}</p>
+                          <p className="text-xs font-medium text-slate-500">{new Date(exam.created_at).toLocaleDateString()}</p>
+                        </div>
                       </div>
-                      <div className="text-left min-w-0">
-                        <p className="truncate text-sm font-bold text-slate-900">{exam.title}</p>
-                        <p className="text-xs font-medium text-slate-500">{new Date(exam.created_at).toLocaleDateString()}</p>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-lg font-black ${Number(exam.score) >= 80 ? 'text-blue-600' : 'text-slate-800'}`}>
+                          {exam.score}
+                        </span>
+                        <div className="h-2 w-2 rounded-full bg-slate-200 group-hover:bg-blue-400 transition-colors" />
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`text-lg font-black ${Number(exam.score) >= 80 ? 'text-blue-600' : 'text-slate-800'}`}>
-                        {exam.score}
-                      </span>
-                      <div className="h-2 w-2 rounded-full bg-slate-200 group-hover:bg-blue-400 transition-colors" />
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </section>

@@ -44,7 +44,7 @@ export function SavedScreen({
   const allSubjects = useMemo(() => {
     const list = new Set<string>(['전체']);
     for (const exam of exams) {
-      const subjectKey = normalizeToSubjectKey(exam.subject, exam.title);
+      const subjectKey = normalizeToSubjectKey(exam.subject, exam.title, exam.questions[0]?.topic, exam.questions, exam.exam_format);
       const label = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
       list.add(label);
     }
@@ -58,7 +58,7 @@ export function SavedScreen({
   const filteredExams = useMemo(() => {
     if (selectedSubject === '전체') return exams;
     return exams.filter((exam) => {
-      const subjectKey = normalizeToSubjectKey(exam.subject, exam.title);
+      const subjectKey = normalizeToSubjectKey(exam.subject, exam.title, exam.questions[0]?.topic, exam.questions, exam.exam_format);
       const label = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
       return label === selectedSubject;
     });
@@ -68,7 +68,7 @@ export function SavedScreen({
     const subjectsMap: Record<string, PersistedExamRecord[]> = {};
 
     for (const exam of filteredExams) {
-      const subjectKey = normalizeToSubjectKey(exam.subject, exam.title);
+      const subjectKey = normalizeToSubjectKey(exam.subject, exam.title, exam.questions[0]?.topic, exam.questions, exam.exam_format);
       const label = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
       if (!subjectsMap[label]) subjectsMap[label] = [];
       subjectsMap[label].push(exam);
@@ -181,7 +181,7 @@ export function SavedScreen({
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex flex-col gap-1.5 min-w-0">
                              <div className="flex items-center gap-2">
-                               <SubjectTag subject={exam.subject} title={exam.title} />
+                               <SubjectTag subject={exam.subject} title={exam.title} altText={exam.questions[0]?.topic} questions={exam.questions} schoolLevel={exam.exam_format} />
                                <span className="text-[10px] font-bold text-slate-300">/</span>
                                <span className="text-[10px] font-bold text-slate-400">{formatSavedDate(exam.created_at)}</span>
                              </div>

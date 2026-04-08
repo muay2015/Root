@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { generateExamApiResponse, } from "../src/lib/server/generateExamApi.js";
+import { generateExamApiResponse, ocrApiResponse, } from "../src/lib/server/generateExamApi.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = process.cwd();
@@ -25,7 +25,7 @@ else {
     console.warn('⚠️ OpenAI API Key is missing! Check your .env.local file.');
 }
 console.log('---------------------------');
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '10mb' }));
 app.get('/api/health', (_req, res) => {
     res.json({
         ok: true,
@@ -35,13 +35,40 @@ app.get('/api/health', (_req, res) => {
     });
 });
 app.post('/api/ai/generate-exam', async (req, res) => {
-    const result = await generateExamApiResponse({
-        payload: req.body,
-        openAiApiKey,
-        openAiModel,
-    });
-    res.status(result.status).json(result.body);
+    console.log('--- Incoming Request: /api/ai/generate-exam ---');
+    try {
+        const result = await generateExamApiResponse({
+            payload: req.body,
+            openAiApiKey,
+            openAiModel,
+        });
+        console.log('API Result Status:', result.status);
+        res.status(result.status).json(result.body);
+    }
+    catch (err) {
+        console.error('SERVER FATAL ERROR:', err);
+        res.status(500).json({
+            error: 'Server internal error',
+            details: err.message,
+            stack: err.stack
+        });
+    }
 });
-app.listen(port, () => {
-    console.log(`ROOT API server listening on http://localhost:${port}`);
+app.post('/api/ai/ocr', async (req, res) => {
+    console.log('--- Incoming Request: /api/ai/ocr ---');
+    try {
+        const result = await ocrApiResponse({
+            payload: req.body,
+            openAiApiKey,
+            openAiModel,
+        });
+        res.status(result.status).json(result.body);
+    }
+    catch (err) {
+        console.error('OCR SERVER ERROR:', err);
+        res.status(500).json({ error: 'OCR server internal error' });
+    }
+});
+app.listen(port, '127.0.0.1', () => {
+    console.log(`ROOT API server listening on http://127.0.0.1:${port}`);
 });
