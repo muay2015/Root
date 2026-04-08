@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
+    "dev": "vite --port=3000 --host=127.0.0.1",
     "dev:api": "npm run build:api && node server-dist/server/index.js",
     "dev:api:tsx": "tsx watch server/index.ts",
     "build:api": "tsc -p tsconfig.server.json",

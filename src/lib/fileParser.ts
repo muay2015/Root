@@ -3,8 +3,9 @@ import mammoth from 'mammoth';
 
 // PDF worker setup with safer version-specific CDN
 // Using a slightly more robust way to load the worker
-const PDF_JS_VERSION = '4.0.379'; // Stable version for many CDNs
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version || PDF_JS_VERSION}/pdf.worker.mjs`;
+const PDF_JS_VERSION = '5.6.205'; 
+// Unpkg helps with better ESM worker resolution for some environments
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${PDF_JS_VERSION}/build/pdf.worker.min.mjs`;
 
 /**
  * PDF 파일에서 텍스트 추출

@@ -7,12 +7,14 @@ export function SelectorPanel({
   value,
   onSelect,
   labelMap,
+  children,
 }: {
   title: string;
   options: readonly string[];
   value: string;
   onSelect: (value: string) => void;
   labelMap?: Record<string, string>;
+  children?: React.ReactNode;
 }) {
   return (
     <section className="premium-card p-5 sm:p-6 ring-1 ring-slate-100/50 bg-white">
@@ -33,6 +35,11 @@ export function SelectorPanel({
           </button>
         ))}
       </div>
+      {children && (
+        <div className="mt-6 pt-6 border-t border-slate-50">
+          {children}
+        </div>
+      )}
     </section>
   );
 }

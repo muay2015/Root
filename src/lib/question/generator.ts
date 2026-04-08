@@ -1,16 +1,8 @@
-import OpenAI from 'openai';
-import { getGenerationRules, type DifficultyLevel, type SchoolLevel } from './generationRules.ts';
-import { normalizeChoiceText } from './normalizeChoiceText.ts';
+import { type DifficultyLevel, type SchoolLevel } from './generationRules.ts';
 import { buildQuestionPrompt } from './promptBuilder.ts';
-import { validateGeneratedQuestions, type GeneratedQuestionDraft, type ValidationResult } from './validator.ts';
-import {
-  SUBJECT_CONFIG,
-  getSubjectSelectionDefaults,
-  getSubjectSelectionLabel,
-  usesNoSelector,
-  type SelectionFormat,
-  type SubjectKey,
-} from './subjectConfig.ts';
+import { validateGeneratedQuestions, type ValidationResult } from './validator.ts';
+import { type SubjectKey } from './subjectConfig.ts';
+import { normalizeChoiceText } from './normalizeChoiceText.ts';
 
 export type GeneratedQuestion = {
   id: number;
@@ -23,7 +15,7 @@ export type GeneratedQuestion = {
 };
 
 export type GenerateValidatedQuestionsInput = {
-  openai: OpenAI | null;
+  openai: any;
   model: string;
   materialText: string;
   count: number;
@@ -34,6 +26,8 @@ export type GenerateValidatedQuestionsInput = {
   schoolLevel: SchoolLevel;
   title?: string;
   topic?: string;
+  builderMode?: string;
+  images?: { mimeType: string; data: string }[];
 };
 
 export type GenerateValidatedQuestionsOutput = {
@@ -42,6 +36,7 @@ export type GenerateValidatedQuestionsOutput = {
   source: 'ai' | 'mock';
   attempts: number;
   validation: ValidationResult;
+  summary?: string;
 };
 
 export class QuestionGenerationError extends Error {
@@ -56,326 +51,217 @@ export class QuestionGenerationError extends Error {
 
 const MAX_BATCH_SIZE = 5;
 
-type ModelQuestion =
-  | {
-      topic?: string;
-      type?: string;
-      stem?: string;
-      question?: string;
-      choices?: string[] | null;
-      options?: string[] | null;
-      items?: string[] | null;
-      answer: string | number;
-      explanation: string;
-      number?: number;
-    }
-  | GeneratedQuestionDraft;
-
-function normalizeInlineText(value: string) {
-  return normalizeChoiceText(value);
-}
-
-function normalizeChoices(choices?: string[] | null) {
-  const normalized = Array.isArray(choices)
-    ? choices.map(normalizeInlineText).filter((choice) => choice.length > 0).slice(0, 5)
-    : [];
-
-  while (normalized.length < 5) {
-    normalized.push(`Choice ${normalized.length + 1}`);
-  }
-
-  return normalized;
-}
-
-function resolveSelectionValue(input: GenerateValidatedQuestionsInput) {
-  const defaults = getSubjectSelectionDefaults(input.subject);
-  const config = SUBJECT_CONFIG[input.subject];
-  if (config.selectorMode === 'questionType') {
-    return input.questionType ?? defaults.questionType;
-  }
-
-  if (config.selectorMode === 'format') {
-    return input.format ?? defaults.format;
-  }
-
-  return null;
-}
-
-function resolveQuestionTopic(
-  raw: ModelQuestion,
-  index: number,
-  input: GenerateValidatedQuestionsInput,
-) {
-  const trimmedTopic = typeof raw.topic === 'string' ? raw.topic.trim() : '';
-  if (trimmedTopic.length > 0) {
-    return trimmedTopic;
-  }
-
-  if (input.subject === 'korean_history') {
-    return input.topic?.trim() || input.title?.trim() || `국사 문항 ${index + 1}`;
-  }
-
-  const selectionValue = resolveSelectionValue(input);
-  return selectionValue || input.topic?.trim() || `${SUBJECT_CONFIG[input.subject].label} 문항 ${index + 1}`;
-}
-
-function normalizeQuestion(
-  raw: ModelQuestion,
-  index: number,
-  input: GenerateValidatedQuestionsInput,
-): GeneratedQuestion {
-  const rawChoices = raw.choices ?? raw.options ?? ('items' in raw ? raw.items : undefined);
-  const choices = normalizeChoices(Array.isArray(rawChoices) ? rawChoices : undefined);
-  const rawAnswer = normalizeInlineText(String(raw.answer));
-  const exactChoice = choices.find((choice) => choice.trim() === rawAnswer);
-  const numericAnswer = Number(rawAnswer);
-  const answer =
-    exactChoice ??
-    (Number.isInteger(numericAnswer) && numericAnswer >= 1 && numericAnswer <= choices.length
-      ? choices[numericAnswer - 1]
-      : choices[0]);
-
-  return {
-    id: index + 1,
-    topic: resolveQuestionTopic(raw, index, input),
-    type: 'multiple',
-    stem: (raw.stem ?? ('question' in raw ? raw.question : '') ?? '').trim(),
-    choices,
-    answer,
-    explanation: raw.explanation.trim(),
-  };
-}
-
-function buildFallbackQuestions(input: GenerateValidatedQuestionsInput): GeneratedQuestion[] {
-  const selectionLabel = getSubjectSelectionLabel(
-    input.subject,
-    input.questionType ?? '',
-    (input.format ?? '객관식') as SelectionFormat,
-  );
-  const selectionValue = resolveSelectionValue(input);
-  const rules = getGenerationRules({
-    subject: input.subject,
-    selectionLabel: selectionLabel ?? undefined,
-    selectionValue: selectionValue ?? undefined,
-    difficulty: input.difficulty,
-    schoolLevel: input.schoolLevel,
-  });
-
-  return Array.from({ length: input.count }, (_, index) => ({
-    id: index + 1,
-    topic: input.topic || input.title || `${rules.subjectLabel} 문항`,
-    type: 'multiple',
-    stem: `${rules.subjectLabel} ${selectionValue ?? ''} 문항 ${index + 1}`.trim(),
-    choices: ['Choice 1', 'Choice 2', 'Choice 3', 'Choice 4', 'Choice 5'],
-    answer: 'Choice 1',
-    explanation: `Fallback item aligned to ${rules.subjectLabel}, ${rules.schoolLevel.label}, and ${rules.difficulty.label}.`,
-  }));
-}
-
-function getDefaultTitle(input: GenerateValidatedQuestionsInput) {
-  const selectionValue = resolveSelectionValue(input);
-  return input.title || [input.subject, selectionValue, input.schoolLevel, input.difficulty].filter(Boolean).join('-');
-}
-
 function extractJson(text: string) {
   let clean = text.trim();
   if (clean.startsWith('```')) {
     const match = clean.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
     if (match) clean = match[1].trim();
   }
-
-  // Self-healing: JSON에서 허용되지 않는 \ 기호(수식용 \sqrt 등)를 자동으로 이중 역슬래시로 변환
-  // 이를 방지하기 위해 이스케이프되지 않은 단일 \ 를 \\ 로 교체
   return clean.replace(/(?<!\\)\\(?![\\"/bfnrtu])/g, '\\\\');
 }
 
-async function requestQuestionsFromModel(
-  input: GenerateValidatedQuestionsInput,
-  validationFeedback: string[],
-) {
-  if (!input.openai) {
-    return null;
+function splitChoiceString(value: string) {
+  return value
+    .split(/\r?\n|(?=\s*[①-⑤])|(?=\s*[1-5][\.\)])|(?=\s*[A-E][\.\)])|(?:\s*\/\s*)|(?:\s*\|\s*)/)
+    .map((part) => normalizeChoiceText(part))
+    .filter((part) => part.length > 0);
+}
+
+function extractRawChoices(raw: any): string[] {
+  const candidate = raw.choices ?? raw.options ?? raw.items;
+
+  if (Array.isArray(candidate)) {
+    return candidate.flatMap((item) => {
+      if (typeof item === 'string') {
+        return splitChoiceString(item);
+      }
+      if (item && typeof item === 'object') {
+        const text = item.text ?? item.label ?? item.value ?? item.content;
+        return typeof text === 'string' ? splitChoiceString(text) : [];
+      }
+      return [];
+    });
   }
 
-  const prompt = buildQuestionPrompt({
-    materialText: input.materialText,
-    title: input.title,
-    topic: input.topic,
-    count: input.count,
-    subject: input.subject,
-    questionType: input.questionType,
-    format: input.format,
-    difficulty: input.difficulty,
-    schoolLevel: input.schoolLevel,
-    validationFeedback,
-  });
+  if (typeof candidate === 'string') {
+    return splitChoiceString(candidate);
+  }
 
-  const response = await input.openai.responses.create({
-    model: input.model,
-    input: [
-      {
-        role: 'system',
-        content: usesNoSelector(input.subject)
-          ? 'Generate Korean-history-only exam questions and return valid JSON only.'
-          : 'Generate subject-specific exam questions and return valid JSON only.',
-      },
-      {
-        role: 'user',
-        content: prompt,
-      },
-    ],
-    text: { verbosity: 'low' },
-  });
+  return [];
+}
 
-  const rawJson = extractJson(response.output_text);
-  let parsed: ModelQuestion[];
-  try {
-    parsed = JSON.parse(rawJson);
-  } catch (e) {
-    console.warn('First JSON parse failed, attempting auto-repair...', e);
-    // 가장 흔한 문제인 이스케이프되지 않은 단일 역슬래시(\)들을 모두 이중(\\)으로 강제 치환
-    const repairedJson = rawJson.replace(/(?<!\\)\\(?![\\"/bfnrtu])/g, '\\\\');
-    try {
-      parsed = JSON.parse(repairedJson);
-    } catch (e2) {
-      // 2차 시도도 실패했다면 더 공격적으로 모든 \를 \\로 치환 (리터럴 \n, \t 등까지 모두 문자화)
-      const aggressiveRepairedJson = rawJson.replace(/\\/g, '\\\\');
-      try {
-        parsed = JSON.parse(aggressiveRepairedJson);
-      } catch (e3) {
-        throw new Error(`JSON 파싱 최종 실패: ${e instanceof Error ? e.message : '알 수 없는 형식'}`);
-      }
+function normalizeQuestion(raw: any, index: number): GeneratedQuestion {
+  // Keep only real options from the model; validation should fail on missing choices,
+  // not on placeholders we injected ourselves.
+  const choices = extractRawChoices(raw)
+    .filter((choice: string) => choice.length > 0)
+    .slice(0, 5);
+
+  let answerStr = '';
+  const rawAnswer = raw.answer;
+  if (typeof rawAnswer === 'number') {
+    const idx = Math.floor(rawAnswer) - 1;
+    answerStr = choices[idx] || '';
+  } else if (typeof rawAnswer === 'string') {
+    const trimmed = rawAnswer.trim();
+    if (/^[1-5]$/.test(trimmed)) {
+      answerStr = choices[parseInt(trimmed, 10) - 1] || '';
+    } else {
+      answerStr = normalizeChoiceText(trimmed);
     }
   }
 
-  if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new Error('AI가 유효한 문항 배열을 반환하지 않았습니다. (JSON 형식은 유효하나 배열이 비어있음)');
+  return {
+    id: index + 1,
+    topic: raw.topic || '문항',
+    type: 'multiple',
+    stem: raw.stem || raw.question || '',
+    choices,
+    answer: answerStr,
+    explanation: raw.explanation || '',
+  };
+}
+
+async function requestQuestionsFromModel(input: GenerateValidatedQuestionsInput, feedback: string[]) {
+  const prompt = buildQuestionPrompt({ ...input, validationFeedback: feedback }, input.builderMode);
+
+  let rawJson = '';
+  try {
+    if (typeof input.openai?.responses?.create === 'function') {
+      const resp = await input.openai.responses.create({
+        model: input.model,
+        input: [
+          { role: 'system', content: 'JSON 리스트만 반환하세요.' },
+          { role: 'user', content: prompt },
+        ],
+        text: { verbosity: 'low' },
+      });
+      rawJson = resp.output_text || '';
+    } else {
+      // Build messages for Chat Completion
+      const messages: any[] = [
+        { role: 'system', content: 'JSON 리스트만 반환하세요.' },
+      ];
+
+      const userContent: any[] = [{ type: 'text', text: prompt }];
+      
+      // 이미지 데이터가 있으면 멀티모달 형식으로 추가
+      if (input.images && input.images.length > 0) {
+        input.images.forEach((img) => {
+          userContent.push({
+            type: 'image_url',
+            image_url: {
+              url: `data:${img.mimeType};base64,${img.data}`
+            }
+          });
+        });
+      }
+
+      messages.push({ role: 'user', content: userContent });
+
+      const resp = await input.openai.chat.completions.create({
+        model: input.model,
+        messages: messages,
+      });
+      rawJson = resp.choices[0].message.content || '';
+    }
+  } catch (err: any) {
+    throw new Error(`AI 호출 실패: ${err.message}`);
   }
 
-  return parsed.map((item, itemIndex) => normalizeQuestion(item, itemIndex, input));
+  const parsed = JSON.parse(extractJson(rawJson));
+  let rawQuestions = [];
+
+  if (Array.isArray(parsed)) {
+    rawQuestions = parsed;
+  } else if (parsed && typeof parsed === 'object') {
+    rawQuestions = parsed.questions || parsed.result || parsed.data || parsed.items || [];
+  }
+
+  const questions = rawQuestions.length > 0
+    ? rawQuestions.map((q: any, i: number) => normalizeQuestion(q, i))
+    : [normalizeQuestion({
+        stem: `AI 응답 파싱 실패 (내용: ${rawJson.substring(0, 50)}...)`,
+        answer: '확인',
+        choices: ['확인', '-', '-', '-', '-'],
+        explanation: 'JSON 구조를 확인하세요.',
+      }, 0)];
+
+  if (input.builderMode === 'summary' && !Array.isArray(parsed)) {
+    return {
+      summary: (parsed as any).summary || (parsed as any).content || '요약 내용을 생성하지 못했습니다.',
+      questions,
+    };
+  }
+
+  return { questions };
 }
 
 async function generateValidatedQuestionBatch(
   input: GenerateValidatedQuestionsInput,
 ): Promise<GenerateValidatedQuestionsOutput> {
-  let latestQuestions: GeneratedQuestion[] = [];
-  let latestValidation: ValidationResult = {
-    isValid: false,
-    reasons: ['Generation did not run yet.'],
-    warnings: [],
-    issueCounts: {},
-  };
-  let validationFeedback: string[] = [];
-
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
+  let feedback: string[] = [];
+  for (let i = 1; i <= 3; i++) {
     try {
-      latestQuestions = await requestQuestionsFromModel(input, validationFeedback);
-      latestValidation = validateGeneratedQuestions({
-        questions: latestQuestions,
+      const result = await requestQuestionsFromModel(input, feedback);
+      const validation = validateGeneratedQuestions({
+        questions: result.questions,
         count: input.count,
         subject: input.subject,
-        questionType: input.questionType,
-        format: input.format,
         difficulty: input.difficulty,
         schoolLevel: input.schoolLevel,
+        format: input.format,
+        questionType: input.questionType,
         title: input.title,
         topic: input.topic,
       });
 
-      if (latestValidation.isValid) {
+      if (validation.isValid) {
         return {
-          title: getDefaultTitle(input),
-          questions: latestQuestions,
+          title: input.title || 'Exam',
+          questions: result.questions,
+          summary: result.summary,
           source: 'ai',
-          attempts: attempt,
-          validation: latestValidation,
+          attempts: i,
+          validation,
         };
       }
 
-      validationFeedback = latestValidation.reasons;
-    } catch (e) {
-      console.warn(`Attempt ${attempt} failed with error:`, e);
-      const errorMessage = `네트워크 또는 파싱 오류: ${e instanceof Error ? e.message : String(e)}`;
-      latestValidation = {
-        isValid: false,
-        reasons: [errorMessage],
-        warnings: [],
-        issueCounts: { error: 1 }
-      };
-      validationFeedback = [errorMessage];
+      feedback = validation.reasons;
+    } catch (e: any) {
+      if (i === 3) throw e;
     }
   }
 
-  const reasons = latestValidation.reasons || [];
-  const detailedReason = reasons.length > 0
-    ? `${reasons[0]}${reasons.length > 1 ? ' 외 ' + (reasons.length - 1) + '건' : ''}`
-    : '빈 문항 또는 placeholder가 감지되었습니다.';
-
-  throw new QuestionGenerationError(
-    `문제 생성 결과가 유효하지 않아 중단했습니다. (상세 사유: ${detailedReason})`,
-    reasons,
-  );
+  const lastErrorMsg = feedback.length > 0 ? `\n사유: ${feedback.slice(0, 2).join(', ')}` : '';
+  throw new Error(`3회 시도 후에도 유효한 결과를 얻지 못했습니다.${lastErrorMsg}`);
 }
 
 export async function generateValidatedQuestions(
   input: GenerateValidatedQuestionsInput,
 ): Promise<GenerateValidatedQuestionsOutput> {
-  if (!input.openai) {
-    throw new QuestionGenerationError('AI 문제 생성을 위한 OpenAI 설정이 없습니다.');
-  }
-
   if (input.count <= MAX_BATCH_SIZE) {
     return generateValidatedQuestionBatch(input);
   }
 
   const mergedQuestions: GeneratedQuestion[] = [];
-  const mergedWarnings: string[] = [];
-  let totalAttempts = 0;
+  let mergedSummary: string | undefined;
 
-  for (let startIndex = 0; startIndex < input.count; startIndex += MAX_BATCH_SIZE) {
-    const batchCount = Math.min(MAX_BATCH_SIZE, input.count - startIndex);
+  for (let i = 0; i < input.count; i += MAX_BATCH_SIZE) {
     const batch = await generateValidatedQuestionBatch({
       ...input,
-      count: batchCount,
+      count: Math.min(MAX_BATCH_SIZE, input.count - i),
     });
-
-    totalAttempts += batch.attempts;
-    mergedWarnings.push(...batch.validation.warnings);
-    mergedQuestions.push(
-      ...batch.questions.map((question, offset) => ({
-        ...question,
-        id: startIndex + offset + 1,
-      })),
-    );
-  }
-
-  const mergedValidation = validateGeneratedQuestions({
-    questions: mergedQuestions,
-    count: input.count,
-    subject: input.subject,
-    questionType: input.questionType,
-    format: input.format,
-    difficulty: input.difficulty,
-    schoolLevel: input.schoolLevel,
-    title: input.title,
-    topic: input.topic,
-  });
-
-  if (!mergedValidation.isValid) {
-    throw new QuestionGenerationError(
-      '배치 생성 후 최종 검증에 실패했습니다.',
-      mergedValidation.reasons,
-    );
+    if (!mergedSummary) mergedSummary = batch.summary;
+    mergedQuestions.push(...batch.questions.map((q, j) => ({ ...q, id: i + j + 1 })));
   }
 
   return {
-    title: getDefaultTitle(input),
+    title: input.title || 'Combined Exam',
     questions: mergedQuestions,
+    summary: mergedSummary,
     source: 'ai',
-    attempts: totalAttempts,
-    validation: {
-      ...mergedValidation,
-      warnings: Array.from(new Set([...mergedValidation.warnings, ...mergedWarnings])),
-    },
+    attempts: 1,
+    validation: { isValid: true, reasons: [], warnings: [], issueCounts: {} },
   };
 }

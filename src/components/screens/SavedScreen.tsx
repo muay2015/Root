@@ -239,6 +239,21 @@ export function SavedScreen({
                             <span className="opacity-30">•</span>
                             <span className="text-slate-600">{exam.question_count}문항</span>
                           </div>
+
+                          {(exam.question_files?.length > 0 || exam.answer_files?.length > 0) && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {exam.question_files?.map((f, i) => (
+                                <span key={`q-${i}`} className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-500 ring-1 ring-slate-200">
+                                  문제: {f}
+                                </span>
+                              ))}
+                              {exam.answer_files?.map((f, i) => (
+                                <span key={`a-${i}`} className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-500 ring-1 ring-blue-100">
+                                  정답: {f}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                           
                           <button
                             onClick={() => onOpen(exam)}

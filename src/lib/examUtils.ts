@@ -185,21 +185,21 @@ export function isSchoolLevel(value: string): value is SchoolLevel {
   return value === 'middle' || value === 'high' || value === 'csat';
 }
 
-// 제목 또는 저장된 데이터를 통해 과목 키(SubjectKey)를 정확하게 추출하는 함수
+// 제목 또는 저장된 데이터를 통해 과목 키(SubjectKey)를 추출하는 함수
 export function normalizeToSubjectKey(value: string | null | undefined, title?: string): SubjectKey | null {
   if (!value && !title) return null;
 
-  // 1. 이미 정확한 키인 경우 (english, social 등)
+  // 1. 이미 정확한 키인 경우 (english, social 등) 우선적으로 신뢰
   if (isSubjectKey(value)) return value;
 
-  // 2. 라벨(영어, 사회 등)로 저장된 경우 처리
+  // 2. 라벨(영어, 사회 등)로 저장된 경우 매핑 후 반환
   if (value) {
     const entry = Object.entries(SUBJECT_CONFIG).find(([_, config]) => config.label === value);
     if (entry) return entry[0] as SubjectKey;
   }
 
-  // 3. 제목에서 과목 유추
-  if (title) {
+  // 3. 자동 유추는 신규 데이터에서는 지양하고, 기존 데이터 복원 시에만 최소한으로 사용
+  if (title && !value) {
     return inferSubjectFromTitle(title);
   }
 
@@ -291,7 +291,7 @@ export function makeExamTitle(
   }
 
   const parts = [
-    mode === 'ai' ? 'AI 생성' : '업로드 기반',
+    mode === 'ai' ? 'AI 생성' : mode === 'summary' ? '핵심 요약' : '업로드 기반',
     subjectLabel,
     selectionLabel,
     getSchoolLevelLabel(schoolLevel),

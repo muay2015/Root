@@ -16,21 +16,6 @@ import {
   type SubjectKey,
 } from '../question/subjectConfig.ts';
 
-type LegacyDifficulty = '기본' | '도전' | '실전';
-type LegacySchoolLevel = '중학교 내신형' | '고등학교 내신형' | '수능형';
-
-export type GenerateExamRequest = {
-  materialText: string;
-  count: number;
-  subject?: SubjectKey;
-  questionType?: string;
-  format?: string;
-  difficulty?: DifficultyLevel | LegacyDifficulty;
-  schoolLevel?: SchoolLevel | LegacySchoolLevel;
-  title?: string;
-  topic?: string;
-};
-
 export type GeneratedExamResponse = {
   title: string;
   questions: GeneratedQuestion[];
@@ -42,6 +27,7 @@ export type GeneratedExamResponse = {
     warnings: string[];
     issueCounts: Record<string, number>;
   };
+  summary?: string;
 };
 
 export type GenerateExamApiResult = {
@@ -49,92 +35,57 @@ export type GenerateExamApiResult = {
   body: Record<string, unknown>;
 };
 
-export function normalizeDifficulty(value?: GenerateExamRequest['difficulty']): DifficultyLevel {
-  if (value === 'easy' || value === 'medium' || value === 'hard') {
-    return value;
-  }
-
+export function normalizeDifficulty(value?: any): DifficultyLevel {
+  if (value === 'easy' || value === 'medium' || value === 'hard') return value;
   if (value === '기본') return 'easy';
   if (value === '도전') return 'medium';
   return 'hard';
 }
 
-export function normalizeSchoolLevel(value?: GenerateExamRequest['schoolLevel']): SchoolLevel {
-  if (value === 'middle' || value === 'high' || value === 'csat') {
-    return value;
-  }
-
+export function normalizeSchoolLevel(value?: any): SchoolLevel {
+  if (value === 'middle' || value === 'high' || value === 'csat') return value;
   if (value === '중학교 내신형') return 'middle';
   if (value === '고등학교 내신형') return 'high';
   return 'csat';
 }
 
 export function normalizeSubject(value?: string): SubjectKey {
-  if (value && value in SUBJECT_CONFIG) {
-    return value as SubjectKey;
-  }
-
-  return 'english';
+  if (value && value in SUBJECT_CONFIG) return value as SubjectKey;
+  return 'middle_english';
 }
 
-export function buildResponseTitle(
-  payload: GenerateExamRequest,
-  subject: SubjectKey,
-  selectionValue: string | null,
-  schoolLevel: SchoolLevel,
-  difficulty: DifficultyLevel,
-) {
-  if (payload.title?.trim()) {
-    return payload.title.trim();
-  }
-
+export function buildResponseTitle(payload: any, subject: string, selectionValue: string | null, schoolLevel: string, difficulty: string) {
+  if (payload.title?.trim()) return payload.title.trim();
   return [subject, selectionValue, schoolLevel, difficulty, 'cbt'].filter(Boolean).join('-');
 }
 
 export function getOpenAiErrorMessage(error: unknown) {
-  if (error instanceof OpenAI.APIError) return error.message;
   if (error instanceof Error) return error.message;
-  return 'Unknown OpenAI error';
+  return 'Unknown error';
 }
 
 export async function generateExamApiResponse(input: {
-  payload: GenerateExamRequest;
+  payload: any;
   openAiApiKey?: string;
   openAiModel?: string;
 }): Promise<GenerateExamApiResult> {
-  const payload = input.payload;
-  const openAiApiKey = input.openAiApiKey?.trim() || '';
-  const openAiModel = input.openAiModel?.trim() || 'gpt-5.4-mini';
+  const { payload, openAiApiKey, openAiModel } = input;
   const openai = openAiApiKey ? new OpenAI({ apiKey: openAiApiKey }) : null;
-
-  const hasTopic = payload.topic && payload.topic.trim().length >= 2;
-  const hasMaterial = payload.materialText && payload.materialText.trim().length >= 20;
-
-  if (!hasTopic && !hasMaterial) {
-    return {
-      status: 400,
-      body: { error: 'Please provide either a unit name (at least 2 characters) or study material (at least 20 characters).' },
-    };
-  }
 
   try {
     const subject = normalizeSubject(payload.subject);
     const selectionDefaults = getSubjectSelectionDefaults(subject);
     const difficulty = normalizeDifficulty(payload.difficulty);
     const schoolLevel = normalizeSchoolLevel(payload.schoolLevel);
-    const questionType = usesQuestionType(subject)
-      ? (payload.questionType?.trim() || selectionDefaults.questionType)
-      : undefined;
-    const format = usesFormat(subject)
-      ? (payload.format?.trim() || selectionDefaults.format)
-      : undefined;
+    const questionType = usesQuestionType(subject) ? (payload.questionType?.trim() || selectionDefaults.questionType) : undefined;
+    const format = usesFormat(subject) ? (payload.format?.trim() || selectionDefaults.format) : undefined;
     const selectionValue = questionType ?? format ?? null;
 
     const generated = await generateValidatedQuestions({
       openai,
-      model: openAiModel,
+      model: openAiModel || 'gpt-5.4-mini',
       materialText: payload.materialText,
-      count: payload.count,
+      count: Number(payload.count) || 10,
       subject,
       questionType,
       format,
@@ -142,6 +93,8 @@ export async function generateExamApiResponse(input: {
       schoolLevel,
       title: buildResponseTitle(payload, subject, selectionValue, schoolLevel, difficulty),
       topic: payload.topic,
+      builderMode: payload.builderMode,
+      images: payload.images, // 이미지 데이터(Base64) 전달
     });
 
     return {
@@ -152,31 +105,65 @@ export async function generateExamApiResponse(input: {
         source: generated.source,
         attempts: generated.attempts,
         validation: generated.validation,
-      } satisfies GeneratedExamResponse,
+        summary: generated.summary,
+        _debug: {
+          requestedCount: payload.count,
+          resolvedCount: Number(payload.count) || 10,
+          builderMode: payload.builderMode,
+          subject: subject
+        }
+      }
     };
-  } catch (error) {
-    if (error instanceof QuestionGenerationError) {
-      console.error('Question validation failed:', error.message, error.reasons);
-      return {
-        status: 422,
-        body: {
-          error: error.message,
-          reasons: error.reasons,
-          source: 'openai',
-          model: openAiModel,
-        },
-      };
-    }
+  } catch (error: any) {
+    console.error('API Error:', error);
+    return {
+      status: error instanceof QuestionGenerationError ? 422 : 502,
+      body: { error: error.message || 'Error occurred' }
+    };
+  }
+}
 
-    const errorMessage = getOpenAiErrorMessage(error);
-    console.error('OpenAI generate exam error:', errorMessage, error);
+export async function ocrApiResponse(input: {
+  payload: { image: { mimeType: string; data: string } };
+  openAiApiKey?: string;
+  openAiModel?: string;
+}): Promise<GenerateExamApiResult> {
+  const { payload, openAiApiKey, openAiModel } = input;
+  const openai = openAiApiKey ? new OpenAI({ apiKey: openAiApiKey }) : null;
+
+  if (!openai) return { status: 401, body: { error: 'API 키가 설정되지 않았습니다.' } };
+
+  try {
+    const resp = await openai.chat.completions.create({
+      model: openAiModel || 'gpt-5.4-mini',
+      messages: [
+        { role: 'system', content: '입력된 이미지에서 텍스트를 고정밀도로 추출하세요. 특수기호나 구조(표 등)는 텍스트로 자연스럽게 표현하고, 불필요한 설명 없이 추출된 텍스트만 반환하세요.' },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: '이미지에서 모든 텍스트를 추출해줘.' },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${payload.image.mimeType};base64,${payload.image.data}`
+              }
+            }
+          ]
+        } as any
+      ],
+    });
+
+    const text = resp.choices[0].message.content || '';
+
+    return {
+      status: 200,
+      body: { text }
+    };
+  } catch (error: any) {
+    console.error('OCR API Error:', error);
     return {
       status: 502,
-      body: {
-        error: errorMessage,
-        source: 'openai',
-        model: openAiModel,
-      },
+      body: { error: error.message || 'OCR 처리 중 오류가 발생했습니다.' }
     };
   }
 }

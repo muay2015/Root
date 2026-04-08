@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import type React from 'react';
 import { Mail, Lock, User, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
 import { requestPasswordReset, signInWithEmail, signUpWithEmail } from '../../lib/rootPersistence';
 import { isSupabaseConfigured } from '../../lib/supabase';
@@ -24,9 +25,18 @@ export function AuthScreen({ onSuccess = () => window.location.reload() }: { onS
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreeToStorage, setAgreeToStorage] = useState(false);
+  const [rememberEmail, setRememberEmail] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('root_saved_email');
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberEmail(true);
+    }
+  }, []);
 
   const isSignUp = mode === 'sign_up';
   const needsPassword = mode !== 'reset_password';
@@ -38,7 +48,8 @@ export function AuthScreen({ onSuccess = () => window.location.reload() }: { onS
     setError(null);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setMessage(null);
     setError(null);
 
@@ -110,6 +121,14 @@ export function AuthScreen({ onSuccess = () => window.location.reload() }: { onS
         return;
       }
 
+      if (mode === 'sign_in') {
+        if (rememberEmail) {
+          localStorage.setItem('root_saved_email', normalizedEmail);
+        } else {
+          localStorage.removeItem('root_saved_email');
+        }
+      }
+
       if (mode === 'sign_up') {
         setMessage('회원가입이 완료되었습니다. 이메일 인증이 켜져 있다면 메일함에서 인증을 마친 뒤 로그인하세요.');
         if (!import.meta.env.VITE_SUPABASE_REQUIRE_EMAIL_VERIFICATION) {
@@ -158,7 +177,7 @@ export function AuthScreen({ onSuccess = () => window.location.reload() }: { onS
               </p>
             </div>
 
-            <div className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {isSignUp ? (
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold text-slate-700 ml-1">닉네임</label>
@@ -184,6 +203,7 @@ export function AuthScreen({ onSuccess = () => window.location.reload() }: { onS
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
+                    autoComplete="email"
                     className="w-full rounded-2xl bg-slate-50 border border-slate-200 pl-11 pr-4 py-3.5 text-sm transition-all focus:bg-white focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none"
                   />
                 </div>
@@ -199,11 +219,26 @@ export function AuthScreen({ onSuccess = () => window.location.reload() }: { onS
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder={isSignUp ? '영문+숫자 포함 8자 이상' : '비밀번호를 입력하세요'}
+                      autoComplete={isSignUp ? 'new-password' : 'current-password'}
                       className="w-full rounded-2xl bg-slate-50 border border-slate-200 pl-11 pr-4 py-3.5 text-sm transition-all focus:bg-white focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none"
                     />
                   </div>
                 </div>
               ) : null}
+
+              {mode === 'sign_in' && (
+                <div className="flex items-center justify-between px-1">
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={rememberEmail}
+                      onChange={(e) => setRememberEmail(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900 cursor-pointer"
+                    />
+                    <span className="text-xs font-bold text-slate-600 group-hover:text-slate-900 transition-colors">아이디 저장</span>
+                  </label>
+                </div>
+              )}
 
               {isSignUp ? (
                 <>
@@ -216,6 +251,7 @@ export function AuthScreen({ onSuccess = () => window.location.reload() }: { onS
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="비밀번호를 한 번 더 입력하세요"
+                        autoComplete="new-password"
                         className="w-full rounded-2xl bg-slate-50 border border-slate-200 pl-11 pr-4 py-3.5 text-sm transition-all focus:bg-white focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none"
                       />
                     </div>
@@ -268,8 +304,7 @@ export function AuthScreen({ onSuccess = () => window.location.reload() }: { onS
               )}
 
               <button
-                type="button"
-                onClick={() => void handleSubmit()}
+                type="submit"
                 disabled={isSubmitting || !isSupabaseConfigured}
                 className="group relative w-full overflow-hidden rounded-2xl bg-slate-900 py-4 font-bold text-white shadow-xl shadow-slate-200 transition-all hover:bg-slate-800 hover:-translate-y-1 active:translate-y-0 disabled:bg-slate-300 disabled:shadow-none disabled:translate-y-0"
               >
@@ -278,7 +313,7 @@ export function AuthScreen({ onSuccess = () => window.location.reload() }: { onS
                   {!isSubmitting && <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />}
                 </div>
               </button>
-            </div>
+            </form>
           </div>
         </div>
       </div>

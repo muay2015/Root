@@ -1,0 +1,85 @@
+export interface MathCurriculumItem {
+  grade: '1학년' | '2학년' | '3학년';
+  areas: {
+    areaName: string;
+    subTopics: string[];
+  }[];
+}
+
+export const MIDDLE_MATH_CURRICULUM: MathCurriculumItem[] = [
+  {
+    grade: '1학년',
+    areas: [
+      {
+        areaName: '수와 연산',
+        subTopics: ['소인수분해', '최대공약수와 최소공배수', '정수와 유리수', '정수와 유리수의 사칙계산']
+      },
+      {
+        areaName: '문자와 식',
+        subTopics: ['문자 사용과 식의 계산', '일차방정식의 풀이', '일차방정식의 활용']
+      },
+      {
+        areaName: '함수',
+        subTopics: ['좌표평면과 그래프', '정비례와 반비례', '변수와 그래프']
+      },
+      {
+        areaName: '기하(도형)',
+        subTopics: ['기본 도형(점, 선, 면)', '위치 관계', '평행선의 성질', '작도와 합동', '다각형의 성질', '원과 부채꼴', '입체도형의 겉넓이와 부피']
+      },
+      {
+        areaName: '확률과 통계',
+        subTopics: ['자료의 정리와 해석(도수분포표)', '줄기와 잎 그림', '상대도수']
+      }
+    ]
+  },
+  {
+    grade: '2학년',
+    areas: [
+      {
+        areaName: '수와 연산',
+        subTopics: ['유리수와 순환소수']
+      },
+      {
+        areaName: '문자와 식',
+        subTopics: ['지수법칙', '다항식의 계산', '일차부등식', '연립일차방정식']
+      },
+      {
+        areaName: '함수',
+        subTopics: ['일차함수와 그래프', '일차함수와 일차방정식의 관계']
+      },
+      {
+        areaName: '기하(도형)',
+        subTopics: ['삼각형의 성질(외심, 내심)', '사각형의 성질(평행사변형 등)', '도형의 닮음', '평행선과 선분의 길이의 비', '피타고라스 정리']
+      },
+      {
+        areaName: '확률과 통계',
+        subTopics: ['경우의 수', '확률의 계산']
+      }
+    ]
+  },
+  {
+    grade: '3학년',
+    areas: [
+      {
+        areaName: '수와 연산',
+        subTopics: ['제곱근과 실수', '근호를 포함한 식의 계산']
+      },
+      {
+        areaName: '문자와 식',
+        subTopics: ['다항식의 곱셈과 인수분해', '이차방정식의 풀이', '이차방정식의 활용']
+      },
+      {
+        areaName: '함수',
+        subTopics: ['이차함수와 그래프(1)', '이차함수와 그래프(2)']
+      },
+      {
+        areaName: '기하(도형)',
+        subTopics: ['삼각비', '삼각비의 활용', '원과 직선', '원주각', '원주각의 활용']
+      },
+      {
+        areaName: '확률과 통계',
+        subTopics: ['대푯값과 산포도', '상관관계(산점도)']
+      }
+    ]
+  }
+];

@@ -1,11 +1,16 @@
 import React, { type ChangeEvent } from 'react';
-import { SUBJECT_CONFIG, getSubjectFormats, getSubjectQuestionTypes, getSubjectSelectionDefaults, getSubjectSelectionLabel, usesNoSelector, type SelectionFormat, type SubjectKey } from '../../lib/question/subjectConfig';
-import { getDifficultyLabel, getSchoolLevelLabel } from '../../lib/examUtils';
-import type { BuilderMode, DifficultyLevel, SchoolLevel } from '../../lib/examTypes';
-import { SelectorPanel } from '../ui/SelectorPanel';
+import { SUBJECT_CONFIG, getSubjectSelectionDefaults, getSubjectSelectionLabel, usesNoSelector, getSubjectQuestionTypes, getSubjectFormats, type SelectionFormat, type SubjectKey } from '../../lib/question/subjectConfig';
+import type { BuilderMode, DifficultyLevel, SchoolLevel, MathGrade } from '../../lib/examTypes';
 import { UploadPanel } from '../ui/UploadPanel';
-import { Sparkles, FileUp, Settings2, CheckCircle2 } from 'lucide-react';
 import { parseFileToText } from '../../lib/fileParser';
+
+// Refactored Sub-components
+import { ModeSelector } from '../create/ModeSelector';
+import { GradeSelector } from '../create/GradeSelector';
+import { SubjectSelector } from '../create/SubjectSelector';
+import { GenerationSettings } from '../create/GenerationSettings';
+import { AIDetailsInput } from '../create/AIDetailsInput';
+import { GenerationExecution } from '../create/GenerationExecution';
 
 export interface CreateScreenProps {
   mode: BuilderMode;
@@ -20,12 +25,14 @@ export interface CreateScreenProps {
   setDifficulty: (value: DifficultyLevel) => void;
   schoolLevel: SchoolLevel;
   setSchoolLevel: (value: SchoolLevel) => void;
+  mathGrade: MathGrade;
+  setMathGrade: (value: MathGrade) => void;
   count: number;
   setCount: (value: number) => void;
   generationTopic: string;
   setGenerationTopic: (value: string) => void;
   materialText: string;
-  setMaterialText: (value: string) => void;
+  setMaterialText: React.Dispatch<React.SetStateAction<string>>;
   parsedFiles: string[];
   setParsedFiles: React.Dispatch<React.SetStateAction<string[]>>;
   questionFiles: string[];
@@ -36,44 +43,29 @@ export interface CreateScreenProps {
   isGenerating: boolean;
   generationError: string | null;
   onGenerate: () => void;
+  imageData: { mimeType: string; data: string }[];
+  setImageData: React.Dispatch<React.SetStateAction<{ mimeType: string; data: string }[]>>;
+  ocrPages: { id: string; text: string }[];
+  setOcrPages: React.Dispatch<React.SetStateAction<{ id: string; text: string }[]>>;
 }
 
 export function CreateScreen(props: CreateScreenProps) {
   const {
-    mode,
-    setMode,
-    subject,
-    onSelectSubject,
-    questionType,
-    setQuestionType,
-    format,
-    setFormat,
-    difficulty,
-    setDifficulty,
-    schoolLevel,
-    setSchoolLevel,
-    count,
-    setCount,
-    generationTopic,
-    setGenerationTopic,
-    materialText,
-    setMaterialText,
-    parsedFiles,
-    setParsedFiles,
-    questionFiles,
-    answerFiles,
-    setQuestionFiles,
-    setAnswerFiles,
-    ready,
-    isGenerating,
-    generationError,
-    onGenerate,
+    mode, setMode, subject, onSelectSubject, questionType, setQuestionType,
+    format, setFormat, difficulty, setDifficulty, schoolLevel, setSchoolLevel,
+    mathGrade, setMathGrade,
+    count, setCount, generationTopic, setGenerationTopic, materialText, setMaterialText,
+    parsedFiles, setParsedFiles, questionFiles, answerFiles, setQuestionFiles, setAnswerFiles,
+    ready, isGenerating, generationError, onGenerate,
+    imageData, setImageData,
+    ocrPages, setOcrPages,
   } = props;
 
   const [isParsing, setIsParsing] = React.useState(false);
   const [parsingProgress, setParsingProgress] = React.useState('');
   const [showSuccess, setShowSuccess] = React.useState(false);
   const [successFile, setSuccessFile] = React.useState<string | null>(null);
+  const [parseError, setParseError] = React.useState<string | null>(null);
 
   const selectionLabel = getSubjectSelectionLabel(subject, questionType, format);
   const hideSelector = usesNoSelector(subject);
@@ -81,10 +73,8 @@ export function CreateScreen(props: CreateScreenProps) {
   const formatOptions = getSubjectFormats(subject);
 
   const readyHint = ready
-    ? '설계가 완료되었습니다. 평가 생성을 시작할 수 있습니다.'
-    : mode === 'upload'
-      ? '유효한 문항 데이터와 정답지가 모두 필요합니다.'
-      : '주제 또는 핵심 단원명을 입력해 주세요.';
+    ? '설정이 완료되었습니다. 문제 생성을 시작할 수 있습니다.'
+    : '주제 또는 핵심 단원명을 입력해 주세요.';
 
   const handleSelectSubject = (key: SubjectKey) => {
     onSelectSubject(key);
@@ -93,375 +83,120 @@ export function CreateScreen(props: CreateScreenProps) {
     setFormat(defaults.format);
   };
 
-  React.useEffect(() => {
-    if (!SUBJECT_CONFIG[subject].supportedLevels.includes(schoolLevel)) {
-      const firstSupported = (Object.keys(SUBJECT_CONFIG) as SubjectKey[]).find(
-        (key) => SUBJECT_CONFIG[key].supportedLevels.includes(schoolLevel)
-      );
-      if (firstSupported) {
-        handleSelectSubject(firstSupported);
-      }
-    }
-  }, [schoolLevel]);
+  const removeFile = (name: string) => {
+    setParsedFiles(prev => prev.filter(f => f !== name));
+    setMaterialText(prev => {
+      const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp(`\\s*\\[자료: ${escapedName}\\][\\s\\S]*?(?=(\\n\\[자료:|$))`, 'g');
+      return prev.replace(pattern, '').trim();
+    });
+  };
 
-  const handleFileChange = (
-    event: ChangeEvent<HTMLInputElement>,
-    target: 'question' | 'answer',
-  ) => {
-    const files = event.target.files ? Array.from<File, string>(event.target.files, (file) => file.name) : [];
-    if (target === 'question') {
-      setQuestionFiles(files);
-    } else {
-      setAnswerFiles(files);
+  const handleAIDataUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        setIsParsing(true);
+        setParsingProgress('업로드를 준비 중입니다...');
+        setSuccessFile(null);
+        setParseError(null);
+        setShowSuccess(false);
+        
+        const content = await parseFileToText(file, (msg) => setParsingProgress(msg));
+        
+        setMaterialText(prev => {
+           const separator = prev ? '\n\n' : '';
+           return `${prev}${separator}[자료: ${file.name}]\n${content}`;
+        });
+        
+        setParsedFiles(prev => Array.from(new Set([...prev, file.name])));
+        setSuccessFile(file.name);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 4000);
+      } catch (error) {
+        setParseError(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
+      } finally {
+        setIsParsing(false);
+        setParsingProgress('');
+      }
     }
   };
 
   return (
     <main className="min-h-screen bg-surface px-4 pb-28 pt-8 sm:px-6 sm:pt-10">
       <div className="mx-auto max-w-5xl space-y-8">
-        {/* Header Section */}
         <header className="flex flex-col gap-2">
           <h1 className="text-3xl font-black tracking-tight text-slate-900">지능형 문제 생성</h1>
-          <p className="text-sm font-medium text-slate-500">
-            학습 목표에 최적화된 평가 환경을 구성합니다. 모든 문항은 정밀 파싱 로직을 거칩니다.
-          </p>
+          <p className="text-sm font-medium text-slate-500">학습 목표에 최적화된 평가 환경을 구성합니다. 모든 문항은 정밀 파싱 로직을 거칩니다.</p>
         </header>
 
-        {/* 생성 모드 선택 */}
-        <section className="premium-card p-6 border-none shadow-lg shadow-blue-900/5">
-          <div className="flex items-center gap-2 mb-4">
-            <Settings2 className="h-4 w-4 text-blue-500" />
-            <h2 className="text-sm font-black uppercase tracking-wider text-slate-400">설계 방식 선택</h2>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <ModeButton 
-              active={mode === 'ai'} 
-              onClick={() => setMode('ai')} 
-              icon={<Sparkles className="h-5 w-5" />}
-              label="AI 지능형 생성" 
-              sub="주제 기반 자동 출제"
-            />
-            <ModeButton 
-              active={mode === 'upload'} 
-              onClick={() => setMode('upload')} 
-              icon={<FileUp className="h-5 w-5" />}
-              label="데이터 업로드" 
-              sub="기존 자료 디지털화"
-            />
-          </div>
-        </section>
+        <ModeSelector mode={mode} setMode={setMode} />
+        <GradeSelector 
+          mode={mode} 
+          value={schoolLevel} 
+          onChange={setSchoolLevel} 
+          mathGrade={mathGrade}
+          onMathGradeChange={setMathGrade}
+        />
+        <SubjectSelector mode={mode} schoolLevel={schoolLevel} subject={subject} onSelectSubject={handleSelectSubject} />
+        
+        <GenerationSettings 
+          hideSelector={hideSelector}
+          questionTypeOptions={questionTypeOptions}
+          questionType={questionType}
+          setQuestionType={setQuestionType}
+          formatOptions={formatOptions}
+          format={format}
+          setFormat={setFormat}
+          difficulty={difficulty}
+          setDifficulty={setDifficulty}
+          count={count}
+          setCount={setCount}
+          subject={subject}
+          mathGrade={mathGrade}
+          generationTopic={generationTopic}
+          setGenerationTopic={setGenerationTopic}
+        />
 
-        {/* 대상 학년/과정 선택 */}
-        <section className="premium-card p-6">
-          <h2 className="text-sm font-black uppercase tracking-wider text-slate-400 mb-4">대상 학년/과정</h2>
-          <div className="flex flex-wrap gap-2.5">
-            {(['middle', 'high', 'csat'] as SchoolLevel[]).map((level) => (
-              <button
-                key={level}
-                onClick={() => setSchoolLevel(level)}
-                className={`rounded-2xl px-6 py-3.5 text-sm font-bold transition-all duration-300 ${
-                  schoolLevel === level 
-                    ? 'premium-gradient text-white shadow-md' 
-                    : 'bg-slate-50 text-slate-600 ring-1 ring-outline hover:bg-white hover:shadow-sm'
-                }`}
-              >
-                {{ middle: '중등 과정', high: '고등 과정', csat: '수능/대입' }[level]}
-              </button>
-            ))}
-          </div>
-        </section>
+        <AIDetailsInput 
+          mode={mode}
+          subject={subject}
+          questionType={questionType}
+          mathGrade={mathGrade}
+          generationTopic={generationTopic}
+          setGenerationTopic={setGenerationTopic}
+          materialText={materialText}
+          setMaterialText={setMaterialText}
+          parsedFiles={parsedFiles}
+          removeFile={removeFile}
+          isParsing={isParsing}
+          parsingProgress={parsingProgress}
+          parseError={parseError}
+          onFileChange={handleAIDataUpload}
+          showSuccess={showSuccess}
+          successFile={successFile}
+          imageData={imageData}
+          setImageData={setImageData}
+          ocrPages={ocrPages}
+          setOcrPages={setOcrPages}
+          isGenerating={isGenerating}
+          generationError={generationError}
+          onGenerate={onGenerate}
+        />
 
-        {/* 과목 선택 */}
-        <section className="premium-card p-6">
-          <h2 className="text-sm font-black uppercase tracking-wider text-slate-400 mb-4">학습 카테고리</h2>
-          <div className="flex flex-wrap gap-2.5">
-            {(Object.keys(SUBJECT_CONFIG) as SubjectKey[])
-              .filter((key) => SUBJECT_CONFIG[key].supportedLevels.includes(schoolLevel))
-              .map((key) => (
-              <button
-                key={key}
-                onClick={() => handleSelectSubject(key)}
-                className={`rounded-2xl px-6 py-3.5 text-sm font-bold transition-all duration-300 ${
-                  subject === key 
-                    ? 'premium-gradient text-white shadow-md' 
-                    : 'bg-slate-50 text-slate-600 ring-1 ring-outline hover:bg-white hover:shadow-sm'
-                }`}
-              >
-                {SUBJECT_CONFIG[key].label}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* 세부 구성 설정 */}
-        <section className="grid gap-6 lg:grid-cols-2">
-          {!hideSelector && questionTypeOptions.length > 0 && (
-            <SelectorPanel
-              title="문항 유형 설계"
-              options={questionTypeOptions}
-              value={questionType}
-              onSelect={setQuestionType}
-            />
-          )}
-
-          {!hideSelector && formatOptions.length > 0 && (
-            <SelectorPanel
-              title="지문 구성 방식"
-              options={formatOptions}
-              value={format}
-              onSelect={(value) => setFormat(value as SelectionFormat)}
-            />
-          )}
-
-          <SelectorPanel
-            title="평가 난이도"
-            options={['easy', 'medium', 'hard']}
-            value={difficulty}
-            onSelect={(value) => setDifficulty(value as DifficultyLevel)}
-            labelMap={{ easy: '기초', medium: '표준', hard: '심화' }}
-          />
-
-
-          <section className="premium-card p-6">
-            <h2 className="text-sm font-black uppercase tracking-wider text-slate-400">평가 문항 구성</h2>
-            <div className="mt-6 flex flex-col gap-6">
-              <input
-                type="range"
-                min={5}
-                max={30}
-                value={count}
-                onChange={(event) => setCount(Number(event.target.value))}
-                className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600"
-              />
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-slate-400">최소 5문항</span>
-                <div className="flex h-12 w-24 items-center justify-center rounded-2xl bg-blue-50 text-xl font-black text-blue-600 ring-1 ring-blue-100">
-                  {count}
-                </div>
-                <span className="text-sm font-bold text-slate-400">최대 30문항</span>
-              </div>
-            </div>
-          </section>
-        </section>
-
-        {/* 상세 정보 입력 */}
-        {mode === 'upload' ? (
-          <section className="grid gap-6 lg:grid-cols-2">
-            <UploadPanel title="평가 문항지" files={questionFiles} onChange={(event) => handleFileChange(event, 'question')} />
-            <UploadPanel title="정답/해설지" files={answerFiles} onChange={(event) => handleFileChange(event, 'answer')} />
-          </section>
-        ) : (
-          <section className="space-y-6">
-            <section className="premium-card p-6">
-              <h2 className="text-sm font-black uppercase tracking-wider text-slate-400">핵심 단원 및 주제 (필수)</h2>
-              <input
-                value={generationTopic}
-                onChange={(event) => setGenerationTopic(event.target.value)}
-                placeholder={SUBJECT_CONFIG[subject].exampleTopic}
-                className="mt-4 w-full rounded-2xl bg-slate-50 border-none px-5 py-4 text-[15px] font-medium text-slate-900 outline-none ring-1 ring-slate-100 focus:ring-2 focus:ring-accent transition-all"
-              />
-            </section>
-
-            <section className="premium-card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-black uppercase tracking-wider text-slate-400">학습 내용 추가 (선택)</h2>
-                <label className="flex cursor-pointer items-center gap-2 rounded-xl bg-blue-50 px-4 py-2 text-xs font-bold text-blue-600 ring-1 ring-blue-100 hover:bg-blue-100 transition-all active:scale-95 shadow-sm">
-                  <FileUp className="h-4 w-4" />
-                  <span>자료 업로드</span>
-                  <input 
-                    type="file" 
-                    className="hidden" 
-                    accept=".txt,.md,.json,.csv,.pdf,.docx,.hwp,.hwpx"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        console.log(`[FileParser] Start parsing: ${file.name}`);
-                        try {
-                          setIsParsing(true);
-                          setParsingProgress('업로드를 준비 중입니다...');
-                          setSuccessFile(null);
-                          setShowSuccess(false);
-                          
-                          const separator = materialText ? '\n\n' : '';
-                          const content = await parseFileToText(file, (msg) => {
-                            setParsingProgress(msg);
-                            console.log(`[FileParser Progress] ${msg}`);
-                          });
-                          
-                          console.log(`[FileParser] Content extracted (${content.length} chars)`);
-                          
-                          setMaterialText(`${materialText}${separator}[자료: ${file.name}]\n${content}`);
-                          setParsedFiles(prev => {
-                            const next = Array.from(new Set([...prev, file.name]));
-                            console.log(`[FileParser] Current parsed files: ${next.join(', ')}`);
-                            return next;
-                          });
-                          
-                          setSuccessFile(file.name);
-                          setShowSuccess(true);
-                          setParsingProgress('');
-                          setTimeout(() => setShowSuccess(false), 4000);
-                        } catch (error) {
-                          console.error('[FileParser] Fatal Error:', error);
-                          alert(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
-                        } finally {
-                          setIsParsing(false);
-                          setParsingProgress('');
-                        }
-                      }
-                    }}
-                  />
-                </label>
-              </div>
-              
-              <div className="relative mt-2">
-                {/* 강력한 업로드 오버레이 (분석 중일 때 노출) */}
-                {isParsing && (
-                  <div className="absolute inset-x-0 -inset-y-2 z-50 flex flex-col items-center justify-center rounded-2xl bg-white/80 backdrop-blur-[2px] animate-in fade-in duration-300">
-                    <div className="flex flex-col items-center gap-4 p-8 rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200">
-                      <div className="relative h-16 w-16">
-                        <div className="absolute inset-0 animate-ping rounded-full bg-blue-100" />
-                        <div className="relative flex h-full w-full items-center justify-center rounded-full bg-blue-50">
-                          <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-blue-600 border-t-transparent shadow-sm" />
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-center gap-1 text-center">
-                        <span className="text-[15px] font-black text-slate-800">지능형 자료 분석 중</span>
-                        <p className="text-[11px] font-bold text-slate-400 max-w-[200px] leading-relaxed">
-                          {parsingProgress || 'AI가 지식을 습득하고 있습니다.'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* 파일 분석 결과/플레이스홀더 영역 */}
-                <div className="min-h-[44px] flex flex-col gap-2 mb-3">
-                  {showSuccess && (
-                    <div className="flex items-center justify-between rounded-xl bg-emerald-500 px-5 py-3.5 text-[13px] font-black text-white shadow-lg shadow-emerald-900/10 animate-in zoom-in-95 slide-in-from-top-2 duration-300">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20">
-                          <CheckCircle2 className="h-4 w-4" strokeWidth={3} />
-                        </div>
-                        <span>자료 업로드 및 반영 완료 : {successFile}</span>
-                      </div>
-                      <div className="h-1.5 w-16 rounded-full bg-white/30 overflow-hidden">
-                        <div className="h-full bg-white animate-[progress_4s_linear_forwards]" />
-                      </div>
-                    </div>
-                  )}
-                  
-                  {parsedFiles.length > 0 ? (
-                    <div className="flex flex-wrap gap-2 py-1">
-                      {parsedFiles.map((name, i) => (
-                        <div key={i} className="group relative inline-flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-[12px] font-black text-slate-700 ring-1 ring-slate-200 shadow-sm hover:ring-blue-400 hover:text-blue-600 transition-all cursor-default overflow-hidden">
-                          <div className="absolute inset-0 bg-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          <div className="relative flex items-center gap-1.5">
-                            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <span>{name}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : !isParsing && (
-                    <div className="flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-slate-100 bg-slate-50/30 text-[12px] font-bold text-slate-400">
-                      <div className="h-2 w-2 rounded-full bg-slate-200" />
-                      <span>업로드된 학습 자료가 여기에 표시됩니다.</span>
-                    </div>
-                  )}
-                </div>
-
-                <textarea
-                  value={materialText}
-                  onChange={(event) => setMaterialText(event.target.value)}
-                  placeholder="학습할 교재의 텍스트를 붙여넣거나, 상단 '자료 업로드' 버튼을 통해 파일을 추가하세요. (PDF, Word, HWP 지원)"
-                  className="w-full min-h-[180px] p-5 rounded-2xl bg-slate-50/50 border-2 border-slate-100 text-sm focus:bg-white focus:border-blue-400 focus:ring-4 focus:ring-blue-400/10 transition-all outline-none resize-none font-medium leading-relaxed placeholder:text-slate-300"
-                />
-              </div>
-            </section>
-          </section>
-        )}
-
-        {/* 생성 실행바 */}
-        <section className={`premium-card p-6 border-none transition-all duration-500 overflow-hidden ${ready ? 'ring-2 ring-accent shadow-xl shadow-blue-900/10' : 'opacity-80'}`}>
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-4">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${ready ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
-                <CheckCircle2 className="h-6 w-6" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-slate-800">최종 평가 구성 확인</p>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
-                  <ConfigTag label={SUBJECT_CONFIG[subject].label} />
-                  {selectionLabel && <ConfigTag label={selectionLabel} />}
-                  <ConfigTag label={getSchoolLevelLabel(schoolLevel)} />
-                  <ConfigTag label={getDifficultyLabel(difficulty)} />
-                  <ConfigTag label={`${count}문항`} />
-                </div>
-                <p className={`mt-2 text-xs font-bold ${ready ? 'text-blue-500' : 'text-slate-400'}`}>{readyHint}</p>
-              </div>
-            </div>
-            
-            <button
-              onClick={onGenerate}
-              disabled={!ready || isGenerating}
-              className="relative flex h-14 items-center justify-center gap-3 rounded-2xl premium-gradient px-10 text-base font-black text-white shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02] active:scale-95 disabled:scale-100 disabled:bg-slate-200 disabled:shadow-none disabled:cursor-not-allowed group overflow-hidden"
-            >
-              {isGenerating ? (
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  <span>AI 알고리즘 구동 중...</span>
-                </div>
-              ) : (
-                <>
-                  <Sparkles className="h-5 w-5" />
-                  <span>문제 생성 시작하기</span>
-                  <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-[shimmer_1.5s_infinite]" />
-                </>
-              )}
-            </button>
-          </div>
-          {generationError && (
-             <div className="mt-4 rounded-xl bg-red-50 p-4 text-[13px] font-bold text-red-600 ring-1 ring-red-100">
-               {generationError}
-             </div>
-          )}
-        </section>
+        <GenerationExecution 
+          ready={ready}
+          isGenerating={isGenerating}
+          generationError={generationError}
+          subject={subject}
+          selectionLabel={selectionLabel}
+          schoolLevel={schoolLevel}
+          difficulty={difficulty}
+          count={count}
+          readyHint={readyHint}
+          onGenerate={onGenerate}
+        />
       </div>
     </main>
-  );
-}
-
-function ModeButton({ active, onClick, icon, label, sub }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string, sub: string }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`relative flex flex-col items-center gap-2 rounded-2xl p-6 transition-all duration-300 ${
-        active 
-          ? 'bg-blue-50 ring-2 ring-accent' 
-          : 'bg-white ring-1 ring-slate-100 hover:bg-slate-50'
-      }`}
-    >
-      <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${active ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-400'}`}>
-        {icon}
-      </div>
-      <div className="text-center">
-        <p className={`text-sm font-black ${active ? 'text-primary' : 'text-slate-600'}`}>{label}</p>
-        <p className="text-[11px] font-bold text-slate-400 mt-0.5">{sub}</p>
-      </div>
-      {active && (
-        <div className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-white">
-          <CheckCircle2 className="h-3 w-3" strokeWidth={4} />
-        </div>
-      )}
-    </button>
-  );
-}
-
-function ConfigTag({ label }: { label: string }) {
-  return (
-    <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500 ring-1 ring-slate-200">
-      {label}
-    </span>
   );
 }

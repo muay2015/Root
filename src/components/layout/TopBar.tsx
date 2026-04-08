@@ -49,7 +49,7 @@ export function TopBar({
             {[
               { id: 'landing', label: '홈' },
               { id: 'dashboard', label: '대시보드' },
-              { id: 'create', label: '평가 생성' },
+              { id: 'create', label: '문제 생성' },
               { id: 'saved', label: '나의 보관함' },
               { id: 'wrong', label: '오답 집중' },
             ].map((item) => (

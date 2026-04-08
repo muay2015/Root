@@ -157,5 +157,25 @@ export const examService = {
     } catch (error) {
       return { data: null, error: normalizeSupabaseErrorMessage(error) };
     }
+  },
+
+  async generateAIExam(payload: any): Promise<Result<any>> {
+    try {
+      const response = await fetch('/api/ai/generate-exam', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return { data: null, error: errorData.error || `HTTP error! status: ${response.status}` };
+      }
+
+      const data = await response.json();
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error: error instanceof Error ? error.message : '네트워크 오류가 발생했습니다.' };
+    }
   }
 };

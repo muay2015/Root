@@ -52,6 +52,10 @@ function countWords(value: string) {
   return value.trim().split(/\s+/).filter(Boolean).length;
 }
 
+function countKoreanCharacters(value: string) {
+  return (value.match(/[가-힣]/g) ?? []).length;
+}
+
 function normalizeText(value: string) {
   return value.replace(/\s+/g, ' ').trim().toLowerCase();
 }
@@ -71,8 +75,13 @@ function validateStructure(
     pushReason(reasons, issueCounts, 'empty_choice', `Question ${index}: every choice must be non-empty.`);
   }
 
-  const placeholderRegex = /^(?:choice|option|\uBCF4\uAE30)\s*\d*$/i;
-  if (choices.length > 0 && choices.some((choice) => placeholderRegex.test(choice.trim()))) {
+  const placeholderRegex = /^(?:choice|option|보기|준비중|선택지)\s*\d+$/i;
+  const commonPlaceholders = ['placeholder', '내용없음', '내용 없음', '...', '-', 'tbd'];
+  
+  if (choices.length > 0 && choices.some((choice) => {
+    const c = choice.trim().toLowerCase();
+    return placeholderRegex.test(c) || commonPlaceholders.includes(c);
+  })) {
     pushReason(reasons, issueCounts, 'placeholder_choice', `Question ${index}: choices contain placeholder or empty text.`);
   }
 
@@ -99,6 +108,7 @@ function validateGenericDifficulty(
   issueCounts: Record<string, number>,
 ) {
   const stemWords = countWords(question.stem);
+  const stemKoreanChars = countKoreanCharacters(question.stem);
   const explanationWords = countWords(question.explanation);
   const directCuePattern = /\bwhat is stated|which is true|directly\b|다음 중 옳은 것은|맞는 것은/i;
 
@@ -107,7 +117,7 @@ function validateGenericDifficulty(
   }
 
   if (difficulty === 'hard') {
-    if (stemWords < 8) {
+    if (stemWords < 8 && stemKoreanChars < 18) {
       pushReason(reasons, issueCounts, 'hard_too_short', `Question ${index}: hard difficulty stem is too short for deep reasoning.`);
     }
     if (directCuePattern.test(question.stem)) {
@@ -173,15 +183,15 @@ function validateTopicReflection(
   warnings: string[],
 ) {
   const text = `${question.topic} ${question.stem} ${question.explanation}`.toLowerCase();
-  const titleTokens = tokenize(title ?? '');
-  const topicTokens = tokenize(topic ?? '');
+  const titleTokens = tokenize(title ?? '').filter(t => t.length >= 2);
+  const topicTokens = tokenize(topic ?? '').filter(t => t.length >= 2);
 
   if (titleTokens.length > 0 && !titleTokens.some((token) => text.includes(token))) {
-    warnings.push(`Question ${index}: title reflection is too weak.`);
+    warnings.push(`Question ${index}: title reflection is weak (expected keywords from "${title}").`);
   }
 
   if (topicTokens.length > 0 && !topicTokens.some((token) => text.includes(token))) {
-    warnings.push(`Question ${index}: topic reflection is too weak.`);
+    warnings.push(`Question ${index}: topic reflection is weak (expected keywords from "${topic}").`);
   }
 }
 
@@ -202,6 +212,11 @@ function validateSelectionReflection(
 
   const text = `${question.topic} ${question.stem}`.toLowerCase();
   const tokens = tokenize(selectionValue);
+  
+  // 사회/과학 과목의 'format'은 텍스트 내용으로 검증하기 불분명하므로 경고 생략
+  const sub = String(input.subject);
+  if (sub === 'social' || sub.includes('social_') || sub === 'science') return;
+
   if (tokens.length > 0 && !tokens.some((token) => text.includes(token))) {
     warnings.push(`Question ${index}: selected ${input.subject === 'social' ? 'format' : 'question type'} is weakly reflected.`);
   }
@@ -215,21 +230,23 @@ function validateHistorySubjectFit(
   issueCounts: Record<string, number>,
 ) {
   const text = `${question.topic} ${question.stem} ${question.choices?.join(' ') ?? ''} ${question.explanation}`.toLowerCase();
-  const historyMarkers = ['조선', '고려', '신라', '백제', '고구려', '대한제국', '경국대전', '인조', '세종', '성종', '사료', '정책', '개혁', '통일 신라', '고조선'];
-  const offTopicMarkers = ['exercise', 'fitness', 'health', 'walking', 'stairs', 'athlete', 'main idea', 'best title', 'author'];
+  // Relaxed markers to avoid false positives in specific sub-periods
+  const historyMarkers = ['조선', '고려', '신라', '백제', '고구려', '대한제국', '일제', '전쟁', '정부', '왕', '제도', '사건', '문화', '경제', '사회', '정치', '시대', '역사', '인물'];
+  const offTopicMarkers = ['exercise', 'fitness', 'health', 'athlete', 'main idea', 'best title', 'author'];
+  
   const koreanCount = (text.match(/[가-힣]{2,}/g) ?? []).length;
   const englishCount = (text.match(/[a-z]{4,}/g) ?? []).length;
 
-  if (englishCount > koreanCount * 2) {
-    pushReason(reasons, issueCounts, 'history_language', `Question ${index}: history output is in the wrong language.`);
+  if (englishCount > 20 && englishCount > koreanCount * 1.5) {
+    pushReason(reasons, issueCounts, 'history_language', `Question ${index}: history output contains too much English.`);
   }
 
   if (!historyMarkers.some((marker) => text.includes(marker.toLowerCase()))) {
-    warnings.push(`Question ${index}: history scope is weakly reflected.`);
+    warnings.push(`Question ${index}: history context markers not clearly detected.`);
   }
 
   if (offTopicMarkers.some((marker) => text.includes(marker))) {
-    pushReason(reasons, issueCounts, 'history_scope', `Question ${index}: history item drifted into unrelated topic content.`);
+    pushReason(reasons, issueCounts, 'history_scope', `Question ${index}: history item drifted into unrelated generic content.`);
   }
 }
 

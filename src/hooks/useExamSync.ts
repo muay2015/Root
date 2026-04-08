@@ -45,19 +45,9 @@ export function useExamSync(sessionUserId: string | null, isAnonymous: boolean) 
       // --- [시험 기록 복구 및 자가 치유] ---
       if (examsResult.data) {
         const localExams = loadLocalExamList<PersistedExamRecord>();
-        const serverExams = (examsResult.data as PersistedExamRecord[]).map(e => {
-          if (!isSubjectKey(e.subject)) {
-            const healedSubject = inferSubjectFromTitle(e.title);
-            if (healedSubject) {
-              return { ...e, subject: healedSubject, isSynced: false };
-            }
-          }
-          return { ...e, isSynced: true };
-        });
-
+        const serverExams = (examsResult.data as PersistedExamRecord[]).map(e => ({ ...e, isSynced: true }));
         const serverIds = new Set(serverExams.map(e => e.id));
         // local-xxx ID를 가진 레코드만 업로드 대상으로 제한
-        // (UUID가 있지만 서버에 없는 레코드는 다른 사용자 데이터이거나 이전 버그로 생셃된 것이다)
         const missingFromServer = localExams
           .filter(e => !serverIds.has(e.id) && e.id.startsWith('local-'))
           .map(e => ({ ...e, isSynced: false }));

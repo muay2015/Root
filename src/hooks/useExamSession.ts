@@ -35,7 +35,7 @@ export function useExamSession(
   const [generatedQuestionMode, setGeneratedQuestionMode] = useState<GeneratedQuestionMode>('mixed');
   const [currentExamId, setCurrentExamId] = useState<string | null>(null);
   const [examMeta, setExamMeta] = useState<ExamMeta>({
-    subject: 'english' as SubjectKey,
+    subject: 'middle_english' as SubjectKey,
     difficulty: 'hard',
     schoolLevel: 'high',
     count: 12,
@@ -82,7 +82,7 @@ export function useExamSession(
     setCurrentQuestionIndex(1);
     setCurrentExamId(record.id);
     setExamMeta({
-      subject: isSubjectKey(record.subject) ? record.subject : 'english',
+      subject: isSubjectKey(record.subject) ? record.subject : 'middle_english',
       difficulty: isDifficultyLevel(record.difficulty) ? record.difficulty : 'hard',
       schoolLevel: isSchoolLevel(record.exam_format) ? record.exam_format : 'high',
       count: record.question_count,
