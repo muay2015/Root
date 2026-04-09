@@ -96,16 +96,23 @@ export function useExamSync(sessionUserId: string | null, isAnonymous: boolean) 
     const backupExams = [...savedExams];
     const backupWrong = [...wrongNotes];
 
-    const updatedExams = savedExams.filter((e) => e.id !== recordId);
-    const updatedWrong = wrongNotes.filter((n) => n.examTitle !== deletedRecord.title);
+    // --- [1. 로컬 상태 즉시 반영 및 저장소 동기화] ---
+    const updatedExams = backupExams.filter((e) => e.id !== recordId);
+    const updatedWrong = backupWrong.filter((n) => n.examTitle !== deletedRecord.title);
     
-    setSavedExams(updatedExams);
-    setWrongNotes(updatedWrong);
+    // 로컬 저장소 먼저 쓰기 (안전성 확보)
     storeLocalExamList(updatedExams);
     storeLocalWrongNotes(updatedWrong);
+    
+    // 상태 업데이트
+    setSavedExams(updatedExams);
+    setWrongNotes(updatedWrong);
 
-    // --- [2. 서버 동기화: 로그인 상태인 경우만 실행] ---
-    if (sessionUserId && !isAnonymous) {
+    // --- [2. 서버 동기화: 로그인 + 실제 UUID인 경우만 실행] ---
+    // local-xxx ID는 아직 서버에 없는 레코드이므로 서버 삭제 불필요
+    const isServerRecord = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(recordId);
+
+    if (sessionUserId && !isAnonymous && isServerRecord) {
       try {
         // 제약 조건 충돌 방지를 위해 오답 데이터 우선 삭제
         const wrongResult = await deleteWrongNotesByTitle(sessionUserId, deletedRecord.title);
@@ -117,7 +124,7 @@ export function useExamSync(sessionUserId: string | null, isAnonymous: boolean) 
       } catch (error) {
         console.error('Failed to delete exam from server:', error);
         alert('데이터베이스 삭제 중 오류가 발생했습니다. 데이터를 복구합니다.');
-        
+
         // --- [3. 롤백: 서버 삭제 실패 시 이전 상태로 복구] ---
         setSavedExams(backupExams);
         setWrongNotes(backupWrong);

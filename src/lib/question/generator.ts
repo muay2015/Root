@@ -4,6 +4,12 @@ import { validateGeneratedQuestions, type ValidationResult } from './validator.t
 import { type SubjectKey } from './subjectConfig.ts';
 import { normalizeChoiceText } from './normalizeChoiceText.ts';
 import { resolveAnswerFromChoices as resolveAnswerFromChoicesLoose } from './answerMatching.ts';
+import {
+  isEnglishIrrelevantSentenceType,
+  isEnglishOrderArrangementType as isStandardEnglishOrderArrangementType,
+  standardizeEnglishIrrelevantSentence,
+  standardizeEnglishOrderArrangement,
+} from './englishStandardizer.ts';
 
 export type GeneratedQuestion = {
   id: number;
@@ -13,6 +19,7 @@ export type GeneratedQuestion = {
   choices: string[];
   answer: string;
   explanation: string;
+  stimulus?: string | null;
 };
 
 export type GenerateValidatedQuestionsInput = {
@@ -51,6 +58,219 @@ export class QuestionGenerationError extends Error {
 }
 
 const MAX_BATCH_SIZE = 5;
+
+const ORDER_MARKER_REGEX = /(\(\s*([ABC])\s*\)|\[\s*([ABC])\s*\])/gi;
+const CANONICAL_ORDER_CHOICES = [
+  '(A) - (C) - (B)',
+  '(B) - (A) - (C)',
+  '(B) - (C) - (A)',
+  '(C) - (A) - (B)',
+  '(C) - (B) - (A)',
+];
+
+function countEnglishWords(value: string) {
+  return (value.match(/[A-Za-z]+/g) ?? []).length;
+}
+
+function stripOrderArrangementArtifacts(value: string) {
+  return value
+    .replace(/\r\n/g, '\n')
+    .replace(/<\/?u>/gi, '')
+    .replace(/\[\/?u\]/gi, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .trim();
+}
+
+function extractOrderSections(text: string) {
+  const normalized = stripOrderArrangementArtifacts(text).replace(
+    /([^\n])\s*(\(\s*[ABC]\s*\)|\[\s*[ABC]\s*\])/g,
+    '$1\n$2',
+  );
+
+  const matches = [...normalized.matchAll(ORDER_MARKER_REGEX)];
+  if (matches.length === 0) {
+    return [];
+  }
+
+  return matches.map((match, index) => {
+    const marker = match[1];
+    const label = (match[2] || match[3] || '').toUpperCase();
+    const start = (match.index ?? 0) + marker.length;
+    const end = index + 1 < matches.length ? matches[index + 1].index ?? normalized.length : normalized.length;
+    const content = normalized
+      .slice(start, end)
+      .replace(/^\s*[:\-–—]?\s*/, '')
+      .trim();
+
+    return {
+      label,
+      content,
+    };
+  }).filter((section) => ['A', 'B', 'C'].includes(section.label) && section.content.length > 0);
+}
+
+function reconstructOrderStem(
+  sections: Array<{ label: string; content: string }>,
+  fallbackStem: string,
+) {
+  const ordered = ['A', 'B', 'C']
+    .map((label) => sections.find((section) => section.label === label))
+    .filter((section): section is { label: string; content: string } => Boolean(section));
+
+  if (ordered.length < 3) {
+    return stripOrderArrangementArtifacts(fallbackStem);
+  }
+
+  return ordered
+    .map((section) => `(${section.label}) ${section.content.trim()}`)
+    .join('\n\n')
+    .trim();
+}
+
+function extractIntroFromText(text: string) {
+  const normalized = stripOrderArrangementArtifacts(text);
+  if (!normalized) {
+    return null;
+  }
+
+  const beforeMarker = normalized.replace(/\s*(\(\s*[ABC]\s*\)|\[\s*[ABC]\s*\])[\s\S]*$/i, '').trim();
+  if (!beforeMarker) {
+    return null;
+  }
+
+  const lines = beforeMarker
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => {
+      if (!line) return false;
+      if (!/[A-Za-z]/.test(line)) return false;
+      if (/[\u3131-\u314E\uAC00-\uD7A3]/u.test(line)) return false;
+      if (/^\*/.test(line)) return false;
+      if (/^(?:\d+|[①-⑤])(?:\s|$)/.test(line)) return false;
+      if (/^\(?[A-C]\)?\s*[-–—]/i.test(line)) return false;
+      return true;
+    });
+
+  const intro = lines.join('\n').trim();
+  return /[A-Za-z]{12,}/.test(intro) || countEnglishWords(intro) >= 5 ? intro : null;
+}
+
+function promoteIntroFromSections(sections: Array<{ label: string; content: string }>) {
+  const nextSections = sections.map((section) => ({ ...section }));
+
+  for (const label of ['A', 'B', 'C']) {
+    const target = nextSections.find((section) => section.label === label);
+    if (!target) continue;
+
+    const sentenceMatch = target.content.match(/^(.+?[.!?](?=\s|$))(?:\s+|$)([\s\S]*)$/);
+    if (!sentenceMatch) continue;
+
+    const intro = sentenceMatch[1].trim();
+    const remaining = sentenceMatch[2].trim();
+    if ((countEnglishWords(intro) < 5 && !/[A-Za-z]{12,}/.test(intro)) || countEnglishWords(remaining) < 5) {
+      continue;
+    }
+
+    target.content = remaining;
+    return {
+      stimulus: intro,
+      sections: nextSections,
+    };
+  }
+
+  return {
+    stimulus: null,
+    sections: nextSections,
+  };
+}
+
+function isEnglishOrderArrangementType(
+  subject: SubjectKey,
+  questionType: string | undefined,
+  raw: any,
+) {
+  const subjectText = String(subject ?? '').toLowerCase();
+  const selectionText = String(questionType ?? '');
+  const topicText = String(raw?.topic ?? '');
+  const stemText = String(raw?.stem ?? raw?.question ?? '');
+
+  return (
+    subjectText.includes('english') &&
+    (selectionText.includes('순서 배열') ||
+      topicText.includes('순서 배열') ||
+      /\(\s*A\s*\)/i.test(stemText))
+  );
+}
+
+function repairEnglishOrderArrangement(
+  stem: string,
+  stimulus: string | null,
+  materialText: string,
+) {
+  const normalizedStem = stripOrderArrangementArtifacts(stem);
+  const normalizedStimulus = stripOrderArrangementArtifacts(stimulus ?? '');
+  const sections = extractOrderSections(`${normalizedStimulus}\n${normalizedStem}`);
+
+  let repairedStimulus =
+    extractIntroFromText(normalizedStimulus) ??
+    extractIntroFromText(normalizedStem) ??
+    extractEnglishIntroFromMaterial(materialText);
+
+  let repairedSections = sections;
+
+  if (!repairedStimulus && repairedSections.length > 0) {
+    const promoted = promoteIntroFromSections(repairedSections);
+    repairedStimulus = promoted.stimulus;
+    repairedSections = promoted.sections;
+  }
+
+  return {
+    stem: reconstructOrderStem(repairedSections, normalizedStem),
+    stimulus: repairedStimulus || null,
+  };
+}
+
+function extractEnglishIntroFromMaterial(materialText: string) {
+  const normalized = materialText.replace(/\r\n/g, '\n').trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const paragraphs = normalized
+    .split(/\n\s*\n/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  for (const paragraph of paragraphs) {
+    const cleaned = paragraph
+      .replace(/<\/?u>/gi, '')
+      .replace(/\[\/?u\]/gi, '')
+      .replace(/\s*(\(\s*[ABC]\s*\)|\[\s*[ABC]\s*\])[\s\S]*$/i, '')
+      .trim();
+
+    if (
+      !/[\u3131-\u314E\uAC00-\uD7A3]/u.test(cleaned) &&
+      (/[A-Za-z]{12,}/.test(cleaned) || countEnglishWords(cleaned) >= 5)
+    ) {
+      return cleaned;
+    }
+  }
+
+  const lines = normalized
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const englishLines = lines.filter(
+    (line) =>
+      (/[A-Za-z]{12,}/.test(line) || countEnglishWords(line) >= 5) &&
+      !/[\u3131-\u314E\uAC00-\uD7A3]/u.test(line) &&
+      !/^\*/.test(line) &&
+      !/\(\s*[ABC]\s*\)|\[\s*[ABC]\s*\]/i.test(line),
+  );
+
+  return englishLines.length > 0 ? englishLines.join('\n').trim() : null;
+}
 
 function extractJson(text: string) {
   let clean = text.trim();
@@ -212,23 +432,81 @@ function extractRawChoices(raw: any): string[] {
   return [];
 }
 
-function normalizeQuestion(raw: any, index: number): GeneratedQuestion {
+function normalizeOrderArrangementChoices(rawAnswer: unknown) {
+  return {
+    choices: [...CANONICAL_ORDER_CHOICES],
+    answer: resolveAnswerFromChoicesLoose(rawAnswer, CANONICAL_ORDER_CHOICES),
+  };
+}
+
+function normalizeQuestion(
+  raw: any,
+  index: number,
+  context: Pick<GenerateValidatedQuestionsInput, 'subject' | 'questionType' | 'materialText'>,
+): GeneratedQuestion {
   // Keep only real options from the model; validation should fail on missing choices,
   // not on placeholders we injected ourselves.
-  const choices = extractRawChoices(raw)
+  let choices = extractRawChoices(raw)
     .filter((choice: string) => choice.length > 0)
     .slice(0, 5);
 
-  const answerStr = resolveAnswerFromChoicesLoose(raw.answer, choices);
+  let answerStr = resolveAnswerFromChoicesLoose(raw.answer, choices);
+  let stimulus =
+    typeof raw.stimulus === 'string' && raw.stimulus.trim().length > 0
+      ? raw.stimulus.trim()
+      : null;
+  let stem = raw.stem || raw.question || '';
+
+  if (
+    isStandardEnglishOrderArrangementType({
+      subject: context.subject,
+      questionType: context.questionType,
+      topic: raw?.topic,
+      stem,
+    })
+  ) {
+    const standardized = standardizeEnglishOrderArrangement({
+      stem,
+      stimulus,
+      materialText: context.materialText,
+      answer: raw.answer,
+    });
+    stem = standardized.stem;
+    stimulus = standardized.stimulus;
+    choices = standardized.choices;
+    answerStr = standardized.answer || resolveAnswerFromChoicesLoose(raw.answer, choices);
+  }
+
+  if (
+    isEnglishIrrelevantSentenceType({
+      subject: context.subject,
+      questionType: context.questionType,
+      topic: raw?.topic,
+      stem,
+    })
+  ) {
+    const standardized = standardizeEnglishIrrelevantSentence({
+      stem,
+      stimulus,
+      materialText: context.materialText,
+      choices,
+      answer: raw.answer,
+    });
+    stem = standardized.stem;
+    stimulus = standardized.stimulus;
+    choices = standardized.choices;
+    answerStr = standardized.answer || resolveAnswerFromChoicesLoose(raw.answer, choices);
+  }
 
   return {
     id: index + 1,
     topic: raw.topic || '문항',
     type: 'multiple',
-    stem: raw.stem || raw.question || '',
+    stem,
     choices,
     answer: answerStr,
     explanation: raw.explanation || '',
+    stimulus,
   };
 }
 
@@ -289,13 +567,23 @@ async function requestQuestionsFromModel(input: GenerateValidatedQuestionsInput,
   }
 
   const questions = rawQuestions.length > 0
-    ? rawQuestions.map((q: any, i: number) => normalizeQuestion(q, i))
+    ? rawQuestions.map((q: any, i: number) =>
+        normalizeQuestion(q, i, {
+          subject: input.subject,
+          questionType: input.questionType,
+          materialText: input.materialText,
+        }),
+      )
     : [normalizeQuestion({
         stem: `AI 응답 파싱 실패 (내용: ${rawJson.substring(0, 50)}...)`,
         answer: '확인',
         choices: ['확인', '-', '-', '-', '-'],
         explanation: 'JSON 구조를 확인하세요.',
-      }, 0)];
+      }, 0, {
+        subject: input.subject,
+        questionType: input.questionType,
+        materialText: input.materialText,
+      })];
 
   if (input.builderMode === 'summary' && !Array.isArray(parsed)) {
     return {

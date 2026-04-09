@@ -3,6 +3,7 @@ export type PersistedQuestion = {
   topic: string;
   type: string;
   stem: string;
+  stimulus?: string | null;
   choices?: string[];
   answer: string;
   explanation: string;

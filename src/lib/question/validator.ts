@@ -10,6 +10,13 @@ import {
   normalizeAnswerComparison,
   resolveAnswerFromChoices,
 } from './answerMatching.ts';
+import {
+  CANONICAL_IRRELEVANT_SENTENCE_CHOICES,
+  extractOrderArrangementIntro,
+  extractOrderArrangementSections,
+  isEnglishIrrelevantSentenceType,
+  isEnglishOrderArrangementType,
+} from './englishStandardizer.ts';
 
 export type GeneratedQuestionDraft = {
   topic: string;
@@ -386,6 +393,138 @@ function validateSelectionReflection(
   }
 }
 
+function validateEnglishOrderArrangement(
+  question: GeneratedQuestionDraft,
+  index: number,
+  input: ValidationInput,
+  reasons: string[],
+  issueCounts: Record<string, number>,
+) {
+  const selectionValue = input.questionType ?? '';
+  const subject = String(input.subject);
+  const isEnglishSubject = subject.includes('english');
+  const isOrderType = selectionValue.includes('순서 배열');
+
+  if (!isEnglishSubject || !isOrderType) {
+    return;
+  }
+
+  const stem = question.stem ?? '';
+  const stimulus = (question as GeneratedQuestionDraft & { stimulus?: string | null }).stimulus ?? '';
+  const hasA = /\(\s*A\s*\)|\[\s*A\s*\]/i.test(stem);
+  const hasB = /\(\s*B\s*\)|\[\s*B\s*\]/i.test(stem);
+  const hasC = /\(\s*C\s*\)|\[\s*C\s*\]/i.test(stem);
+  const hasDOrMore = /\(\s*[D-Z]\s*\)|\[\s*[D-Z]\s*\]/i.test(stem);
+  const hasStimulusIntro = typeof stimulus === 'string' && /[A-Za-z]{3,}/.test(stimulus);
+  const stimulusHasSections = /\(\s*[A-Z]\s*\)|\[\s*[A-Z]\s*\]/i.test(stimulus);
+
+  if (!(hasA && hasB && hasC)) {
+    pushReason(
+      reasons,
+      issueCounts,
+      'english_order_sections',
+      `Question ${index}: sentence ordering items must contain exactly (A), (B), and (C) sections.`,
+    );
+  }
+
+  if (hasDOrMore) {
+    pushReason(
+      reasons,
+      issueCounts,
+      'english_order_extra_sections',
+      `Question ${index}: sentence ordering items must not contain (D) or later sections.`,
+    );
+  }
+
+  if (!hasStimulusIntro) {
+    pushReason(
+      reasons,
+      issueCounts,
+      'english_order_missing_intro',
+      `Question ${index}: sentence ordering items must include an English intro in stimulus.`,
+    );
+  }
+
+  if (stimulusHasSections) {
+    pushReason(
+      reasons,
+      issueCounts,
+      'english_order_intro_polluted',
+      `Question ${index}: sentence ordering stimulus must contain only the intro, not (A)/(B)/(C) sections.`,
+    );
+  }
+}
+
+function validateEnglishIrrelevantSentence(
+  question: GeneratedQuestionDraft,
+  index: number,
+  input: ValidationInput,
+  reasons: string[],
+  issueCounts: Record<string, number>,
+) {
+  if (
+    !isEnglishIrrelevantSentenceType({
+      subject: input.subject,
+      questionType: input.questionType,
+      topic: question.topic,
+      stem: question.stem,
+    })
+  ) {
+    return;
+  }
+
+  const stem = String(question.stem ?? '');
+  const stimulus = (question as GeneratedQuestionDraft & { stimulus?: string | null }).stimulus;
+  const choices = Array.isArray(question.choices) ? question.choices : [];
+  const instructionOk =
+    stem.includes('전체 흐름과 관계 없는 문장은?') ||
+    stem.includes('전체 흐름과 관계없는 문장은?') ||
+    /irrelevant to the overall flow\?/i.test(stem) ||
+    /does not fit the overall flow\?/i.test(stem);
+  const numberedMatches = stem.match(/\([1-5]\)/g) ?? [];
+  const uniqueNumberedCount = new Set(numberedMatches).size;
+  const canonicalChoices =
+    choices.length === 5 &&
+    choices.every((choice, idx) => normalizeText(choice) === normalizeText(CANONICAL_IRRELEVANT_SENTENCE_CHOICES[idx]));
+  const emptyStimulus = stimulus == null || String(stimulus).trim().length === 0;
+
+  if (!instructionOk) {
+    pushReason(
+      reasons,
+      issueCounts,
+      'english_irrelevant_instruction',
+      `Question ${index}: irrelevant sentence items must ask for the sentence unrelated to the overall flow.`,
+    );
+  }
+
+  if (uniqueNumberedCount !== 5) {
+    pushReason(
+      reasons,
+      issueCounts,
+      'english_irrelevant_numbered_passage',
+      `Question ${index}: irrelevant sentence items must contain exactly five numbered sentences in the passage.`,
+    );
+  }
+
+  if (!canonicalChoices) {
+    pushReason(
+      reasons,
+      issueCounts,
+      'english_irrelevant_choices',
+      `Question ${index}: irrelevant sentence items must use canonical choices (1) through (5).`,
+    );
+  }
+
+  if (!emptyStimulus) {
+    pushReason(
+      reasons,
+      issueCounts,
+      'english_irrelevant_stimulus',
+      `Question ${index}: irrelevant sentence items must not use stimulus.`,
+    );
+  }
+}
+
 function validateHistorySubjectFit(
   question: GeneratedQuestionDraft,
   index: number,
@@ -471,6 +610,8 @@ export function validateGeneratedQuestions(input: ValidationInput): ValidationRe
     validateStructure(question, index, reasons, issueCounts);
     validateTopicReflection(question, index, input.title, input.topic, warnings);
     validateSelectionReflection(question, index, input, warnings);
+    validateEnglishOrderArrangement(question, index, input, reasons, issueCounts);
+    validateEnglishIrrelevantSentence(question, index, input, reasons, issueCounts);
 
     if (subject === 'korean_history') {
       validateHistoryDifficulty(

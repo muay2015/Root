@@ -109,6 +109,11 @@ export function normalizeChoiceText(value: unknown) {
     return '';
   }
 
+  const raw = value.trim();
+  if (/^(?:\(?[1-5]\)?|[\u2460-\u2464])$/.test(raw)) {
+    return raw;
+  }
+
   // 0. 불필요한 빈 수식 기호 제거
   let normalized = (typeof value === 'string' ? value : '').replace(EMPTY_LATEX_PATTERN, '');
 

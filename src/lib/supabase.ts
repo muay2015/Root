@@ -15,6 +15,7 @@ function isLikelyValidPublishableKey(value: string) {
   }
 
   // Reject obvious placeholder or copied example values before creating a client.
+  if (!value) return false;
   if (value.includes('SUPABASE') || value.includes('<') || value.includes('>')) {
     return false;
   }

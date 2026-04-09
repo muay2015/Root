@@ -125,6 +125,21 @@ const subjectRules: Partial<Record<SubjectKey, SubjectRule>> = {
     choiceGuidance: ['유사한 스펠링이나 기초 문법 오류를 오답으로 활용.'],
     explanationGuidance: ['정답이 되는 주요 문법 포인트나 해석을 명확히 제시.']
   },
+  high_english: {
+    objective: '고난도 영어 독해 및 어법 문항 생성',
+    contentScope: '고등학교 영어/영어I/영어II 교과서 및 수능 기출 수준의 외부 지문',
+    evidenceStyle: '맥락적 추론, 논리적 연결성, 구문 분석',
+    stemGuidance: [
+      '문장 삽입(Sentence Insertion) 유형: 삽입할 문장은 반드시 stimulus 필드에 넣고, 지문(stem)에는 ①~⑤ 번호를 적절한 위치에 배치하세요.',
+      '순서 배열(Sentence Ordering) 유형: 주어진 글은 stimulus 필드에, 배열할 (A), (B), (C) 단락만 stem 필드에 순서대로 배치하세요. (D) 이상의 단락은 만들지 마세요.',
+      '지문 내의 특정 단어나 문장을 지칭할 때는 <u>태그를 사용하여 밑줄을 표시하세요.'
+    ],
+    choiceGuidance: [
+      '문장 삽입 유형의 선지는 반드시 "①", "②", "③", "④", "⑤"로 구성하세요.',
+      '매력적인 오답(Distractor)을 위해 논리적 흐름이 끊기는 지점 주변에 오답 번호를 배치하세요.'
+    ],
+    explanationGuidance: ['글의 전체적인 흐름과 함께 결정적인 논리적 단서(지시어, 연결어 등)를 구체적으로 설명하세요.']
+  },
 
   // --- 고등 전용 규칙 ---
   high_korean: {

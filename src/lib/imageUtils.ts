@@ -80,3 +80,17 @@ export async function optimizeImage(file: File, maxWidth = 1600, maxHeight = 160
     img.src = URL.createObjectURL(file);
   });
 }
+
+/**
+ * 이미지를 압축하고 Base64 데이터 URL로 반환합니다.
+ */
+export async function compressImageToBase64(file: File, maxWidth = 2000, quality = 0.8): Promise<string> {
+  const optimizedFile = await optimizeImage(file, maxWidth, maxWidth);
+  
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(optimizedFile);
+  });
+}

@@ -74,7 +74,7 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
     if (rawFiles.length === 0) return;
 
     setIsExtracting(true);
-    let currentBatchCount = 0;
+    let currentBatchIndex = 0;
 
     for (const file of rawFiles) {
       const currentFile = file as File;
@@ -82,15 +82,18 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
         const optimized = await optimizeImage(currentFile);
         const base64 = await fileToBase64(optimized);
         
+        // 업로드 시작 전 현재 인덱스 확정
         let newIndex = 0;
         setImageData(prev => {
           newIndex = prev.length;
           return [...prev, base64];
         });
         
-        setOcrPages(prev => [...prev, { id: `img-${Date.now()}-${currentBatchCount}`, text: `[분석 중: ${currentFile.name}]` }]);
-        setActivePageIndex(prev => imageData.length + currentBatchCount);
+        // 파일별 개별 상태 추적을 위해 유일한 ID 생성
+        const pageId = `img-${Date.now()}-${currentBatchIndex}`;
+        setOcrPages(prev => [...prev, { id: pageId, text: `[분석 중: ${currentFile.name}]` }]);
         
+        // 추출 시작 인덱스 기록
         setExtractingIndices(prev => [...prev, newIndex]);
         
         const result = await ocrService.extractText(base64);
@@ -99,18 +102,20 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
           const pageHeader = `---------- [사진 추출 내용: ${currentFile.name}] ----------\n`;
           setOcrPages(prev => {
             const next = [...prev];
+            // 정확한 인덱스에 매핑 (상태 업데이트 시점 고려)
             if (next[newIndex]) {
               next[newIndex].text = pageHeader + result.text;
             } else {
-              next.push({ id: `img-${newIndex}`, text: pageHeader + result.text });
+              // 혹시 모를 누락 방지
+              next[newIndex] = { id: pageId, text: pageHeader + result.text };
             }
             return next;
           });
           setCompletedIndices(prev => [...prev, newIndex]);
-          currentBatchCount++;
         }
         
         setExtractingIndices(prev => prev.filter(idx => idx !== newIndex));
+        currentBatchIndex++;
       } catch (err) {
         console.error('Image processing or OCR failed:', err);
       }
@@ -221,6 +226,7 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
                   type="file" 
                   className="hidden" 
                   accept=".txt,.md,.json,.csv,.pdf,.docx,.hwp,.hwpx"
+                  multiple
                   onClick={(e) => {
                     (e.target as HTMLInputElement).value = '';
                   }}

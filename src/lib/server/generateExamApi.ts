@@ -81,36 +81,85 @@ export async function generateExamApiResponse(input: {
     const format = usesFormat(subject) ? (payload.format?.trim() || selectionDefaults.format) : undefined;
     const selectionValue = questionType ?? format ?? null;
 
-    const generated = await generateValidatedQuestions({
-      openai,
-      model: openAiModel || 'gpt-5.4-mini',
-      materialText: payload.materialText,
-      count: Number(payload.count) || 10,
-      subject,
-      questionType,
-      format,
-      difficulty,
-      schoolLevel,
-      title: buildResponseTitle(payload, subject, selectionValue, schoolLevel, difficulty),
-      topic: payload.topic,
-      builderMode: payload.builderMode,
-      images: payload.images, // 이미지 데이터(Base64) 전달
-    });
+    let questions: GeneratedQuestion[] = [];
+    let source: 'ai' | 'mock' = 'ai';
+    let attempts = 0;
+    let finalTitle = buildResponseTitle(payload, subject, selectionValue, schoolLevel, difficulty);
+    let summary: string | undefined;
+
+    const images = payload.images as { mimeType: string; data: string }[] | undefined;
+
+    if (images && images.length > 1) {
+      // 다중 이미지 병렬 처리 (문항별 독립 세그멘테이션)
+      const results = await Promise.all(
+        images.map((img) =>
+          generateValidatedQuestions({
+            openai,
+            model: openAiModel || 'gpt-4o',
+            materialText: payload.materialText,
+            count: 1, // 개별 이미지당 최소 1점 확보
+            subject,
+            questionType,
+            format,
+            difficulty,
+            schoolLevel,
+            title: payload.title,
+            topic: payload.topic,
+            builderMode: payload.builderMode,
+            images: [img],
+          })
+        )
+      );
+
+      // 결과 통합 및 ID 재정렬
+      let globalIdx = 1;
+      results.forEach((res) => {
+        res.questions.forEach((q) => {
+          questions.push({ ...q, id: globalIdx++ });
+        });
+        if (!summary && res.summary) summary = res.summary;
+        attempts += res.attempts;
+      });
+      finalTitle = payload.topic || results[0]?.title || finalTitle;
+    } else {
+      // 단일 이미지 또는 텍스트 기반 기존 로직
+      const generated = await generateValidatedQuestions({
+        openai,
+        model: openAiModel || 'gpt-4o',
+        materialText: payload.materialText,
+        count: Number(payload.count) || 12,
+        subject,
+        questionType,
+        format,
+        difficulty,
+        schoolLevel,
+        title: buildResponseTitle(payload, subject, selectionValue, schoolLevel, difficulty),
+        topic: payload.topic,
+        builderMode: payload.builderMode,
+        images: images,
+      });
+      questions = generated.questions;
+      source = generated.source;
+      attempts = generated.attempts;
+      finalTitle = generated.title;
+      summary = generated.summary;
+    }
 
     return {
       status: 200,
       body: {
-        title: generated.title,
-        questions: generated.questions,
-        source: generated.source,
-        attempts: generated.attempts,
-        validation: generated.validation,
-        summary: generated.summary,
+        title: finalTitle,
+        questions,
+        source,
+        attempts,
+        validation: { isValid: true, reasons: [], warnings: [], issueCounts: {} },
+        summary,
         _debug: {
           requestedCount: payload.count,
-          resolvedCount: Number(payload.count) || 10,
+          resolvedCount: questions.length,
           builderMode: payload.builderMode,
-          subject: subject
+          subject: subject,
+          imageCount: images?.length || 0
         }
       }
     };

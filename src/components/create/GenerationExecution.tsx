@@ -17,6 +17,7 @@ interface GenerationExecutionProps {
   readyHint: string;
   onGenerate: () => void;
   mode: BuilderMode;
+  imageCount?: number;
 }
 
 export function GenerationExecution(props: GenerationExecutionProps) {
@@ -31,7 +32,8 @@ export function GenerationExecution(props: GenerationExecutionProps) {
     count,
     readyHint,
     onGenerate,
-    mode
+    mode,
+    imageCount = 0
   } = props;
 
   const getExecutionDifficultyLabel = () => {
@@ -71,7 +73,7 @@ export function GenerationExecution(props: GenerationExecutionProps) {
           {isGenerating ? (
             <div className="flex items-center gap-2">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              <span>AI 알고리즘 구동 중...</span>
+              <span>{imageCount > 1 ? `이미지 ${imageCount}장 정밀 분석 및 생성 중...` : 'AI 알고리즘 구동 중...'}</span>
             </div>
           ) : (
             <>

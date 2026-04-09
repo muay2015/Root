@@ -5,9 +5,18 @@ export type ExamQuestion = {
   topic: string;
   type: '객관식' | '주관식';
   stem: string;
+  image_url?: string;
+  image_focus_area?: {
+    top: number;    // 상단으로부터의 % 위치
+    left: number;   // 좌측으로부터의 % 위치
+    width: number;  // 노출할 가로 길이 %
+    height: number; // 노출할 세로 길이 %
+    zoom?: number;  // 확대 배움 (기본값 1)
+  };
   choices?: string[];
   answer: string;
   explanation: string;
+  stimulus?: string | null; // AI가 직접 생성한 제시문(박스 내용)
 };
 
 export type ExamQuestionParts = {
@@ -193,7 +202,16 @@ function extractInlineStimulus(stem: string): ExamQuestionParts | null {
   };
 }
 
-export function parseExamQuestionParts(stem: string): ExamQuestionParts {
+export function parseExamQuestionParts(question: ExamQuestion): ExamQuestionParts {
+  // 1. AI가 이미 stimulus 필드를 제공한 경우 이를 최우선으로 사용
+  if (question.stimulus) {
+    return {
+      prompt: question.stem,
+      stimulus: question.stimulus,
+    };
+  }
+
+  const stem = question.stem;
   const normalized = stem.replace(/\r\n/g, '\n').trim();
   if (!normalized) {
     return { prompt: '', stimulus: null };

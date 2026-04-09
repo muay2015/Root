@@ -85,6 +85,13 @@ export function CreateScreen(props: CreateScreenProps) {
     setFormat(defaults.format);
   };
 
+  // 문제 유형 선택 시 단원/주제(학습 집중 영역)에 자동 주입 (UX 개선)
+  React.useEffect(() => {
+    if (questionType && questionType !== '전체') {
+      setGenerationTopic(questionType);
+    }
+  }, [questionType, setGenerationTopic]);
+
   const removeFile = (name: string) => {
     setParsedFiles(prev => prev.filter(f => f !== name));
     setMaterialText(prev => {
@@ -95,16 +102,21 @@ export function CreateScreen(props: CreateScreenProps) {
   };
 
   const handleAIDataUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      try {
-        setIsParsing(true);
-        setParsingProgress('업로드를 준비 중입니다...');
-        setSuccessFile(null);
-        setParseError(null);
-        setShowSuccess(false);
+    const rawFiles = e.target.files ? Array.from(e.target.files) as File[] : [];
+    if (rawFiles.length === 0) return;
+
+    try {
+      setIsParsing(true);
+      setParseError(null);
+      setShowSuccess(false);
+      
+      let filesProcessed = 0;
+      for (const file of rawFiles) {
+        setParsingProgress(`자료 분석 중 (${filesProcessed + 1}/${rawFiles.length}): ${file.name}`);
         
-        const content = await parseFileToText(file, (msg) => setParsingProgress(msg));
+        const content = await parseFileToText(file, (msg) => {
+          setParsingProgress(`[${file.name}] ${msg}`);
+        });
         
         setMaterialText(prev => {
            const separator = prev ? '\n\n' : '';
@@ -112,15 +124,18 @@ export function CreateScreen(props: CreateScreenProps) {
         });
         
         setParsedFiles(prev => Array.from(new Set([...prev, file.name])));
-        setSuccessFile(file.name);
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 4000);
-      } catch (error) {
-        setParseError(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
-      } finally {
-        setIsParsing(false);
-        setParsingProgress('');
+        filesProcessed++;
       }
+      
+      setSuccessFile(`${rawFiles.length}개의 자료 업로드 완료`);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 4000);
+    } catch (error) {
+      setParseError(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
+    } finally {
+      setIsParsing(false);
+      setParsingProgress('');
+      e.target.value = ''; // 같은 파일 재선택 가능하도록 초기화
     }
   };
 
@@ -200,6 +215,7 @@ export function CreateScreen(props: CreateScreenProps) {
           readyHint={readyHint}
           onGenerate={onGenerate}
           mode={mode}
+          imageCount={imageData.length}
         />
       </div>
     </main>

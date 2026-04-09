@@ -53,14 +53,14 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
           
           <div className="mt-12 flex flex-col justify-center gap-4 sm:flex-row px-4 sm:px-0">
             <button
-              onClick={() => onNavigate('create')}
+              onClick={() => onNavigate('create-selection')}
               className="inline-flex h-16 items-center justify-center gap-2 rounded-2xl bg-white px-10 text-lg font-black text-primary shadow-2xl shadow-primary/20 transition-all hover:scale-105 hover:bg-blue-50 active:scale-95"
             >
               <PlusCircle className="h-6 w-6" />
               오늘 무료 문제 10개 만들기
             </button>
             <button
-              onClick={() => onNavigate('saved')}
+              onClick={() => onNavigate('pdf-import')}
               className="inline-flex h-16 items-center justify-center gap-2 rounded-2xl bg-white/10 px-10 text-lg font-black text-white backdrop-blur-md ring-1 ring-white/30 transition-all hover:bg-white/20 active:scale-95"
             >
               <Target className="h-6 w-6" />
@@ -74,22 +74,16 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
       <section className="relative z-10 mx-auto mt-[-40px] max-w-6xl px-4 sm:px-6">
         <div className="grid gap-6 md:grid-cols-3">
           <FeatureCard 
-            badge="문제 생성"
-            icon={<Sparkles className="text-blue-500" />}
-            title="난이도도, 문항 수도 내가 고르면 어때요?"
-            description="쉬운 문제로 개념 확인, 어려운 문제로 실전 대비 — 필요한 수준으로 바로 생성"
+            title={<>난이도·문항 수,<br />내가 직접 설정</>}
+            description="쉬운 문제로 개념 확인, 어려운 문제로 실전 대비 필요한 수준으로 원하는 만큼 바로 생성"
           />
           <FeatureCard 
-            badge="오답 노트"
-            icon={<History className="text-rose-500" />}
-            title="오답노트, 직접 만들 필요 없어요"
-            description="틀린 문제는 해설과 함께 자동 저장 — 이해되면 다시 풀고, 넘어가도 괜찮아요"
+            title={<>오답노트,<br />직접 만들 필요 없어요</>}
+            description="틀린 문제는 해설과 함께 오답노트에 자동 저장 — 왜 틀렸는지 바로 확인하고, 이해되면 언제든 꺼내서 다시 풀 수 있어요"
           />
           <FeatureCard 
-            badge="CBT + 기출"
-            icon={<Monitor className="text-emerald-500" />}
-            title="실전처럼 풀고 결과는 바로 확인"
-            description="생성 문제들을 CBT로 풀면 점수와 취약 단원이 즉시 보여요. 모의고사·수능 기출은 무료"
+            title={<>실전처럼 풀고,<br />결과는 바로 확인</>}
+            description="생성 문제를 CBT로 풀면 점수·취약 단원이 즉시 표시 모의고사·수능 기출은 무료로 제공"
           />
         </div>
       </section>
@@ -173,7 +167,7 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
             </p>
             
             <div className="mt-12 inline-block rounded-2xl bg-white/10 px-6 py-4 backdrop-blur-md ring-1 ring-white/20">
-              <p className="text-xl font-bold text-orange-200 break-keep">
+              <p className="text-xl font-bold text-orange-200 break-keep text-balance">
                 "문제집 살 돈, 아이 미래에 쓰는 건 어때요?"
               </p>
             </div>
@@ -194,17 +188,16 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
   );
 }
 
-function FeatureCard({ badge, icon, title, description }: { badge: string, icon: React.ReactNode, title: string, description: string }) {
+function FeatureCard({ title, description }: { title: React.ReactNode, description: string }) {
   return (
-    <div className="premium-card p-8 group transition-all duration-500 hover:rotate-1">
-      <div className="mb-6 inline-flex rounded-xl bg-slate-50 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-slate-400 ring-1 ring-slate-100">
-        {badge}
-      </div>
-      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-50 ring-1 ring-slate-100 group-hover:bg-white transition-colors">
-        {React.cloneElement(icon as React.ReactElement, { className: 'h-8 w-8' })}
-      </div>
-      <h3 className="mb-4 text-xl font-black text-slate-900 break-keep leading-snug">{title}</h3>
-      <p className="text-[15px] font-medium leading-relaxed text-slate-500 break-keep">{description}</p>
+    <div className="premium-card p-8 sm:p-10 group transition-all duration-300 border-blue-100/50 shadow-sm hover:shadow-md">
+      <h3 className="mb-6 text-xl sm:text-2xl font-black text-slate-900 break-keep leading-tight min-h-[3.5em] flex items-end">
+        {title}
+      </h3>
+      <div className="mb-6 h-[1px] w-full bg-slate-100" />
+      <p className="text-[15px] sm:text-[16px] font-medium leading-[1.8] text-slate-500 break-keep text-balance">
+        {description}
+      </p>
     </div>
   );
 }

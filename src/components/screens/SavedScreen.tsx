@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { EllipsisVertical, Info, RefreshCw, FileText, Search, Plus, LogIn, ChevronRight } from 'lucide-react';
+import { EllipsisVertical, Info, RefreshCw, FileText, Search, Plus, LogIn, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { SUBJECT_CONFIG } from '../../lib/question/subjectConfig';
 import { 
   formatSavedDate, 
@@ -231,36 +231,45 @@ export function SavedScreen({
                           </div>
                         </div>
  
-                        <div className="mt-auto flex items-center justify-between pt-3 border-t border-slate-50/50">
-                          <div className="flex gap-2.5 text-[11px] font-bold text-slate-400">
-                            <span>{isSchoolLevel(exam.exam_format) ? getSchoolLevelLabel(exam.exam_format) : exam.exam_format}</span>
-                            <span className="opacity-30">•</span>
-                            <span>{isDifficultyLevel(exam.difficulty) ? getDifficultyLabel(exam.difficulty) : exam.difficulty}</span>
-                            <span className="opacity-30">•</span>
-                            <span className="text-slate-600">{exam.question_count}문항</span>
+                        <div className="mt-auto pt-3 border-t border-slate-50/50">
+                          {/* 메타 정보와 이동 버튼 */}
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-slate-400">
+                              <span className="whitespace-nowrap shrink-0">{isSchoolLevel(exam.exam_format) ? getSchoolLevelLabel(exam.exam_format) : exam.exam_format}</span>
+                              <span className="opacity-20 shrink-0">•</span>
+                              <span className="whitespace-nowrap shrink-0">{isDifficultyLevel(exam.difficulty) ? getDifficultyLabel(exam.difficulty) : exam.difficulty}</span>
+                              <span className="opacity-20 shrink-0">•</span>
+                              <span className="whitespace-nowrap shrink-0 text-slate-600">{exam.question_count}문항</span>
+                            </div>
+
+                            <button
+                              onClick={() => onOpen(exam)}
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-lg shadow-slate-900/10 transition-all hover:scale-110 active:scale-95"
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </button>
                           </div>
 
+                          {/* 파일 첨부 영역 (있는 경우만 하단에 별도로 표시) */}
                           {(exam.question_files?.length > 0 || exam.answer_files?.length > 0) && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {exam.question_files?.map((f, i) => (
-                                <span key={`q-${i}`} className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-500 ring-1 ring-slate-200">
-                                  문제: {f}
-                                </span>
-                              ))}
-                              {exam.answer_files?.map((f, i) => (
-                                <span key={`a-${i}`} className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-500 ring-1 ring-blue-100">
-                                  정답: {f}
-                                </span>
-                              ))}
+                            <div className="mt-4 flex flex-col gap-1.5 border-t border-slate-50/30 pt-3">
+                              <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">첨부 자료</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {exam.question_files?.map((f, i) => (
+                                  <div key={`q-${i}`} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200/50 max-w-full">
+                                    <FileText className="h-3 w-3 shrink-0" />
+                                    <span className="truncate">{f}</span>
+                                  </div>
+                                ))}
+                                {exam.answer_files?.map((f, i) => (
+                                  <div key={`a-${i}`} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1 text-[10px] font-medium text-blue-500 ring-1 ring-blue-100/50 max-w-full">
+                                    <CheckCircle2 className="h-3 w-3 shrink-0" />
+                                    <span className="truncate">{f}</span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
-                          
-                          <button
-                            onClick={() => onOpen(exam)}
-                            className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white shadow-lg shadow-slate-900/10 transition-all hover:scale-110 active:scale-95"
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </button>
                         </div>
 
                         {previewExamId === exam.id && exam.source_text && (

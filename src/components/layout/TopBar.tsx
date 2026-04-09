@@ -49,7 +49,7 @@ export function TopBar({
             {[
               { id: 'landing', label: '홈' },
               { id: 'dashboard', label: '대시보드' },
-              { id: 'create', label: '문제 생성' },
+              { id: 'create-selection', label: '문제 생성', synonyms: ['create', 'pdf-import'] },
               { id: 'saved', label: '나의 보관함' },
               { id: 'wrong', label: '오답 집중' },
             ].map((item) => (
@@ -57,7 +57,7 @@ export function TopBar({
                 key={item.id}
                 onClick={() => onNavigate(item.id as Screen)}
                 className={`px-4 py-2 text-[13px] font-black transition-all rounded-[14px] ${
-                  current === item.id 
+                  current === item.id || (item.synonyms && item.synonyms.includes(current as string))
                     ? 'bg-white text-primary shadow-sm ring-1 ring-slate-200/60' 
                     : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
                 }`}

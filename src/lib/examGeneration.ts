@@ -48,6 +48,7 @@ export function toGeneratedQuestionMode(questionType: string): GeneratedQuestion
 }
 
 export function normalizeQuestionKindLabel(value: string) {
+  if (!value) return null;
   if (value.includes('multiple') || value.includes(MULTIPLE_LABEL)) {
     return MULTIPLE_LABEL as typeof MULTIPLE_LABEL;
   }

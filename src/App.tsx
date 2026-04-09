@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Loader2, Sparkles } from 'lucide-react';
 import { SUBJECT_CONFIG, getSubjectSelectionDefaults, type SubjectKey } from './lib/question/subjectConfig';
 import { getSchoolLevelLabel, getDifficultyLabel, normalizeToSubjectKey } from './lib/examUtils';
 
@@ -17,6 +18,8 @@ import { ResultScreen } from './components/screens/ResultScreen';
 import { SavedScreen } from './components/screens/SavedScreen';
 import { WrongListScreen } from './components/screens/WrongListScreen';
 import { DashboardScreen } from './components/screens/DashboardScreen';
+import { ImageScanScreen } from './components/screens/ImageScanScreen';
+import { CreateSelectionScreen } from './components/screens/CreateSelectionScreen';
 
 // 분리된 타입 및 커스텀 훅스
 import type { Screen } from './lib/examTypes';
@@ -24,6 +27,7 @@ import { useAuth } from './hooks/useAuth';
 import { useExamSync } from './hooks/useExamSync';
 import { useExamGenerator } from './hooks/useExamGenerator';
 import { useExamSession } from './hooks/useExamSession';
+import { useImageScan } from './hooks/useImageScan';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('landing');
@@ -39,6 +43,8 @@ export default function App() {
   const generator = useExamGenerator(auth.sessionUserId, sync.savedExams, sync.setSavedExams);
 
   // --- 4. 시험 세션 훅 ---
+  const imageScan = useImageScan(auth.sessionUserId, sync.savedExams, sync.setSavedExams);
+
   const session = useExamSession(
     auth.sessionUserId,
     sync.savedExams,
@@ -49,6 +55,16 @@ export default function App() {
 
   // --- 네비게이션 엔진 ---
   const navigate = (next: Screen, replace = false) => {
+    // 보호가 필요한 화면 리스트
+    const protectedScreens: Screen[] = ['create', 'create-selection', 'image-scan', 'wrong', 'saved'];
+    
+    if (protectedScreens.includes(next) && auth.isAnonymous) {
+      alert('이 기능은 로그인 후 이용 가능한 프리미엄 서비스입니다. 로그인 화면으로 이동합니다.');
+      setScreen('account');
+      window.history.pushState({ screen: 'account' }, '', '');
+      return;
+    }
+
     window.scrollTo(0, 0);
     if (replace) {
       window.history.replaceState({ screen: next }, '', '');
@@ -121,6 +137,19 @@ export default function App() {
   const onSubmitExam = async () => {
     await session.submitExam();
     navigate('result');
+  };
+
+  const onImageScan = async (params: Parameters<typeof imageScan.importPdf>[0]) => {
+    const result = await imageScan.importPdf(params);
+    if (result.success && result.record) {
+      session.startExam(result.record);
+      
+      // 사용자 선택 과목을 기반으로 상단 필터 동기화 (추론 우회)
+      const label = SUBJECT_CONFIG[params.subject].label;
+      setSavedScreenSubject(label);
+      
+      navigate('taking');
+    }
   };
 
   // --- 렌더링 로직 ---
@@ -215,6 +244,8 @@ export default function App() {
             switch (screen) {
               case 'landing': return <LandingScreen onNavigate={navigate} isAnonymous={auth.isAnonymous} />;
               case 'dashboard': return <DashboardScreen exams={sync.savedExams} onOpenExam={onOpenSavedExam} />;
+              case 'create-selection':
+                return <CreateSelectionScreen onNavigate={navigate} />;
               case 'create':
                 return (
                   <CreateScreen
@@ -262,6 +293,15 @@ export default function App() {
                 ) : (
                   <AuthScreen onSuccess={() => window.location.reload()} />
                 );
+              case 'image-scan':
+                return (
+                  <ImageScanScreen
+                    onImport={onImageScan}
+                    isImporting={imageScan.isImporting}
+                    importError={imageScan.importError}
+                    importProgress={imageScan.importProgress}
+                  />
+                );
               case 'wrong':
                 return (
                   <WrongListScreen
@@ -269,9 +309,12 @@ export default function App() {
                     savedExams={sync.savedExams}
                     syncMessage={auth.syncMessage}
                     onBack={handleBack}
-                    onRetry={() => {
-                      session.setCurrentQuestionIndex(1);
-                      navigate('taking');
+                    onRetry={async (title, notes) => {
+                      const result = await generator.generateSimilarExam(title, notes);
+                      if (result.success && result.record) {
+                        session.startExam(result.record);
+                        navigate('taking');
+                      }
                     }}
                     onDelete={sync.removeWrongNote}
                   />
@@ -297,6 +340,40 @@ export default function App() {
       />
       {renderContent()}
       <BottomNavigation current={screen} onNavigate={navigate} isAnonymous={auth.isAnonymous} className="lg:hidden" />
+
+      {/* 글로벌 로딩 오버레이 (AI 문제 생성 및 분석 전체 적용) */}
+      {(generator.isGenerating || imageScan.isImporting) && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="relative mb-8">
+            <div className="absolute inset-0 animate-ping rounded-full bg-blue-100 opacity-75" />
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200">
+              <Sparkles className="h-10 w-10 text-blue-600 animate-pulse" />
+            </div>
+          </div>
+          
+          <div className="flex flex-col items-center gap-3 text-center px-6">
+            <h2 className="text-xl font-black text-slate-900">
+              {screen === 'wrong' ? '유사 유형 문제 분석 중' : 
+               screen === 'image-scan' ? '문서 분석 및 문제 추출 중' : '지능형 문제 생성 중'}
+            </h2>
+            <p className="max-w-[320px] text-[14px] font-bold leading-relaxed text-slate-500">
+              {screen === 'wrong' 
+                ? 'AI가 오답 데이터를 기반으로\n취약점 보정 문항을 설계하고 있습니다...' 
+                : screen === 'image-scan'
+                ? '문서의 내용을 정밀하게 스캔하여\n최적의 문제 데이터로 변환하고 있습니다...'
+                : 'AI 알고리즘이 학습 최적화 데이터를 바탕으로\n고품질 문항을 실시간으로 생성하고 있습니다...'}
+            </p>
+            <div className="mt-4 flex items-center gap-2 rounded-full bg-blue-50 px-4 py-1.5 text-[12px] font-black text-blue-600">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>
+                {screen === 'wrong' || screen === 'image-scan' 
+                  ? '곧 새로운 시험이 시작됩니다' 
+                  : '최상의 평가 품질을 위해 분석 중입니다'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -18,6 +18,7 @@
   
   --font-headline: 'Manrope', 'Noto Sans KR', sans-serif;
   --font-body: 'Inter', 'Noto Sans KR', sans-serif;
+  --font-serif: 'Times New Roman', Times, serif;
 
   --shadow-premium: 0 10px 25px -5px rgba(0, 32, 69, 0.04), 0 8px 10px -6px rgba(0, 32, 69, 0.04);
   --shadow-premium-lg: 0 20px 25px -5px rgba(0, 32, 69, 0.08), 0 8px 10px -6px rgba(0, 32, 69, 0.08);

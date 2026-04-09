@@ -31,16 +31,17 @@ function buildFeedbackBlock(validationFeedback?: string[]) {
 }
 
 function isSocialSubject(subject: SubjectKey): boolean {
+  if (!subject) return false;
   const s = subject.toString();
   return (
-    s.includes('social') ||
-    s.includes('geography') ||
-    s.includes('economics') ||
-    s.includes('politics') ||
-    s.includes('ethics') ||
-    s.includes('social_culture') ||
-    s.includes('living_ethics') ||
-    s.includes('ethics_thought')
+    (s || '').includes('social') ||
+    (s || '').includes('geography') ||
+    (s || '').includes('economics') ||
+    (s || '').includes('politics') ||
+    (s || '').includes('ethics') ||
+    (s || '').includes('social_culture') ||
+    (s || '').includes('living_ethics') ||
+    (s || '').includes('ethics_thought')
   );
 }
 
@@ -70,9 +71,10 @@ function buildGenericPrompt(input: PromptBuildInput) {
     'You are generating school exam questions.',
     'Return only a JSON array.',
     'Each item must contain exactly these keys:',
-    '["topic", "type", "stem", "choices", "answer", "explanation"]',
+    '["topic", "type", "stem", "choices", "answer", "explanation", "stimulus"]',
     'Use "type" = "multiple".',
     'choices must contain exactly 5 strings.',
+    '- "stimulus": Use this field to provide additional material (e.g., a "Given Sentence" box for English sentence insertion, a diagram description, or a <보기> block). If not needed, set to null.',
     '- [CRITICAL] "answer" must be a string that matches EXACTLY one of the values in the "choices" array. Copy the choice text exactly (including all characters and spaces) into the answer field.',
     '',
     `Subject: ${rules.subjectLabel}`,
@@ -234,7 +236,23 @@ function buildCsatPrompt(input: PromptBuildInput) {
     '당신은 대한민국 수능 및 평가원 모의고사를 출제하는 전문 위원입니다.',
     '지엽적인 지식 암기가 아닌, 대학 교육에 필요한 "사고력"과 "문제 해결 능력"을 측정하는 고품질 문항을 생성하십시오.',
     '반드시 JSON 배열 형식으로만 반환하세요.',
-    'JSON의 각 항목은 다음 키를 반드시 포함해야 합니다: ["topic", "type", "stem", "choices", "answer", "explanation"]',
+    'JSON의 각 항목은 다음 키를 반드시 포함해야 합니다: ["topic", "type", "stem", "choices", "answer", "explanation", "stimulus"]',
+    '- [CRITICAL] "stimulus" 필드는 수능 영어의 "주어진 문장", 국어의 "<보기>", 수학의 복잡한 조건 등을 담는 용도로 사용하십시오. 필요 없는 경우 null로 설정하십시오.',
+    '- [CRITICAL] "문장 삽입" 유형의 경우, 정답 문장을 지문(stem)에서 빼서 반드시 stimulus 필드에 넣으십시오. 지문(stem)에는 한 단락의 글에 ①~⑤ 번호만 인라인으로 남겨두어야 합니다. 절대로 지문의 문장들을 선택지(choices)로 나누어 배치하지 마십시오.',
+    '- [CRITICAL] "순서 배열" 유형의 경우, stimulus에는 반드시 (A) 이전의 영어 도입부 글을 넣고 stem에는 (A), (B), (C) 세 단락만 포함하십시오. stimulus를 null로 두지 마십시오. stimulus 안에 (A), (B), (C)를 넣지 마십시오. (D) 이상의 추가 단락은 절대로 만들지 마십시오.',
+    '- [CRITICAL] "문장 삽입"의 "choices" 필드는 반드시 ["①", "②", "③", "④", "⑤"]와 같이 번호만 포함해야 합니다.',
+    '',
+    '[수능 영어 문장 삽입 유형 생성 예시]',
+    '{',
+    '  "topic": "English Reading",',
+    '  "type": "multiple",',
+    '  "stem": "글의 흐름으로 보아, 주어진 문장이 들어가기에 가장 적절한 곳을 고르시오.\\n\\nWhile some species of birds are primarily solitary, others exhibit complex social structures. ( ① ) Social birds often cooperate in foraging and defense. ( ② ) This cooperation increases their survival chances in harsh environments. ( ③ ) However, maintaining these social ties requires significant energy expenditure. ( ④ ) Individuals must constantly monitor the status of their peers. ( ⑤ ) Therefore, the benefits of sociality must outweigh these energetic costs.",',
+    '  "stimulus": "For instance, starlings fly in tight-knit murmurations to confuse potential predators.",',
+    '  "choices": ["①", "②", "③", "④", "⑤"],',
+    '  "answer": "①",',
+    '  "explanation": "주어진 문장은 새들이 포식자를 혼란시키기 위해 무리 지어 비행하는 구체적인 협력 사례(For instance)를 보여줍니다. 따라서 사회적 새들이 채집과 방어에서 협력한다는 일반적 진술(1번 앞 문장) 뒤에 오는 것이 가장 적절합니다."',
+    '}',
+    '',
     '- [CRITICAL] "answer" 필드의 텍스트는 반드시 "choices" 배열의 값 중 하나와 토씨 하나 틀리지 않고 100% 일치해야 합니다.',
     '',
     `영역: ${rules.subjectLabel}`,

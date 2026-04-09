@@ -112,6 +112,19 @@ export async function parseFileToText(file: File, onProgress?: (msg: string) => 
       const text = await file.text();
       if (!text.trim()) throw new Error('파일에 내용이 없습니다.');
       return text;
+    case 'jpg':
+    case 'jpeg':
+    case 'png':
+      onProgress?.('이미지 데이터를 최적화하고 있습니다...');
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result as string;
+          resolve(`IMAGE_DATA:${base64}`);
+        };
+        reader.onerror = () => reject(new Error('이미지 읽기 실패'));
+        reader.readAsDataURL(file);
+      });
     default:
       throw new Error(`지원하지 않는 파일 형식입니다: .${extension}`);
   }

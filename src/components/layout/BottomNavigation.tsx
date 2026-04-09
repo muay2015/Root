@@ -21,7 +21,7 @@ export function BottomNavigation({
   const items: { id: Screen; label: string; icon: ReactNode }[] = [
     { id: 'landing' as const, label: '홈', icon: <Home className="h-5 w-5" strokeWidth={2.5} /> },
     { id: 'dashboard' as const, label: '대시보드', icon: <BarChart className="h-5 w-5" strokeWidth={2.5} /> },
-    { id: 'create' as const, label: '문제 생성', icon: <PlusCircle className="h-5 w-5" strokeWidth={2.5} /> },
+    { id: 'create-selection' as const, label: '문제 생성', icon: <PlusCircle className="h-5 w-5" strokeWidth={2.5} /> },
     { id: 'saved' as const, label: '나의 보관함', icon: <FileText className="h-5 w-5" strokeWidth={2.5} /> },
     { id: 'wrong' as const, label: '오답 집중', icon: <NotebookPen className="h-5 w-5" strokeWidth={2.5} /> },
   ];
@@ -30,7 +30,8 @@ export function BottomNavigation({
     <nav className={`glass-nav shadow-[0_-4px_20px_rgba(0,0,0,0.03)] ${className}`}>
       <div className="mx-auto flex max-w-xl justify-around px-2 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
         {items.map((item) => {
-          const active = current === item.id;
+          const active = current === item.id || 
+            (item.id === 'create-selection' && (current === 'create' || current === 'pdf-import'));
           return (
             <button
               key={item.id}

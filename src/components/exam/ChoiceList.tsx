@@ -10,9 +10,10 @@ type ChoiceListProps = {
   choices: (string | ChoiceItemData)[];
   selectedChoice: string | undefined;
   onSelect: (choice: string) => void;
+  hideText?: boolean;
 };
 
-export function ChoiceList({ choices, selectedChoice, onSelect }: ChoiceListProps) {
+export function ChoiceList({ choices, selectedChoice, onSelect, hideText }: ChoiceListProps) {
   const normalizedChoices = choices
     .map((choice) => {
       const isObj = typeof choice === 'object' && choice !== null;
@@ -29,7 +30,7 @@ export function ChoiceList({ choices, selectedChoice, onSelect }: ChoiceListProp
   const normalizedSelectedChoice = normalizeChoiceText(selectedChoice);
 
   return (
-    <div className="w-full min-w-0 flex flex-col gap-2.5 sm:gap-3">
+    <div className={`w-full min-w-0 ${hideText ? 'grid grid-cols-5 gap-2 sm:gap-4' : 'flex flex-col gap-2.5 sm:gap-3'}`}>
       {normalizedChoices.map((choice, index) => (
         <div key={`${index + 1}-${choice.normalizedValue}`} className="w-full min-w-0">
           <ChoiceItem
@@ -37,6 +38,7 @@ export function ChoiceList({ choices, selectedChoice, onSelect }: ChoiceListProp
             text={choice.display}
             selected={normalizedSelectedChoice === choice.normalizedValue}
             onSelect={() => onSelect(choice.value)}
+            hideText={hideText}
           />
         </div>
       ))}

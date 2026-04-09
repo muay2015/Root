@@ -305,7 +305,7 @@ export function inferSubjectFromTitle(title: string, schoolLevelHint?: string): 
   // 6. 영어
   if (t.includes('영어') || t.includes('english') || t.includes('grammar') || t.includes('vocabulary') || t.includes('reading') || t.includes('독해') || t.includes('숙어') || t.includes('영단어')) {
     if (isHigh) return 'high_english';
-    return 'middle_english';
+    return null; // 불확실할 경우 폴백하지 않음
   }
 
   // 7. 기타/예체능/기술가정
@@ -366,10 +366,10 @@ export function makeExamTitle(
   generationTopic: string,
   selectionLabel: string | null,
 ) {
-  const subjectLabel = SUBJECT_CONFIG[subject].label;
-  const topicText = generationTopic.trim();
+  const subjectLabel = SUBJECT_CONFIG[subject]?.label || '과목';
+  const topicText = (generationTopic || '').trim();
   
-  if (topicText.length > 0) {
+  if (topicText && topicText.length > 0) {
     return topicText.includes(subjectLabel) ? topicText : `[${subjectLabel}] ${topicText}`;
   }
 

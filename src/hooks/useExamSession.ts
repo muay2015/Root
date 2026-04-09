@@ -7,6 +7,7 @@ import {
   storeLocalLastExam,
   type PersistedExamRecord,
 } from '../lib/rootPersistence';
+import { localStorageService } from '../services/localStorageService';
 import {
   isSubjectKey,
   isDifficultyLevel,
@@ -47,7 +48,7 @@ export function useExamSession(
       return normalizeAnswer(myAnswer) === normalizeAnswer(question.answer)
         ? []
         : [{
-            id: `${examMeta.subject}___${examTitle}-${question.id}`,
+            id: `${examMeta.subject}___${examTitle}-${question.id}-${Date.now()}`,
             examTitle,
             subject: examMeta.subject,
             topic: question.topic,
@@ -91,7 +92,9 @@ export function useExamSession(
   };
 
   const submitExam = async () => {
-    const nextWrong = mergeWrongNotes([...summary.wrong, ...wrongNotes]);
+    // 실시간 데이터 소실 방지를 위해 로컬 저장소의 최신 데이터를 가져옴
+    const currentLocalWrong = localStorageService.loadWrongNotes<WrongNote>();
+    const nextWrong = mergeWrongNotes([...summary.wrong, ...currentLocalWrong]);
     onSyncWrong(nextWrong);
     storeLocalWrongNotes(nextWrong);
 

@@ -1,11 +1,10 @@
 import dotenv from 'dotenv';
 import express from 'express';
+import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import {
-  generateExamApiResponse,
-  ocrApiResponse,
-} from '../src/lib/server/generateExamApi.ts';
+import { generateExamApiResponse } from '../src/lib/server/generateExamApi.ts';
+import { segmentExamWithOpenAI } from '../src/lib/server/openaiVisionService.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,18 +28,20 @@ const hasOpenAiKey = openAiApiKey.length > 0;
 if (hasOpenAiKey) {
   console.log('✅ OpenAI API Key loaded successfully.');
 } else {
-  console.warn('⚠️ OpenAI API Key is missing! Check your .env.local file.');
+  console.warn('⚠️ OpenAI API Key is missing!');
 }
 console.log('---------------------------');
 
-app.use(express.json({ limit: '10mb' }));
+app.use(cors());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
     provider: hasOpenAiKey ? 'openai' : 'mock',
     model: openAiModel,
-    keyLoaded: hasOpenAiKey,
+    openaiKeyLoaded: hasOpenAiKey,
   });
 });
 
@@ -64,18 +65,37 @@ app.post('/api/ai/generate-exam', async (req, res) => {
   }
 });
 
-app.post('/api/ai/ocr', async (req, res) => {
-  console.log('--- Incoming Request: /api/ai/ocr ---');
+
+
+app.post('/api/ai/segment-exam', async (req, res) => {
+  console.log('--- Incoming Request: /api/ai/segment-exam ---');
   try {
-    const result = await ocrApiResponse({
-      payload: req.body,
-      openAiApiKey,
-      openAiModel,
+    const { image, subject } = req.body;
+    if (!hasOpenAiKey) {
+      return res.status(401).json({ error: 'OpenAI API 키가 설정되지 않았습니다.' });
+    }
+    if (!image?.data) {
+      return res.status(400).json({ error: '이미지 데이터가 없습니다.' });
+    }
+
+    const base64Data = image.data.replace(/^data:image\/\w+;base64,/, '');
+    const imageBuffer = Buffer.from(base64Data, 'base64');
+    const questions = await segmentExamWithOpenAI({
+      imageBuffer,
+      mimeType: image.mimeType || 'image/png',
+      apiKey: openAiApiKey,
+      subject,
+      model: openAiModel,
     });
-    res.status(result.status).json(result.body);
+
+    res.json({
+      title: `${subject || '이미지'} 기출문제`,
+      questions,
+      questionCount: questions.length,
+    });
   } catch (err: any) {
-    console.error('OCR SERVER ERROR:', err);
-    res.status(500).json({ error: 'OCR server internal error' });
+    console.error('SEGMENT EXAM ERROR (GPT-4o):', err);
+    res.status(500).json({ error: 'GPT-4o segmentation failure', details: err.message });
   }
 });
 

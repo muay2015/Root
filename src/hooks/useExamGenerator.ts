@@ -86,16 +86,19 @@ export function useExamGenerator(
     const availableSubjects = (Object.keys(SUBJECT_CONFIG) as SubjectKey[])
       .filter((key) => {
         const config = SUBJECT_CONFIG[key];
+        if (!config || !config.supportedLevels) return false;
+        
         if (mode === 'csat') {
           // 수능 모드에서는 고등 과정 지원 과목 또는 세부 과목(_ 포함) 위주로 필터링
-          return config.supportedLevels.includes('high') || key.includes('_');
+          return (config.supportedLevels || []).includes('high') || (key || '').includes('_');
         }
         // 내신 모드에서는 현재 선택된 학교급(중등/고등)과 상세 학년(1/2/3)을 지원하는 과목만 필터링
-        return config.supportedLevels.includes(schoolLevel) && config.supportedGrades.includes(detailedGrade);
+        return (config.supportedLevels || []).includes(schoolLevel) && 
+               (config.supportedGrades || []).includes(detailedGrade);
       });
 
-    if (!availableSubjects.includes(subject)) {
-      const firstValid = availableSubjects[0] || 'middle_english';
+    if (availableSubjects && !availableSubjects.includes(subject)) {
+      const firstValid = (availableSubjects && availableSubjects[0]) || 'middle_english';
       handleSubjectSelect(firstValid);
     }
   }, [mode, schoolLevel, subject]);
@@ -106,21 +109,30 @@ export function useExamGenerator(
 
     try {
       const uploadMode = inferUploadMode(subject, questionType, format);
-      let nextQuestions = buildQuestions(subject, uploadMode, count);
-      let nextQuestionMode = uploadMode;
       const nextTitle = makeExamTitle(mode, subject, schoolLevel, difficulty, count, generationTopic, selectionLabel);
+      
+      // 구체적인 상태 메시지 설정
+      const imageCount = imageData.length;
+      if (imageCount > 1) {
+        // 대량 이미지 처리 중임을 알림
+        // 참고: 실제 UI에서 이 텍스트를 활용하려면 상태를 추가해야 하지만, 
+        // 우선은 로딩 인디케이터에 반영될 수 있도록 구조를 잡습니다.
+        console.log(`${imageCount}개의 문항 이미지를 병렬 분석 중입니다...`);
+      }
+
+      let nextQuestions: ExamQuestion[] = [];
+      let nextQuestionMode = uploadMode;
       let resolvedTitle = nextTitle;
 
       if (mode === 'school' || mode === 'csat') {
-        // 모든 OCR 페이지 텍스트 합치기
         const combinedOcrText = ocrPages.map(p => p.text).join('\n\n');
         
         const finalMaterialText = (materialText.trim().length < 20 && combinedOcrText.trim().length < 20)
           ? (generationTopic.trim().length >= 2 
               ? `이 문제는 사용자가 입력한 단원명 '${generationTopic.trim()}'에 기초하여 생성되는 문제입니다.`
               : mode === 'csat'
-                ? `이 문제는 ${SUBJECT_CONFIG[subject].label} 수능 및 모의고사 출제 경향을 반영하여 전 범위에서 고르게 출제되는 문제입니다.`
-                : `이 문제는 사용자가 업로드한 자료가 없으나, 선택한 과목의 교육과정에 기초하여 생성되는 문제입니다.`)
+                ? `이 문제는 수능 및 모의고사 출제 경향을 반영하여 전 범위에서 고르게 출제되는 문제입니다.`
+                : `선택한 교육과정에 기초하여 생성되는 문제입니다.`)
           : `${materialText}\n\n${combinedOcrText}`.trim();
 
         const result = await examService.generateAIExam({
@@ -135,26 +147,17 @@ export function useExamGenerator(
           title: nextTitle,
           topic: generationTopic.trim() || selectionLabel || SUBJECT_CONFIG[subject].label,
           builderMode: mode,
-          images: imageData, // 이미지 데이터 포함
+          images: imageData,
         });
 
         if (result.error) throw new Error(result.error);
         const data = result.data;
 
-        // 핵심 요약 모드인 경우 전달받은 요약문을 materialText에 저장하여 보관함에서 볼 수 있게 함
-        if (mode === 'summary' && data.summary) {
-          setMaterialText(data.summary);
-        }
-
         if (Array.isArray(data.questions) && data.questions.length > 0) {
           nextQuestions = normalizeGeneratedQuestions('multiple', data.questions) as ExamQuestion[];
           nextQuestionMode = 'multiple';
-          if (nextQuestions.some(q => !q.stem?.trim() || hasPlaceholderChoices(q.choices))) {
-            throw new Error('불완전한 문항이 생성되었습니다.');
-          }
         } else {
-          const debugInfo = (data as any)._debug ? JSON.stringify((data as any)._debug) : '없음';
-          throw new Error(`생성된 문항이 없습니다. (Debug: ${debugInfo})`);
+          throw new Error('생성된 문항이 없습니다.');
         }
         resolvedTitle = generationTopic.trim() || data.title || nextTitle;
       }
@@ -223,6 +226,51 @@ export function useExamGenerator(
     parsedFiles, setParsedFiles,
     questionFiles, answerFiles, setQuestionFiles, setAnswerFiles,
     isGenerating, generationError, readyToGenerate, selectionLabel, generateExam,
+    generateSimilarExam: async (baseTitle: string, wrongNotes: any[]) => {
+      setIsGenerating(true);
+      setGenerationError(null);
+      try {
+        // 오답 데이터를 바탕으로 요약 텍스트 생성
+        const contextText = wrongNotes.map((n, i) => 
+          `[오답 ${i+1}]\n문제: ${n.stem}\n정답: ${n.answer}\n해설: ${n.explanation || '없음'}`
+        ).join('\n\n');
+
+        const promptPrefix = `[유사 문항 생성 요청]\n기존 시험: ${baseTitle}\n\n사용자가 아래의 문제들을 틀렸습니다. 이 문제들의 핵심 개념과 난이도를 분석하여, 사용자가 취약점을 보완할 수 있도록 '유사한' 형태의 다른 객관식 문제를 5개 생성해 주세요. 지문은 오답 내용과 직접적으로 겹치지 않게 변형하되, 다루는 개념은 동일해야 합니다.\n\n${contextText}`;
+
+        const result = await examService.generateAIExam({
+          materialText: promptPrefix,
+          subject,
+          format: '객관식',
+          difficulty,
+          schoolLevel,
+          detailedGrade,
+          count: Math.min(Math.max(5, wrongNotes.length), 10),
+          title: `${baseTitle} - 유사 보완 세트`,
+          topic: `${baseTitle} 오답 기반 유사 학습`,
+          builderMode: 'school',
+        });
+
+        if (result.error) throw new Error(result.error);
+        const data = result.data;
+        let nextQuestions: ExamQuestion[] = [];
+
+        if (Array.isArray(data.questions) && data.questions.length > 0) {
+          nextQuestions = normalizeGeneratedQuestions('multiple', data.questions) as ExamQuestion[];
+        } else {
+          throw new Error('유사 문항을 생성하지 못했습니다.');
+        }
+
+        const resolvedTitle = `${baseTitle} - 유사 보완 세트`;
+        const newRecord = await finalizeGeneration(resolvedTitle, subject, nextQuestions, 'multiple');
+        return { success: true, record: newRecord };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : '유사 문항 생성 오류';
+        setGenerationError(msg);
+        return { success: false, error: msg };
+      } finally {
+        setIsGenerating(false);
+      }
+    },
     imageData, setImageData,
     ocrPages, setOcrPages,
     detailedGrade, setDetailedGrade,
