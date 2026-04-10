@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { EllipsisVertical, Info, RefreshCw, FileText, Search, Plus, LogIn, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { EllipsisVertical, Info, RefreshCw, FileText, Search, Plus, LogIn, ChevronRight, CheckCircle2, Trash2, X } from 'lucide-react';
 import { SUBJECT_CONFIG } from '../../lib/question/subjectConfig';
 import { 
   formatSavedDate, 
@@ -17,6 +17,7 @@ interface SavedScreenProps {
   exams: PersistedExamRecord[];
   onOpen: (record: PersistedExamRecord) => void;
   onDelete: (recordId: string) => void;
+  onDeleteMultiple: (recordIds: string[]) => void;
   onContinueGenerate: (record: PersistedExamRecord) => void;
   onCreate: () => void;
   onLogin: () => void;
@@ -30,6 +31,7 @@ export function SavedScreen({
   exams,
   onOpen,
   onDelete,
+  onDeleteMultiple,
   onContinueGenerate,
   onCreate,
   onLogin,
@@ -40,7 +42,13 @@ export function SavedScreen({
 }: SavedScreenProps) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [previewExamId, setPreviewExamId] = useState<string | null>(null);
-
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
+  const totalGeneratedQuestionCount = useMemo(
+    () => exams.reduce((sum, exam) => sum + Number(exam.question_count || 0), 0),
+    [exams],
+  );
   const allSubjects = useMemo(() => {
     const list = new Set<string>(['전체']);
     for (const exam of exams) {
@@ -81,6 +89,37 @@ export function SavedScreen({
     });
   }, [filteredExams]);
 
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    if (selectedIds.size === filteredExams.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredExams.map((e) => e.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0 || isDeleting) return;
+    if (window.confirm(`${selectedIds.size}개의 문항을 영구적으로 삭제하시겠습니까?`)) {
+      try {
+        setIsDeleting(true);
+        await onDeleteMultiple(Array.from(selectedIds));
+        setIsSelectionMode(false);
+        setSelectedIds(new Set());
+      } finally {
+        setIsDeleting(false);
+      }
+    }
+  };
+
   return (
     <main className="min-h-screen bg-surface px-4 pb-28 pt-8 sm:px-6 sm:pt-10">
       <div className="mx-auto max-w-5xl space-y-8">
@@ -104,13 +143,34 @@ export function SavedScreen({
               </div>
             </div>
             
-            <button 
-              onClick={onCreate}
-              className="hidden sm:flex h-12 items-center gap-2 rounded-2xl premium-gradient px-6 text-sm font-black text-white shadow-lg shadow-blue-900/10 transition-all hover:scale-105 active:scale-95"
-            >
-              <Plus className="h-5 w-5" />
-              새 문제 생성
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setIsSelectionMode(!isSelectionMode);
+                  setSelectedIds(new Set());
+                }}
+                className={`flex h-12 items-center gap-2 rounded-2xl px-5 text-sm font-black transition-all ${
+                  isSelectionMode 
+                    ? 'bg-slate-900 text-white' 
+                    : 'bg-white text-slate-600 ring-1 ring-outline hover:bg-slate-50'
+                }`}
+              >
+                {isSelectionMode ? '선택 취소' : '선택'}
+              </button>
+              <button 
+                onClick={onCreate}
+                className="hidden sm:flex h-12 items-center gap-2 rounded-2xl premium-gradient px-6 text-sm font-black text-white shadow-lg shadow-blue-900/10 transition-all hover:scale-105 active:scale-95"
+              >
+                <Plus className="h-5 w-5" />
+                새 문제 생성
+              </button>
+            </div>
+          </div>
+
+          <div className="inline-flex w-fit items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-outline">
+            <span className="text-slate-400">총 생성 문항</span>
+            <span className="text-lg font-black text-slate-900">{totalGeneratedQuestionCount.toLocaleString()}</span>
+            <span className="text-slate-500">문항</span>
           </div>
 
           {syncMessage && (
@@ -144,6 +204,23 @@ export function SavedScreen({
         {/* Filters */}
         <section className="sticky top-[72px] z-10 -mx-4 bg-surface/80 px-4 py-4 backdrop-blur-md sm:mx-0 sm:px-0">
           <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
+            {isSelectionMode && (
+              <button
+                onClick={selectAll}
+                className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-[13px] font-black transition-all ${
+                  selectedIds.size === filteredExams.length && filteredExams.length > 0
+                    ? 'bg-slate-900 text-white shadow-md'
+                    : 'bg-white text-slate-500 ring-1 ring-outline hover:bg-slate-50'
+                }`}
+              >
+                {selectedIds.size === filteredExams.length && filteredExams.length > 0 ? (
+                  <CheckCircle2 className="h-4 w-4" />
+                ) : (
+                  <div className="h-4 w-4 rounded-full border-2 border-slate-300" />
+                )}
+                전체 선택
+              </button>
+            )}
             {allSubjects.map((subj) => (
               <button
                 key={subj}
@@ -176,27 +253,52 @@ export function SavedScreen({
               <section key={subjectLabel} className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   {examList.map((exam) => (
-                    <article key={exam.id} className="premium-card group relative p-5 transition-all hover:ring-2 hover:ring-accent/20">
+                    <article 
+                      key={exam.id} 
+                      onClick={() => isSelectionMode && toggleSelection(exam.id)}
+                      className={`premium-card group relative p-5 transition-all hover:ring-2 hover:ring-accent/20 ${
+                        isSelectionMode ? 'cursor-pointer active:scale-[0.98]' : ''
+                      } ${
+                        selectedIds.has(exam.id) ? 'ring-2 ring-accent bg-accent/[0.02]' : ''
+                      }`}
+                    >
                       <div className="flex flex-col h-full">
                         <div className="flex items-start justify-between mb-3">
-                          <div className="flex flex-col gap-1.5 min-w-0">
-                             <div className="flex items-center gap-2">
-                               <SubjectTag subject={exam.subject} title={exam.title} altText={exam.questions[0]?.topic} questions={exam.questions} schoolLevel={exam.exam_format} />
-                               <span className="text-[10px] font-bold text-slate-300">/</span>
-                               <span className="text-[10px] font-bold text-slate-400">{formatSavedDate(exam.created_at)}</span>
+                          <div className="flex items-start gap-3 min-w-0">
+                             {isSelectionMode && (
+                               <div className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-all ${
+                                 selectedIds.has(exam.id) 
+                                   ? 'bg-accent text-white shadow-sm' 
+                                   : 'bg-white ring-2 ring-slate-200'
+                               }`}>
+                                 {selectedIds.has(exam.id) && <CheckCircle2 className="h-4 w-4" />}
+                               </div>
+                             )}
+                             <div className="flex flex-col gap-1.5 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <SubjectTag subject={exam.subject} title={exam.title} altText={exam.questions[0]?.topic} questions={exam.questions} schoolLevel={exam.exam_format} />
+                                  <span className="text-[10px] font-bold text-slate-300">/</span>
+                                  <span className="text-[10px] font-bold text-slate-400">{formatSavedDate(exam.created_at)}</span>
+                                </div>
+                                <h3 className={`line-clamp-2 text-[16px] font-black leading-snug transition-colors ${
+                                  selectedIds.has(exam.id) ? 'text-accent' : 'text-slate-900 group-hover:text-accent'
+                                }`}>
+                                  {exam.title}
+                                </h3>
                              </div>
-                             <h3 className="line-clamp-2 text-[16px] font-black leading-snug text-slate-900 group-hover:text-accent transition-colors">
-                               {exam.title}
-                             </h3>
                           </div>
                           
-                          <div className="relative shrink-0">
-                            <button
-                              onClick={() => setOpenMenuId((current) => (current === exam.id ? null : exam.id))}
-                              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-900 transition-all"
-                            >
-                              <EllipsisVertical className="h-3.5 w-3.5" />
-                            </button>
+                          {!isSelectionMode && (
+                            <div className="relative shrink-0">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenuId((current) => (current === exam.id ? null : exam.id));
+                                }}
+                                className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-900 transition-all"
+                              >
+                                <EllipsisVertical className="h-3.5 w-3.5" />
+                              </button>
                             {openMenuId === exam.id && (
                               <div className="absolute right-0 top-9 z-20 flex min-w-[160px] flex-col rounded-2xl bg-white p-1.5 shadow-2xl ring-1 ring-outline animate-in fade-in zoom-in-95 duration-200">
                                 {exam.source_text?.trim() && (
@@ -229,6 +331,7 @@ export function SavedScreen({
                               </div>
                             )}
                           </div>
+                        )}
                         </div>
  
                         <div className="mt-auto pt-3 border-t border-slate-50/50">
@@ -243,8 +346,16 @@ export function SavedScreen({
                             </div>
 
                             <button
-                              onClick={() => onOpen(exam)}
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-lg shadow-slate-900/10 transition-all hover:scale-110 active:scale-95"
+                              onClick={(e) => {
+                                if (isSelectionMode) return;
+                                e.stopPropagation();
+                                onOpen(exam);
+                              }}
+                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all active:scale-95 ${
+                                isSelectionMode 
+                                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-50' 
+                                  : 'bg-slate-900 text-white shadow-lg shadow-slate-900/10 hover:scale-110'
+                              }`}
                             >
                               <ChevronRight className="h-4 w-4" />
                             </button>
@@ -289,12 +400,59 @@ export function SavedScreen({
         
         <div className="sm:hidden fixed bottom-24 right-4 z-40">
           <button 
-            onClick={onCreate}
-            className="flex h-14 w-14 items-center justify-center rounded-2xl premium-gradient text-white shadow-2xl transition-all active:scale-90"
+            disabled={isDeleting}
+            onClick={isSelectionMode ? handleDeleteSelected : onCreate}
+            className={`flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-2xl transition-all active:scale-90 ${
+              isSelectionMode 
+                ? 'bg-red-500 animate-in zoom-in-50 duration-300' 
+                : 'premium-gradient'
+            } ${isDeleting ? 'opacity-50 cursor-wait' : ''}`}
           >
-            <Plus className="h-6 w-6" />
+            {isDeleting ? (
+              <RefreshCw className="h-6 w-6 animate-spin" />
+            ) : isSelectionMode ? (
+              <Trash2 className="h-6 w-6" />
+            ) : (
+              <Plus className="h-6 w-6" />
+            )}
           </button>
         </div>
+
+        {/* Selection Action Bar (Desktop & Mobile Tablet) */}
+        {isSelectionMode && (
+          <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 transform items-center gap-6 rounded-3xl bg-slate-900/90 px-8 py-4 text-white shadow-2xl backdrop-blur-xl animate-in slide-in-from-bottom-10 duration-500 min-w-[320px] max-w-[90vw] justify-between border border-white/10">
+            <div className="flex flex-col">
+              <span className="text-xs font-black text-slate-400">선택된 문항</span>
+              <span className="text-lg font-black">{selectedIds.size}개</span>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setIsSelectionMode(false);
+                  setSelectedIds(new Set());
+                }}
+                className="rounded-xl px-4 py-2 text-[13px] font-black text-slate-300 hover:bg-white/10 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                disabled={selectedIds.size === 0 || isDeleting}
+                onClick={handleDeleteSelected}
+                className="flex items-center gap-2 rounded-xl bg-red-500 px-6 py-2.5 text-[13px] font-black text-white shadow-lg shadow-red-900/20 transition-all hover:bg-red-600 active:scale-95 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+              >
+                {isDeleting ? (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    삭제 중...
+                  </>
+                ) : (
+                  '삭제하기'
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );

@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { BarChart, Trophy, Target, History, TrendingUp, Award, Calendar } from 'lucide-react';
 import type { PersistedExamRecord } from '../../lib/rootPersistence';
 import { SUBJECT_CONFIG } from '../../lib/question/subjectConfig';
-import { isSubjectKey, normalizeToSubjectKey } from '../../lib/examUtils';
+import { getExamSubjectMeta, isSubjectKey } from '../../lib/examUtils';
 import { MetricCard, Badge } from '../ui/DashboardUI';
 
 interface DashboardScreenProps {
@@ -11,28 +11,47 @@ interface DashboardScreenProps {
 }
 
 export function DashboardScreen({ exams, onOpenExam }: DashboardScreenProps) {
-  // 데이터 분석
-  const submittedExams = exams.filter(e => e.score !== null && e.score !== undefined);
-  const totalExams = submittedExams.length;
-  const averageScore = totalExams > 0 
-    ? Math.round(submittedExams.reduce((sum, e) => sum + (e.score || 0), 0) / totalExams) 
-    : 0;
-  
-  const recentExams = submittedExams.slice(0, 5);
+  const dashboardData = useMemo(() => {
+    const submittedExams = exams.filter((exam) => exam.score !== null && exam.score !== undefined);
+    const totalExams = submittedExams.length;
+    const averageScore = totalExams > 0
+      ? Math.round(submittedExams.reduce((sum, exam) => sum + (exam.score || 0), 0) / totalExams)
+      : 0;
+    const highestScore = totalExams > 0
+      ? Math.max(...submittedExams.map((exam) => exam.score || 0))
+      : 0;
+    const recentExams = submittedExams.slice(0, 5).map((exam) => ({
+      exam,
+      subjectMeta: getExamSubjectMeta(exam),
+    }));
 
-  // 과목별 정답률 계산
-  const subjectStats = submittedExams.reduce((acc, e) => {
-    const key = normalizeToSubjectKey(e.subject, e.title, e.questions?.[0]?.topic, e.questions, e.exam_format) || 'unknown';
-    if (!acc[key]) acc[key] = { total: 0, scoreSum: 0 };
-    acc[key].total += 1;
-    acc[key].scoreSum += (e.score || 0);
-    return acc;
-  }, {} as Record<string, { total: number; scoreSum: number }>);
+    const subjectStats = submittedExams.reduce((acc, exam) => {
+      const { subjectKey } = getExamSubjectMeta(exam);
+      const key = subjectKey ?? 'unknown';
+
+      if (!acc[key]) {
+        acc[key] = { total: 0, scoreSum: 0 };
+      }
+
+      acc[key].total += 1;
+      acc[key].scoreSum += exam.score || 0;
+      return acc;
+    }, {} as Record<string, { total: number; scoreSum: number }>);
+
+    return {
+      totalExams,
+      averageScore,
+      highestScore,
+      recentExams,
+      subjectStats,
+    };
+  }, [exams]);
+
+  const { totalExams, averageScore, highestScore, recentExams, subjectStats } = dashboardData;
 
   return (
     <main className="min-h-screen bg-surface px-4 pb-28 pt-8 sm:px-6 sm:pt-10">
       <div className="mx-auto max-w-5xl space-y-8">
-        {/* Header Section */}
         <header className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl premium-gradient text-white shadow-lg">
@@ -40,35 +59,33 @@ export function DashboardScreen({ exams, onOpenExam }: DashboardScreenProps) {
             </div>
             <div>
               <h1 className="text-3xl font-black tracking-tight text-slate-900">학습 성과 리포트</h1>
-              <p className="text-sm font-medium text-slate-500">지능형 분석으로 도출된 당신의 학습 데이터입니다.</p>
+              <p className="text-sm font-medium text-slate-500">지표형 분석으로 추적한 최근 학습 데이터입니다.</p>
             </div>
           </div>
         </header>
 
-        {/* Highlight Metrics */}
         <div className="grid gap-4 sm:grid-cols-3">
-          <MetricCard 
-            label="누적 평가 응시" 
-            value={totalExams} 
-            suffix="회" 
-            icon={<Calendar className="h-5 w-5 text-blue-600" />} 
+          <MetricCard
+            label="누적 응시 횟수"
+            value={totalExams}
+            suffix="회"
+            icon={<Calendar className="h-5 w-5 text-blue-600" />}
           />
-          <MetricCard 
-            label="평균 성취도" 
-            value={averageScore} 
-            suffix="점" 
-            icon={<Target className="h-5 w-5 text-emerald-600" />} 
+          <MetricCard
+            label="평균 정답률"
+            value={averageScore}
+            suffix="%"
+            icon={<Target className="h-5 w-5 text-emerald-600" />}
           />
-          <MetricCard 
-            label="역대 최고 점수" 
-            value={totalExams > 0 ? Math.max(...submittedExams.map(e => e.score || 0)) : 0} 
-            suffix="점" 
-            icon={<Award className="h-5 w-5 text-amber-600" />} 
+          <MetricCard
+            label="최고 점수"
+            value={highestScore}
+            suffix="점"
+            icon={<Award className="h-5 w-5 text-amber-600" />}
           />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-          {/* 최근 학습 추이 */}
           <section className="premium-card p-6 sm:p-8">
             <div className="mb-6 flex items-center justify-between border-b border-slate-50 pb-4">
               <div className="flex items-center gap-2">
@@ -76,7 +93,7 @@ export function DashboardScreen({ exams, onOpenExam }: DashboardScreenProps) {
                 <h2 className="text-lg font-bold text-slate-800">최근 학습 히스토리</h2>
               </div>
             </div>
-            
+
             {recentExams.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-slate-400">
                 <BarChart className="mb-3 h-12 w-12 opacity-20" />
@@ -84,45 +101,40 @@ export function DashboardScreen({ exams, onOpenExam }: DashboardScreenProps) {
               </div>
             ) : (
               <div className="space-y-4">
-                {recentExams.map((exam) => {
-                  const inferredKey = normalizeToSubjectKey(exam.subject, exam.title, exam.questions?.[0]?.topic, exam.questions, exam.exam_format);
-                  const config = inferredKey ? SUBJECT_CONFIG[inferredKey] : null;
-                  return (
-                    <button 
-                      key={exam.id} 
-                      onClick={() => onOpenExam(exam)}
-                      className="group flex w-full items-center justify-between rounded-2xl bg-slate-50/50 p-4 transition-all hover:bg-white hover:shadow-md ring-1 ring-transparent hover:ring-blue-100"
-                    >
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white font-bold text-blue-600 ring-1 ring-slate-200">
-                          {config ? config.label.charAt(0) : '기'}
-                        </div>
-                        <div className="text-left min-w-0">
-                          <p className="truncate text-sm font-bold text-slate-900">{exam.title}</p>
-                          <p className="text-xs font-medium text-slate-500">{new Date(exam.created_at).toLocaleDateString()}</p>
-                        </div>
+                {recentExams.map(({ exam, subjectMeta }) => (
+                  <button
+                    key={exam.id}
+                    onClick={() => onOpenExam(exam)}
+                    className="group flex w-full items-center justify-between rounded-2xl bg-slate-50/50 p-4 transition-all hover:bg-white hover:shadow-md ring-1 ring-transparent hover:ring-blue-100"
+                  >
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white font-bold text-blue-600 ring-1 ring-slate-200">
+                        {subjectMeta.label.charAt(0)}
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`text-lg font-black ${Number(exam.score) >= 80 ? 'text-blue-600' : 'text-slate-800'}`}>
-                          {exam.score}
-                        </span>
-                        <div className="h-2 w-2 rounded-full bg-slate-200 group-hover:bg-blue-400 transition-colors" />
+                      <div className="text-left min-w-0">
+                        <p className="truncate text-sm font-bold text-slate-900">{exam.title}</p>
+                        <p className="text-xs font-medium text-slate-500">{new Date(exam.created_at).toLocaleDateString()}</p>
                       </div>
-                    </button>
-                  );
-                })}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-lg font-black ${Number(exam.score) >= 80 ? 'text-blue-600' : 'text-slate-800'}`}>
+                        {exam.score}
+                      </span>
+                      <div className="h-2 w-2 rounded-full bg-slate-200 group-hover:bg-blue-400 transition-colors" />
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
           </section>
 
-          {/* 과목별 성취도 */}
           <div className="space-y-6">
             <section className="premium-card p-6">
               <div className="mb-6 flex items-center gap-2 border-b border-slate-50 pb-4">
                 <Target className="h-5 w-5 text-slate-400" />
-                <h2 className="text-lg font-bold text-slate-800">과목별 성취 분석</h2>
+                <h2 className="text-lg font-bold text-slate-800">과목별 정답률 분석</h2>
               </div>
-              
+
               {Object.keys(subjectStats).length === 0 ? (
                 <p className="py-10 text-center text-sm font-medium text-slate-400">데이터를 수집 중입니다.</p>
               ) : (
@@ -137,8 +149,8 @@ export function DashboardScreen({ exams, onOpenExam }: DashboardScreenProps) {
                           <span className="text-blue-600">{avg}%</span>
                         </div>
                         <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-                          <div 
-                            className="h-full premium-gradient transition-all duration-1000 ease-out" 
+                          <div
+                            className="h-full premium-gradient transition-all duration-1000 ease-out"
                             style={{ width: `${avg}%` }}
                           />
                         </div>
@@ -149,16 +161,15 @@ export function DashboardScreen({ exams, onOpenExam }: DashboardScreenProps) {
               )}
             </section>
 
-            {/* Achievements */}
             <section className="premium-card p-6">
               <div className="mb-4 flex items-center gap-2 border-b border-slate-50 pb-4">
                 <Trophy className="h-5 w-5 text-amber-500" />
                 <h2 className="text-lg font-bold text-slate-800">나의 배지</h2>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Badge label="성실한 학습자" theme="slate" />
-                {averageScore >= 90 && <Badge label="마스터 에디션" theme="blue" />}
-                {totalExams >= 10 && <Badge label="학습 열정 폭발" theme="amber" />}
+                <Badge label="꾸준한 학습자" theme="slate" />
+                {averageScore >= 90 && <Badge label="마스터 마인드" theme="blue" />}
+                {totalExams >= 10 && <Badge label="학습 여정 10회" theme="amber" />}
               </div>
             </section>
           </div>

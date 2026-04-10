@@ -1,5 +1,4 @@
-import { SUBJECT_CONFIG } from '../../lib/question/subjectConfig';
-import { normalizeToSubjectKey } from '../../lib/examUtils';
+import { getExamSubjectMeta } from '../../lib/examUtils';
 
 interface SubjectTagProps {
   subject?: string | null;
@@ -10,12 +9,14 @@ interface SubjectTagProps {
 }
 
 export function SubjectTag({ subject, title, altText, questions, schoolLevel }: SubjectTagProps) {
-  const subjectKey = normalizeToSubjectKey(subject, title, altText, questions, schoolLevel);
+  const { label, category, subjectKey } = getExamSubjectMeta({
+    subject,
+    title,
+    questions: questions ?? (altText ? [{ topic: altText, stem: '' }] : []),
+    exam_format: schoolLevel,
+  });
+
   if (!subjectKey) return null;
-  
-  const config = SUBJECT_CONFIG[subjectKey];
-  const category = config.category;
-  const label = config.label;
   
   const colors = {
     social: 'bg-amber-100 text-amber-700 ring-amber-200/50',

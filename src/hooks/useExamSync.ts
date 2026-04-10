@@ -89,41 +89,61 @@ export function useExamSync(sessionUserId: string | null, isAnonymous: boolean) 
   }, [sessionUserId]);
 
   const removeSavedExam = async (recordId: string) => {
-    const deletedRecord = savedExams.find(e => e.id === recordId);
-    if (!deletedRecord) return;
+    await removeSavedExams([recordId]);
+  };
 
-    // --- [1. 낙관적 UI 업데이트: 로컬 데이터 즉시 삭제] ---
+  const removeSavedExams = async (recordIds: string[]) => {
+    if (recordIds.length === 0) return;
+
+    // --- [1. 로컬 상태 즉시 반영 (낙관적 업데이트)] ---
     const backupExams = [...savedExams];
     const backupWrong = [...wrongNotes];
 
-    // --- [1. 로컬 상태 즉시 반영 및 저장소 동기화] ---
-    const updatedExams = backupExams.filter((e) => e.id !== recordId);
-    const updatedWrong = backupWrong.filter((n) => n.examTitle !== deletedRecord.title);
+    const deletedRecords = savedExams.filter(e => recordIds.includes(e.id));
+    if (deletedRecords.length === 0) {
+      console.warn('[useExamSync] No matching records found for deletion:', recordIds);
+      return;
+    }
+
+    const deletedTitles = new Set(deletedRecords.map(r => r.title));
+    const nextSavedExams = savedExams.filter((exam) => !recordIds.includes(exam.id));
+    const nextWrongNotes = wrongNotes.filter((note) => !deletedTitles.has(note.examTitle));
     
-    // 로컬 저장소 먼저 쓰기 (안전성 확보)
-    storeLocalExamList(updatedExams);
-    storeLocalWrongNotes(updatedWrong);
-    
-    // 상태 업데이트
-    setSavedExams(updatedExams);
-    setWrongNotes(updatedWrong);
+    // 상태 업데이트 (functional update를 사용하여 레이스 컨디션 방지 시도)
+    setSavedExams(nextSavedExams);
+    setWrongNotes(nextWrongNotes);
+
+    // 로컬 저장소 즉시 반영
+    storeLocalExamList(nextSavedExams);
+    storeLocalWrongNotes(nextWrongNotes);
 
     // --- [2. 서버 동기화: 로그인 + 실제 UUID인 경우만 실행] ---
-    // local-xxx ID는 아직 서버에 없는 레코드이므로 서버 삭제 불필요
-    const isServerRecord = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(recordId);
+    const serverIdsToDelete = recordIds.filter(id => 
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+    );
 
-    if (sessionUserId && !isAnonymous && isServerRecord) {
+    if (sessionUserId && !isAnonymous && serverIdsToDelete.length > 0) {
       try {
-        // 제약 조건 충돌 방지를 위해 오답 데이터 우선 삭제
-        const wrongResult = await deleteWrongNotesByTitle(sessionUserId, deletedRecord.title);
-        if (wrongResult.error) throw new Error(wrongResult.error);
+        console.log(`[useExamSync] Starting server deletion for ${serverIdsToDelete.length} records...`);
 
-        const examResult = await deleteExamRecordFromServer(sessionUserId, recordId);
-        if (examResult.error) throw new Error(examResult.error);
+        // 병렬 삭제 처리 및 개별 에러 확인
+        const results = await Promise.all(serverIdsToDelete.map(async (id) => {
+          const record = deletedRecords.find(r => r.id === id);
+          if (record) {
+            // 제약 조건 충돌 방지를 위해 오답 데이터 우선 삭제
+            await deleteWrongNotesByTitle(sessionUserId, record.title);
+            const { error } = await deleteExamRecordFromServer(sessionUserId, id);
+            if (error) throw new Error(error);
+            return id;
+          }
+          return null;
+        }));
+
+        console.log('[useExamSync] Successfully deleted records from server:', results.filter(Boolean));
 
       } catch (error) {
-        console.error('Failed to delete exam from server:', error);
-        alert('데이터베이스 삭제 중 오류가 발생했습니다. 데이터를 복구합니다.');
+        console.error('[useExamSync] Failed to delete exams from server:', error);
+        alert('데이터베이스 동기화 중 오류가 발생하여 목록을 복구했습니다.');
 
         // --- [3. 롤백: 서버 삭제 실패 시 이전 상태로 복구] ---
         setSavedExams(backupExams);
@@ -158,6 +178,7 @@ export function useExamSync(sessionUserId: string | null, isAnonymous: boolean) 
     setSavedExams,
     setWrongNotes,
     removeSavedExam,
+    removeSavedExams,
     removeWrongNote,
   };
 }
