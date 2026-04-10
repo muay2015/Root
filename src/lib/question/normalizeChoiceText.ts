@@ -1,6 +1,6 @@
 const ZERO_WIDTH_PATTERN = /[\u200B-\u200D\u2060\uFEFF]/g;
 const CHOICE_MARKER_PATTERN =
-  /^(?:(?:\(?\d+\)?|[A-Za-z]|[\u3131-\u314E\uAC00-\uD7A3])[\.\)]|[\u2022\u00B7\u25AA-])\s*/u;
+  /^(?:(?:\(?\d+\)?|[A-Za-z]|[\u3131-\u314E\uAC00-\uD7A3])[\.\)]|[\u2460-\u2473\u2022\u00B7\u25AA-])\s*/u;
 
 const EMPTY_LATEX_PATTERN = /\\\(\s*\\\)|\\\[\s*\\\]/g;
 

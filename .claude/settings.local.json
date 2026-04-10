@@ -4,7 +4,9 @@
       "Bash(npx tsc:*)",
       "Bash(npx vite:*)",
       "Bash(curl -s http://127.0.0.1:8787/api/health)",
-      "Bash(curl -s http://127.0.0.1:3001)"
+      "Bash(curl -s http://127.0.0.1:3001)",
+      "Bash(xargs grep:*)",
+      "Bash(grep -n \"passage\" src/lib/question/*.ts src/components/exam/*.tsx)"
     ]
   }
 }

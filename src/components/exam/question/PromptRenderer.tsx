@@ -3,16 +3,21 @@ import { MathRenderer } from '../../ui/MathRenderer';
 import { injectDataBlockMarkers } from '../../../lib/question/questionUtils';
 
 function PromptText({ text, isEnglishReading }: { text: string, isEnglishReading?: boolean }) {
-  // 태그 분리 (<u>, </u>, [u], [/u] 및 기타 괄호들 포함)
-  const parts = text.split(/(<[\/]?[^>]+>|\[[\/]?[^\]]+\])/g).filter(Boolean);
-  
+  const normalizedText = isEnglishReading
+    ? text
+        .replace(/<[\/]?[uU][^>]*>|\[[\/]?[uU][^\]]*\]/g, '')
+        .replace(/((?:\(\s*[A-Z]\s*\)|\[\s*[A-Z]\s*\])\s*)_{2,}/gi, '$1_________')
+        .replace(/_{2,}(?:\s*_{2,})+/g, '_________')
+    : text;
+  const parts = normalizedText.split(/(<[\/]?[^>]+>|\[[\/]?[^\]]+\])/g).filter(Boolean);
+
   const result: ReactNode[] = [];
   let isUnderlineActive = false;
   let currentUnderlineContent: ReactNode[] = [];
 
   parts.forEach((part, index) => {
-    const isUStart = part === '<u>' || part === '[u]';
-    const isUEnd = part === '</u>' || part === '[/u]';
+    const isUStart = /^<u\s*>|^\[u\s*\]/i.test(part);
+    const isUEnd = /^<\/u\s*>|^\[\/u\s*\]/i.test(part);
     const isOtherBracket = !isUStart && !isUEnd && (/^<[^>]+>$/.test(part) || /^\[[^\]]+\]$/.test(part));
 
     if (isUStart) {
@@ -23,7 +28,6 @@ function PromptText({ text, isEnglishReading }: { text: string, isEnglishReading
     if (isUEnd) {
       isUnderlineActive = false;
       if (currentUnderlineContent.length > 0) {
-        // 영어 독해 유형일 경우 일반 밑줄 출력 방지 (단, 명시적인 빈칸은 별도 로직으로 처리됨)
         if (isEnglishReading) {
           result.push(...currentUnderlineContent);
         } else {
@@ -39,11 +43,19 @@ function PromptText({ text, isEnglishReading }: { text: string, isEnglishReading
     }
 
     if (isUnderlineActive) {
-      currentUnderlineContent.push(
-        <React.Fragment key={`um-${index}`}>
-          <MathRenderer text={part} />
-        </React.Fragment>
-      );
+      if (isEnglishReading) {
+        currentUnderlineContent.push(
+          <React.Fragment key={`um-${index}`}>
+            <MathRenderer text={part} />
+          </React.Fragment>
+        );
+      } else {
+        currentUnderlineContent.push(
+          <React.Fragment key={`um-${index}`}>
+            <MathRenderer text={part} />
+          </React.Fragment>
+        );
+      }
       return;
     }
 
@@ -51,8 +63,8 @@ function PromptText({ text, isEnglishReading }: { text: string, isEnglishReading
       const innerText = part.slice(1, -1).trim();
       if (innerText.length > 0 && innerText.length <= 15) {
         result.push(
-          <span 
-            key={`${part}-${index}`} 
+          <span
+            key={`${part}-${index}`}
             className="mx-1.5 my-1 inline-flex items-center justify-center rounded-md bg-slate-700 px-2.5 py-0.5 text-[14px] font-bold tracking-[0.1em] text-white shadow-sm align-baseline shadow-slate-200"
           >
             {innerText}
@@ -68,17 +80,17 @@ function PromptText({ text, isEnglishReading }: { text: string, isEnglishReading
       return;
     }
 
-    // 텍스트 내부에 포함된 빈칸 처리 (2단계 분할)
     const subParts = part.split(/(_{1,}|(?:\(\s+\)))/g).filter(Boolean);
-    
+
     subParts.forEach((subPart, subIndex) => {
       const isBlank = /_{1,}|(?:\(\s+\))/.test(subPart);
-      
+
       if (isBlank) {
         result.push(
-          <span 
-            key={`blank-${index}-${subIndex}`} 
-            className="mx-1.5 inline-block min-w-[120px] border-b-2 border-slate-900 align-baseline"
+          <span
+            key={`blank-${index}-${subIndex}`}
+            className="mx-1.5 inline-block min-w-[130px] border-b-2 border-slate-900 align-baseline h-[2px] mb-[3px]"
+            title="빈칸"
           />
         );
       } else {
@@ -94,29 +106,27 @@ function PromptText({ text, isEnglishReading }: { text: string, isEnglishReading
   return <>{result}</>;
 }
 
-export function PromptRenderer({ 
-  text, 
-  isEnglishSentenceInsertion 
-}: { 
-  text: string; 
-  isEnglishSentenceInsertion?: boolean 
+export function PromptRenderer({
+  text,
+  isEnglishSentenceInsertion,
+}: {
+  text: string;
+  isEnglishSentenceInsertion?: boolean;
 }) {
-  // 영어 독해 유형일 경우 자동 박스 생성(보기/자료 등)을 방지하여 본문이 박스에 갇히지 않게 함
   const markedText = isEnglishSentenceInsertion ? text : injectDataBlockMarkers(text);
-  
-  let processedText = markedText
-    .replace(/([^\n<])\s*([①-⑳])/g, '$1\n$2')
-    .replace(/([^\n<])\s*([㉠-㉭])/g, '$1\n$2')
-    .replace(/([^\n<])\s+(ㄱ\.|ㄴ\.|ㄷ\.|ㄹ\.|ㅁ\.)(?=\s)/g, '$1\n$2');
 
-  // 독해 문항 번호 정규화 ( (1), 1), [1] 등을 ( ① ) 형태로 변환)
+  let processedText = markedText
+    .replace(/([^\n<])\s*(\([1-5]\))/g, '$1\n$2')
+    .replace(/([^\n<])\s*(①|②|③|④|⑤)/g, '$1\n$2')
+    .replace(/([^\n<])\s+(①|②|③|④|⑤)(?=\s)/g, '$1\n$2');
+
   if (isEnglishSentenceInsertion) {
     processedText = processedText
-      .replace(/\(?\s*1\s*\)/g, '( ① )')
-      .replace(/\(?\s*2\s*\)/g, '( ② )')
-      .replace(/\(?\s*3\s*\)/g, '( ③ )')
-      .replace(/\(?\s*4\s*\)/g, '( ④ )')
-      .replace(/\(?\s*5\s*\)/g, '( ⑤ )');
+      .replace(/\(?\s*1\s*\)/g, '( ①)')
+      .replace(/\(?\s*2\s*\)/g, '( ②)')
+      .replace(/\(?\s*3\s*\)/g, '( ③)')
+      .replace(/\(?\s*4\s*\)/g, '( ④)')
+      .replace(/\(?\s*5\s*\)/g, '( ⑤)');
   }
 
   const lines = processedText.split('\n').map((line) => line.trim());
@@ -169,11 +179,7 @@ export function PromptRenderer({
     const boxLines = lastElement.text.split('\n');
     if (boxLines.length > 1) {
       const lastLine = boxLines[boxLines.length - 1];
-      if (
-        /(무엇|어떤|옳은 것은|고른 것은|추론한 것은|해석한 것은|적절한 것은|한가\?|인가\?|인가\.|할까\?|\?)$/.test(
-          lastLine,
-        )
-      ) {
+      if (/(무엇|어떤|옳은 것은|고른 것은|추론한 것은|해석한 것은|적절한 것은|\?)$/.test(lastLine)) {
         boxLines.pop();
         lastElement.text = boxLines.join('\n');
         elements.push({ type: 'normal', text: lastLine });

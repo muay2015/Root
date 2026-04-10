@@ -69,7 +69,9 @@ export async function generateExamApiResponse(input: {
   openAiApiKey?: string;
   openAiModel?: string;
 }): Promise<GenerateExamApiResult> {
+  const startTime = Date.now();
   const { payload, openAiApiKey, openAiModel } = input;
+
   const openai = openAiApiKey ? new OpenAI({ apiKey: openAiApiKey }) : null;
 
   try {
@@ -145,6 +147,9 @@ export async function generateExamApiResponse(input: {
       summary = generated.summary;
     }
 
+    const duration = (Date.now() - startTime) / 1000;
+    console.log(`--- [Generate API] Process COMPLETED in ${duration.toFixed(1)}s ---`);
+
     return {
       status: 200,
       body: {
@@ -159,10 +164,12 @@ export async function generateExamApiResponse(input: {
           resolvedCount: questions.length,
           builderMode: payload.builderMode,
           subject: subject,
-          imageCount: images?.length || 0
+          imageCount: images?.length || 0,
+          durationSeconds: duration
         }
       }
     };
+
   } catch (error: any) {
     console.error('API Error:', error);
     return {

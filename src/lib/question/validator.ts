@@ -1,600 +1,50 @@
-import {
-  difficultyRules,
-  schoolLevelRules,
-  type DifficultyLevel,
-  type SchoolLevel,
-} from './generationRules.ts';
-import { usesNoSelector, type SubjectKey } from './subjectConfig.ts';
-import {
-  countAnswerMatches,
-  normalizeAnswerComparison,
-  resolveAnswerFromChoices,
-} from './answerMatching.ts';
-import {
-  CANONICAL_IRRELEVANT_SENTENCE_CHOICES,
-  extractOrderArrangementIntro,
-  extractOrderArrangementSections,
-  isEnglishIrrelevantSentenceType,
-  isEnglishOrderArrangementType,
-} from './englishStandardizer.ts';
+import { difficultyRules, schoolLevelRules } from './generationRules.ts';
+import type { ValidationInput, ValidationResult } from './validators/types.ts';
+import { pushReason } from './validators/utils.ts';
+import { validateStructure } from './validators/structure.ts';
+import { 
+  validateGenericDifficulty, 
+  validateTopicReflection, 
+  validateSelectionReflection 
+} from './validators/difficulty.ts';
+import { 
+  validateEnglishOrderArrangement, 
+  validateEnglishIrrelevantSentence, 
+  validateEnglishContentMatching, 
+  validateEnglishSummaryCompletion, 
+  validateEnglishEmotionAtmosphere 
+} from './english.ts'; // 원본 파일 경로 유지 또는 validators/english로 변경 시 수정 필요 (여기서는 통일성을 위해 하위 폴더 권장)
+import { 
+  validateHistoryDifficulty, 
+  validateHistorySubjectFit 
+} from './validators/history.ts';
 
-export type GeneratedQuestionDraft = {
-  topic: string;
-  type: string;
-  stem: string;
-  choices?: string[] | null;
-  options?: string[] | null;
-  items?: string[] | null;
-  answer: string;
-  explanation: string;
-};
+// english.ts가 아직 validators 폴더 밖에 있을 수 있으므로 경로 확인 필요. 
+// 계획상 validators/english.ts로 생성했으므로 해당 경로를 사용합니다.
+import { 
+  validateEnglishBlankInference as valEngBlank,
+  validateEnglishSentenceInsertion as valEngInsertion,
+  validateEnglishOrderArrangement as valEngOrder,
+  validateEnglishIrrelevantSentence as valEngIrrel,
+  validateEnglishContentMatching as valEngContent,
+  validateEnglishSummaryCompletion as valEngSummary,
+  validateEnglishEmotionAtmosphere as valEngEmotion,
+  validateEnglishTitleThemeGist as valEngTitle,
+  validateEnglishGrammarVocabulary as valEngGrammar
+} from './validators/english.ts';
 
-export type ValidationResult = {
-  isValid: boolean;
-  reasons: string[];
-  warnings: string[];
-  issueCounts: Record<string, number>;
-};
 
-export type ValidationInput = {
-  questions: GeneratedQuestionDraft[];
-  count: number;
-  subject: SubjectKey;
-  questionType?: string;
-  format?: string;
-  difficulty: DifficultyLevel;
-  schoolLevel: SchoolLevel;
-  title?: string;
-  topic?: string;
-};
 
-function pushReason(
-  reasons: string[],
-  issueCounts: Record<string, number>,
-  key: string,
-  message: string,
-) {
-  reasons.push(message);
-  issueCounts[key] = (issueCounts[key] ?? 0) + 1;
-}
-
-function tokenize(value: string) {
-  return value
-    .toLowerCase()
-    .split(/[^a-z0-9\u3131-\u314e\uac00-\ud7a3]+/u)
-    .filter((token) => token.length >= 2);
-}
-
-function countWords(value: string) {
-  return value.trim().split(/\s+/).filter(Boolean).length;
-}
-
-function countKoreanCharacters(value: string) {
-  return (value.match(/[\u3131-\u314e\uac00-\ud7a3]/gu) ?? []).length;
-}
-
-function normalizeText(value: string) {
-  return normalizeAnswerComparison(value);
-}
-
-function parseLetterChoiceIndex(value: string): number | null {
-  const compact = value.trim().toUpperCase();
-  const match = compact.match(/^(?:ANSWER[:\s]*)?([A-E])(?:[.)])?$/);
-  if (!match) return null;
-  return match[1].charCodeAt(0) - 65;
-}
-
-function parseAnswerChoiceIndex(value: string): number | null {
-  const compact = value.trim().replace(/\s+/g, '');
-  const circledDigitMap: Record<string, number> = {
-    '①': 0,
-    '②': 1,
-    '③': 2,
-    '④': 3,
-    '⑤': 4,
-  };
-
-  if (compact in circledDigitMap) {
-    return circledDigitMap[compact];
-  }
-
-  if (/^[1-5][.)]?$/.test(compact)) {
-    return Number.parseInt(compact[0], 10) - 1;
-  }
-
-  const labeledDigit = compact.match(/^(?:[^0-9]*:)?[^0-9]*([1-5])(?:번|번이다|번임|번정답|번이정답)?$/u);
-  if (labeledDigit) {
-    return Number.parseInt(labeledDigit[1], 10) - 1;
-  }
-
-  return parseLetterChoiceIndex(compact);
-}
-
-function validateStructure(
-  question: GeneratedQuestionDraft,
-  index: number,
-  reasons: string[],
-  issueCounts: Record<string, number>,
-) {
-  const choices = Array.isArray(question.choices) ? question.choices : [];
-
-  if (choices.length !== 5) {
-    pushReason(
-      reasons,
-      issueCounts,
-      'choice_count',
-      `Question ${index}: choices must contain exactly 5 options.`,
-    );
-  }
-
-  if (choices.some((choice) => choice.trim().length === 0)) {
-    pushReason(
-      reasons,
-      issueCounts,
-      'empty_choice',
-      `Question ${index}: every choice must be non-empty.`,
-    );
-  }
-
-  const placeholderRegex =
-    /^(?:choice|option|\ubcf4\uae30|\uc120\ud0dd\uc9c0)\s*\d+$/iu;
-  const commonPlaceholders = ['placeholder', '...', '-', 'tbd'];
-
-  if (
-    choices.length > 0 &&
-    choices.some((choice) => {
-      const c = choice.trim().toLowerCase();
-      return placeholderRegex.test(c) || commonPlaceholders.includes(c);
-    })
-  ) {
-    pushReason(
-      reasons,
-      issueCounts,
-      'placeholder_choice',
-      `Question ${index}: choices contain placeholder or empty text.`,
-    );
-  }
-
-  const answerWithoutLeadingLabel = question.answer
-    .replace(/^(?:answer|correct answer)\s*[:\-]?\s*/i, '')
-    .replace(/^(?:정답|답)\s*[:：\-]?\s*/u, '')
-    .trim();
-  const numericAnswerIndex = parseAnswerChoiceIndex(answerWithoutLeadingLabel);
-  const normalizedAnswer =
-    numericAnswerIndex !== null
-      ? normalizeText(choices[numericAnswerIndex] ?? '')
-      : normalizeText(answerWithoutLeadingLabel);
-  const answerMatches = choices.filter(
-    (choice) => normalizeText(choice) === normalizedAnswer,
-  ).length;
-  const relaxedNormalizedAnswer =
-    answerMatches === 1
-      ? normalizedAnswer
-      : normalizeAnswerComparison(resolveAnswerFromChoices(question.answer, choices));
-  const finalAnswerMatches =
-    answerMatches === 1 ? answerMatches : countAnswerMatches(question.answer, choices);
-
-  if (finalAnswerMatches !== 1) {
-    console.warn(
-      `[Validation Failure] Q${index} - Answer: "${question.answer}" matched ${finalAnswerMatches} choices.`,
-    );
-    console.warn(`Normalized Answer: "${relaxedNormalizedAnswer}"`);
-    choices.forEach((choice, choiceIndex) =>
-      console.warn(
-        `Choice ${choiceIndex + 1}: "${choice}" (Normalized: "${normalizeText(choice)}")`,
-      ),
-    );
-    pushReason(
-      reasons,
-      issueCounts,
-      'answer_match',
-      `Question ${index}: answer must match exactly one choice. (Matches: ${finalAnswerMatches}; Answer: "${question.answer}"; Choices: ${JSON.stringify(choices.slice(0, 5))})`,
-    );
-  }
-
-  if (question.stem.trim().length < 8) {
-    pushReason(
-      reasons,
-      issueCounts,
-      'empty_stem',
-      `Question ${index}: stem is too short or missing.`,
-    );
-  }
-
-  if (question.explanation.trim().length < 12) {
-    pushReason(
-      reasons,
-      issueCounts,
-      'explanation',
-      `Question ${index}: explanation is too weak or missing.`,
-    );
-  }
-}
-
-function validateGenericDifficulty(
-  question: GeneratedQuestionDraft,
-  index: number,
-  difficulty: DifficultyLevel,
-  reasons: string[],
-  warnings: string[],
-  issueCounts: Record<string, number>,
-) {
-  const stemWords = countWords(question.stem);
-  const stemKoreanChars = countKoreanCharacters(question.stem);
-  const explanationWords = countWords(question.explanation);
-  const directCuePattern =
-    /\bwhat is stated|which is true|directly\b|다음 중 옳은 것|맞는 것/i;
-
-  if (difficulty === 'easy' && stemWords > 24) {
-    warnings.push(
-      `Question ${index}: easy difficulty stem is longer than expected.`,
-    );
-  }
-
-  if (difficulty === 'hard') {
-    if (stemWords < 8 && stemKoreanChars < 18) {
-      pushReason(
-        reasons,
-        issueCounts,
-        'hard_too_short',
-        `Question ${index}: hard difficulty stem is too short for deep reasoning.`,
-      );
-    }
-    if (directCuePattern.test(question.stem)) {
-      pushReason(
-        reasons,
-        issueCounts,
-        'hard_too_direct',
-        `Question ${index}: hard difficulty question is too direct.`,
-      );
-    }
-    if (explanationWords < 5) {
-      pushReason(
-        reasons,
-        issueCounts,
-        'hard_explanation',
-        `Question ${index}: hard difficulty explanation is too thin.`,
-      );
-    }
-  }
-}
-
-function validateHistoryDifficulty(
-  question: GeneratedQuestionDraft,
-  index: number,
-  difficulty: DifficultyLevel,
-  reasons: string[],
-  warnings: string[],
-  issueCounts: Record<string, number>,
-) {
-  if (difficulty !== 'hard') {
-    if (difficulty === 'medium' && countWords(question.stem) < 8) {
-      warnings.push(`Question ${index}: medium history item may be too short.`);
-    }
-    return;
-  }
-
-  const normalizedStem = normalizeText(question.stem);
-  const normalizedAnswer = normalizeText(question.answer);
-  const directHistoryPatterns = [
-    /관련된 인물/,
-    /해당하는 것/,
-    /옳은 것을 고른/,
-    /설명한 것/,
-  ];
-
-  if (directHistoryPatterns.some((pattern) => pattern.test(question.stem))) {
-    pushReason(
-      reasons,
-      issueCounts,
-      'history_hard_direct',
-      `Question ${index}: hard history item is too direct.`,
-    );
-  }
-
-  if (normalizedAnswer.length >= 8 && normalizedStem.includes(normalizedAnswer)) {
-    pushReason(
-      reasons,
-      issueCounts,
-      'history_hard_overlap',
-      `Question ${index}: hard history answer is too directly exposed in the stem.`,
-    );
-  }
-
-  const choices = question.choices ?? [];
-  const averageLength =
-    choices.length > 0
-      ? choices.reduce((sum, choice) => sum + choice.length, 0) / choices.length
-      : 0;
-  if (averageLength > 0 && question.answer.length > averageLength * 1.9) {
-    pushReason(
-      reasons,
-      issueCounts,
-      'history_hard_distractor',
-      `Question ${index}: hard history distractors are too weak compared with the answer.`,
-    );
-  }
-
-  const reasoningMarkers = [
-    '자료',
-    '비교',
-    '원인',
-    '결과',
-    '추론',
-    '시기',
-    '변화',
-    '해석',
-  ];
-  if (!reasoningMarkers.some((marker) => question.stem.includes(marker))) {
-    warnings.push(
-      `Question ${index}: hard history item may still lean too much toward recall.`,
-    );
-  }
-}
-
-function validateTopicReflection(
-  question: GeneratedQuestionDraft,
-  index: number,
-  title: string | undefined,
-  topic: string | undefined,
-  warnings: string[],
-) {
-  const text = `${question.topic} ${question.stem} ${question.explanation}`.toLowerCase();
-  const titleTokens = tokenize(title ?? '');
-  const topicTokens = tokenize(topic ?? '');
-
-  if (titleTokens.length > 0 && !titleTokens.some((token) => text.includes(token))) {
-    warnings.push(
-      `Question ${index}: title reflection is weak (expected keywords from "${title}").`,
-    );
-  }
-
-  if (topicTokens.length > 0 && !topicTokens.some((token) => text.includes(token))) {
-    warnings.push(
-      `Question ${index}: topic reflection is weak (expected keywords from "${topic}").`,
-    );
-  }
-}
-
-function validateSelectionReflection(
-  question: GeneratedQuestionDraft,
-  index: number,
-  input: ValidationInput,
-  warnings: string[],
-) {
-  if (usesNoSelector(input.subject)) {
-    return;
-  }
-
-  const selectionValue =
-    String(input.subject) === 'social' ? input.format : input.questionType;
-  if (!selectionValue || selectionValue === '전체') {
-    return;
-  }
-
-  const text = `${question.topic} ${question.stem} ${question.explanation}`.toLowerCase();
-  const tokens = tokenize(selectionValue);
-  const subject = String(input.subject);
-
-  if (
-    subject === 'social' ||
-    subject.includes('social_') ||
-    subject === 'science'
-  ) {
-    return;
-  }
-
-  if (tokens.length > 0 && !tokens.some((token) => text.includes(token))) {
-    warnings.push(
-      `Question ${index}: selected ${
-        subject === 'social' ? 'format' : 'question type'
-      } is weakly reflected.`,
-    );
-  }
-}
-
-function validateEnglishOrderArrangement(
-  question: GeneratedQuestionDraft,
-  index: number,
-  input: ValidationInput,
-  reasons: string[],
-  issueCounts: Record<string, number>,
-) {
-  const selectionValue = input.questionType ?? '';
-  const subject = String(input.subject);
-  const isEnglishSubject = subject.includes('english');
-  const isOrderType = selectionValue.includes('순서 배열');
-
-  if (!isEnglishSubject || !isOrderType) {
-    return;
-  }
-
-  const stem = question.stem ?? '';
-  const stimulus = (question as GeneratedQuestionDraft & { stimulus?: string | null }).stimulus ?? '';
-  const hasA = /\(\s*A\s*\)|\[\s*A\s*\]/i.test(stem);
-  const hasB = /\(\s*B\s*\)|\[\s*B\s*\]/i.test(stem);
-  const hasC = /\(\s*C\s*\)|\[\s*C\s*\]/i.test(stem);
-  const hasDOrMore = /\(\s*[D-Z]\s*\)|\[\s*[D-Z]\s*\]/i.test(stem);
-  const hasStimulusIntro = typeof stimulus === 'string' && /[A-Za-z]{3,}/.test(stimulus);
-  const stimulusHasSections = /\(\s*[A-Z]\s*\)|\[\s*[A-Z]\s*\]/i.test(stimulus);
-
-  if (!(hasA && hasB && hasC)) {
-    pushReason(
-      reasons,
-      issueCounts,
-      'english_order_sections',
-      `Question ${index}: sentence ordering items must contain exactly (A), (B), and (C) sections.`,
-    );
-  }
-
-  if (hasDOrMore) {
-    pushReason(
-      reasons,
-      issueCounts,
-      'english_order_extra_sections',
-      `Question ${index}: sentence ordering items must not contain (D) or later sections.`,
-    );
-  }
-
-  if (!hasStimulusIntro) {
-    pushReason(
-      reasons,
-      issueCounts,
-      'english_order_missing_intro',
-      `Question ${index}: sentence ordering items must include an English intro in stimulus.`,
-    );
-  }
-
-  if (stimulusHasSections) {
-    pushReason(
-      reasons,
-      issueCounts,
-      'english_order_intro_polluted',
-      `Question ${index}: sentence ordering stimulus must contain only the intro, not (A)/(B)/(C) sections.`,
-    );
-  }
-}
-
-function validateEnglishIrrelevantSentence(
-  question: GeneratedQuestionDraft,
-  index: number,
-  input: ValidationInput,
-  reasons: string[],
-  issueCounts: Record<string, number>,
-) {
-  if (
-    !isEnglishIrrelevantSentenceType({
-      subject: input.subject,
-      questionType: input.questionType,
-      topic: question.topic,
-      stem: question.stem,
-    })
-  ) {
-    return;
-  }
-
-  const stem = String(question.stem ?? '');
-  const stimulus = (question as GeneratedQuestionDraft & { stimulus?: string | null }).stimulus;
-  const choices = Array.isArray(question.choices) ? question.choices : [];
-  const instructionOk =
-    stem.includes('전체 흐름과 관계 없는 문장은?') ||
-    stem.includes('전체 흐름과 관계없는 문장은?') ||
-    /irrelevant to the overall flow\?/i.test(stem) ||
-    /does not fit the overall flow\?/i.test(stem);
-  const numberedMatches = stem.match(/\([1-5]\)/g) ?? [];
-  const uniqueNumberedCount = new Set(numberedMatches).size;
-  const canonicalChoices =
-    choices.length === 5 &&
-    choices.every((choice, idx) => normalizeText(choice) === normalizeText(CANONICAL_IRRELEVANT_SENTENCE_CHOICES[idx]));
-  const emptyStimulus = stimulus == null || String(stimulus).trim().length === 0;
-
-  if (!instructionOk) {
-    pushReason(
-      reasons,
-      issueCounts,
-      'english_irrelevant_instruction',
-      `Question ${index}: irrelevant sentence items must ask for the sentence unrelated to the overall flow.`,
-    );
-  }
-
-  if (uniqueNumberedCount !== 5) {
-    pushReason(
-      reasons,
-      issueCounts,
-      'english_irrelevant_numbered_passage',
-      `Question ${index}: irrelevant sentence items must contain exactly five numbered sentences in the passage.`,
-    );
-  }
-
-  if (!canonicalChoices) {
-    pushReason(
-      reasons,
-      issueCounts,
-      'english_irrelevant_choices',
-      `Question ${index}: irrelevant sentence items must use canonical choices (1) through (5).`,
-    );
-  }
-
-  if (!emptyStimulus) {
-    pushReason(
-      reasons,
-      issueCounts,
-      'english_irrelevant_stimulus',
-      `Question ${index}: irrelevant sentence items must not use stimulus.`,
-    );
-  }
-}
-
-function validateHistorySubjectFit(
-  question: GeneratedQuestionDraft,
-  index: number,
-  reasons: string[],
-  warnings: string[],
-  issueCounts: Record<string, number>,
-) {
-  const text =
-    `${question.topic} ${question.stem} ${question.choices?.join(' ') ?? ''} ${question.explanation}`.toLowerCase();
-
-  const historyMarkers = [
-    '조선',
-    '고려',
-    '신라',
-    '백제',
-    '고구려',
-    '대한제국',
-    '일제',
-    '개항',
-    '왕',
-    '제도',
-    '사건',
-    '문화',
-    '경제',
-    '사회',
-    '정치',
-    '역사',
-    '인물',
-  ];
-  const offTopicMarkers = [
-    'exercise',
-    'fitness',
-    'health',
-    'athlete',
-    'main idea',
-    'best title',
-    'author',
-  ];
-
-  const koreanCount = (text.match(/[\u3131-\u314e\uac00-\ud7a3]{2,}/gu) ?? []).length;
-  const englishCount = (text.match(/[a-z]{4,}/g) ?? []).length;
-
-  if (englishCount > 20 && englishCount > koreanCount * 1.5) {
-    pushReason(
-      reasons,
-      issueCounts,
-      'history_language',
-      `Question ${index}: history output contains too much English.`,
-    );
-  }
-
-  if (!historyMarkers.some((marker) => text.includes(marker))) {
-    warnings.push(`Question ${index}: history context markers not clearly detected.`);
-  }
-
-  if (offTopicMarkers.some((marker) => text.includes(marker))) {
-    pushReason(
-      reasons,
-      issueCounts,
-      'history_scope',
-      `Question ${index}: history item drifted into unrelated generic content.`,
-    );
-  }
-}
-
+/**
+ * 생성된 전체 문항들을 검증합니다.
+ * 이 함수는 주 검증 진입점으로 각 세부 검증 모듈을 호출합니다.
+ */
 export function validateGeneratedQuestions(input: ValidationInput): ValidationResult {
   const reasons: string[] = [];
   const warnings: string[] = [];
   const issueCounts: Record<string, number> = {};
 
+  // 1. 문항 개수 검증
   if (input.questions.length !== input.count) {
     pushReason(
       reasons,
@@ -605,41 +55,39 @@ export function validateGeneratedQuestions(input: ValidationInput): ValidationRe
   }
 
   const subject = String(input.subject);
+
+  // 2. 개별 문항 검증 루프
   input.questions.forEach((question, zeroBasedIndex) => {
     const index = zeroBasedIndex + 1;
+
+    // 기본 구조 검증 (선지, 정답 매칭 등)
     validateStructure(question, index, reasons, issueCounts);
+
+    // 주제 및 요청 사항 반영 검증
     validateTopicReflection(question, index, input.title, input.topic, warnings);
     validateSelectionReflection(question, index, input, warnings);
-    validateEnglishOrderArrangement(question, index, input, reasons, issueCounts);
-    validateEnglishIrrelevantSentence(question, index, input, reasons, issueCounts);
 
-    if (subject === 'korean_history') {
-      validateHistoryDifficulty(
-        question,
-        index,
-        input.difficulty,
-        reasons,
-        warnings,
-        issueCounts,
-      );
+    // 영어 특화 유형 검증
+    valEngBlank(question, index, input, reasons, issueCounts);
+    valEngInsertion(question, index, input, reasons, issueCounts);
+    valEngOrder(question, index, input, reasons, issueCounts);
+    valEngIrrel(question, index, input, reasons, issueCounts);
+    valEngContent(question, index, input, reasons, issueCounts);
+    valEngSummary(question, index, input, reasons, issueCounts);
+    valEngEmotion(question, index, input, reasons, issueCounts);
+    valEngTitle(question, index, input, reasons, issueCounts);
+    valEngGrammar(question, index, input, reasons, issueCounts);
+
+
+
+    // 과목별 난이도/특화 검증
+    if (subject === 'korean_history' || subject === 'high_korean_history' || subject === 'middle_history') {
+      validateHistoryDifficulty(question, index, input.difficulty, reasons, warnings, issueCounts);
       validateHistorySubjectFit(question, index, reasons, warnings, issueCounts);
     } else {
-      validateGenericDifficulty(
-        question,
-        index,
-        input.difficulty,
-        reasons,
-        warnings,
-        issueCounts,
-      );
+      validateGenericDifficulty(question, index, input, reasons, warnings, issueCounts);
     }
   });
-
-  const _metadata = {
-    difficultyLabel: difficultyRules[input.difficulty].label,
-    schoolLevelLabel: schoolLevelRules[input.schoolLevel].label,
-  };
-  void _metadata;
 
   return {
     isValid: reasons.length === 0,
@@ -648,3 +96,6 @@ export function validateGeneratedQuestions(input: ValidationInput): ValidationRe
     issueCounts,
   };
 }
+
+// 기존 타입 재수출 (호환성 유지)
+export type { GeneratedQuestionDraft, ValidationInput, ValidationResult } from './validators/types.ts';

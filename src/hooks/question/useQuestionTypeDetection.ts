@@ -1,0 +1,125 @@
+import { useMemo } from 'react';
+import type { ExamQuestion } from '../../components/exam/types';
+import {
+  isEnglishContentMatchingType,
+  isEnglishSummaryCompletionType,
+  isEnglishSubject as checkEnglishSubject
+} from '../../lib/question/englishStandardizer';
+
+/**
+ * 전역 문항 유형 판별 전용 Hook
+ */
+export function useQuestionTypeDetection(question: ExamQuestion, rawPrompt: string, rawStimulus: string | null) {
+  return useMemo(() => {
+    const topicLower = question.topic.toLowerCase();
+    
+    // 기본 유형 판별용 메타데이터
+    const isEnglishSubject = checkEnglishSubject(question.topic) || topicLower.includes('english') || topicLower.includes('영어');
+    
+    // 1. 문장 삽입 (Sentence Insertion)
+    const isInsertionType =
+      (question.topic.includes('문장 삽입') ||
+      topicLower.includes('insertion') ||
+      question.stem.includes('주어진 문장')) &&
+      !question.topic.includes('빈칸') && 
+      !question.topic.includes('추론');
+
+    // 2. 순서 배열 (Order Arrangement)
+    const isOrderType =
+      question.topic.includes('순서 배열') ||
+      topicLower.includes('order') ||
+      question.stem.includes('이어진 글의 순서') ||
+      question.stem.includes('순서대로 배열') ||
+      question.stem.includes('배열할 때') ||
+      (/\(\s*A\s*\)/i.test(question.stem) &&
+        /\(\s*B\s*\)/i.test(question.stem) &&
+        /\(\s*C\s*\)/i.test(question.stem));
+
+    // 3. 영어 전용 유형 판별
+    const isEnglishSentenceInsertion = isEnglishSubject && isInsertionType;
+    
+    const isEnglishIrrelevantSentence =
+      isEnglishSubject &&
+      (question.topic.includes('관계없는 문장') ||
+        question.topic.includes('관계 없는 문장') ||
+        topicLower.includes('irrelevant') ||
+        topicLower.includes('unrelated sentence') ||
+        question.stem.includes('전체 흐름과 관계 없는 문장'));
+
+    const isEnglishContentMatching =
+      isEnglishSubject &&
+      isEnglishContentMatchingType({
+        subject: 'english',
+        questionType: question.topic,
+        topic: question.topic,
+        stem: question.stem,
+      });
+
+    const isVocabularyType = isEnglishSubject && (
+      question.topic.includes('어법') || 
+      question.topic.includes('어휘') || 
+      question.topic.includes('문법') || 
+      question.topic.includes('낱말') ||
+      topicLower.includes('vocabulary') ||
+      topicLower.includes('grammar')
+    );
+
+    const isEnglishSummaryCompletion =
+      isEnglishSubject &&
+      !isVocabularyType &&
+      (isEnglishSummaryCompletionType({
+        subject: 'english',
+        questionType: question.topic,
+        topic: question.topic,
+        stem: question.stem,
+        prompt: rawPrompt,
+        choices: question.choices,
+      }) ||
+
+        (/\(A\)/i.test(question.stem) && /\(B\)/i.test(question.stem)) ||
+        (/\(A\)/i.test(rawPrompt) && /\(B\)/i.test(rawPrompt)) ||
+        (rawStimulus && /\(A\)/i.test(rawStimulus) && /\(B\)/i.test(rawStimulus)) ||
+        (question.choices ?? []).some(c => {
+          const t = typeof c === 'object' ? (c as any).display || (c as any).value : String(c);
+          return t.includes('(A)') && t.includes('(B)');
+        }));
+
+    const isEnglishOrderArrangement =
+      isEnglishSubject &&
+      !isEnglishSummaryCompletion &&
+      isOrderType;
+
+    const isEnglishReading =
+      isEnglishSentenceInsertion ||
+      isEnglishOrderArrangement ||
+      isEnglishIrrelevantSentence ||
+      isEnglishContentMatching ||
+      isEnglishSummaryCompletion ||
+      (isEnglishSubject && (question.topic.includes('빈칸') || question.topic.includes('추론')));
+
+    // 4. 기타 유형
+    const isOXQuestion = (() => {
+      const finalChoices = question.choices ?? [];
+      const choiceTexts = finalChoices.map((choice) => {
+        const value = typeof choice === 'object' ? (choice as any).display ?? (choice as any).value : String(choice);
+        return value.trim().toUpperCase();
+      });
+
+      const hasO = choiceTexts.some((text) => text === 'O' || text === '⭕');
+      const hasX = choiceTexts.some((text) => text === 'X' || text === '❌');
+      const stemHasOXMention = /OX\s*문제|맞으면\s*O|틀리면\s*X/.test(question.stem);
+      return (hasO && hasX) || (stemHasOXMention && hasO && hasX);
+    })();
+
+    return {
+      isEnglishSubject,
+      isEnglishSentenceInsertion,
+      isEnglishOrderArrangement,
+      isEnglishIrrelevantSentence,
+      isEnglishContentMatching,
+      isEnglishSummaryCompletion,
+      isEnglishReading,
+      isOXQuestion,
+    };
+  }, [question, rawPrompt, rawStimulus]);
+}

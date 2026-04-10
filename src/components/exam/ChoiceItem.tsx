@@ -9,7 +9,7 @@ type ChoiceItemProps = {
   hideText?: boolean;
 };
 
-export function ChoiceItem({ number, text, selected, onSelect, hideText }: ChoiceItemProps) {
+export function ChoiceItem({ number, text, selected, onSelect, hideText }: ChoiceItemProps & { number: number | string }) {
   return (
     <button
       type="button"

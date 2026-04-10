@@ -22,6 +22,8 @@ function stripWrappingPunctuation(value: string) {
 export function normalizeAnswerComparison(value: string) {
   return stripWrappingPunctuation(normalizeChoiceText(value))
     .toLowerCase()
+    .replace(/\s+(?:and|&)\s+/g, '/')
+    .replace(/\s*\/\s*/g, '/')
     .replace(/\s+/g, '')
     .replace(/\\\(|\\\)|\\\[|\\\]|\$|\{|\}/g, '')
     .replace(/\\text\{([^}]*)\}/g, '$1')

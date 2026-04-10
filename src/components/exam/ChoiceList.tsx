@@ -11,9 +11,12 @@ type ChoiceListProps = {
   selectedChoice: string | undefined;
   onSelect: (choice: string) => void;
   hideText?: boolean;
+  numberStyle?: 'numeric' | 'circle';
 };
 
-export function ChoiceList({ choices, selectedChoice, onSelect, hideText }: ChoiceListProps) {
+export function ChoiceList({ choices, selectedChoice, onSelect, hideText, numberStyle = 'numeric' }: ChoiceListProps) {
+  const CIRCLE_NUMBERS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
+
   const normalizedChoices = choices
     .map((choice) => {
       const isObj = typeof choice === 'object' && choice !== null;
@@ -34,7 +37,7 @@ export function ChoiceList({ choices, selectedChoice, onSelect, hideText }: Choi
       {normalizedChoices.map((choice, index) => (
         <div key={`${index + 1}-${choice.normalizedValue}`} className="w-full min-w-0">
           <ChoiceItem
-            number={index + 1}
+            number={numberStyle === 'circle' ? (CIRCLE_NUMBERS[index] || index + 1) : index + 1}
             text={choice.display}
             selected={normalizedSelectedChoice === choice.normalizedValue}
             onSelect={() => onSelect(choice.value)}

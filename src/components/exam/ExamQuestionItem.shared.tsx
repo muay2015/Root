@@ -17,7 +17,7 @@ export function ExamQuestionSectionFrame({
   active: boolean;
   children: React.ReactNode;
 }) {
-  const topicText = question.topic.trim();
+
 
   return (
     <section
@@ -31,13 +31,7 @@ export function ExamQuestionSectionFrame({
       }`}
     >
       <div className="flex w-full flex-col gap-5 sm:gap-6">
-        {topicText.length > 0 && (
-          <div className="mb-1">
-            <span className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-[13px] font-semibold tracking-wide text-blue-700 ring-1 ring-inset ring-blue-700/10">
-              {topicText}
-            </span>
-          </div>
-        )}
+
 
         <QuestionRow
           leading={
@@ -126,6 +120,7 @@ export function QuestionChoiceSection({
   finalChoices,
   isOXQuestion,
   hideText,
+  numberStyle = 'numeric',
   onSelectChoice,
   onChangeText,
 }: {
@@ -134,6 +129,7 @@ export function QuestionChoiceSection({
   finalChoices: any[];
   isOXQuestion: boolean;
   hideText?: boolean;
+  numberStyle?: 'numeric' | 'circle';
   onSelectChoice: (questionId: number, choice: string) => void;
   onChangeText: (questionId: number, value: string) => void;
 }) {
@@ -151,6 +147,7 @@ export function QuestionChoiceSection({
             selectedChoice={response}
             onSelect={(choice) => onSelectChoice(question.id, choice)}
             hideText={hideText}
+            numberStyle={numberStyle}
           />
         )
       ) : (
