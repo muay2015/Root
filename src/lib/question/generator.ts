@@ -235,6 +235,26 @@ async function generateValidatedQuestionBatch(
       }
 
       console.warn(`[Generator] WARNING: Batch Validation failed on attempt ${attempt}. Reasons (first 2):`, validation.reasons.slice(0, 2));
+
+      // 재시도 실패 원인 진단을 돕기 위해, 마지막 시도에서 실패한 문항의 실제 내용을 로그로 남긴다.
+      // (normalizer/validator 수정 없이도 "AI가 실제로 어떤 포맷을 반환했는지"를 바로 확인할 수 있게 함.)
+      // 개인정보가 아닌 문항 텍스트만 출력하고, 길이를 잘라 로그 폭주를 방지한다.
+      if (attempt === 3) {
+        const truncate = (value: unknown, max = 400) => {
+          const text = typeof value === 'string' ? value : JSON.stringify(value ?? '');
+          return text.length > max ? `${text.slice(0, max)}…(+${text.length - max}자)` : text;
+        };
+        console.warn(
+          `[Generator] DIAGNOSTIC: Dumping failed questions (subject=${input.subject}, questionType=${input.questionType ?? 'N/A'}, difficulty=${input.difficulty})`,
+        );
+        result.questions.forEach((q: any, i: number) => {
+          console.warn(
+            `  [Q${i + 1}] topic=${truncate(q?.topic, 80)}\n       stem=${truncate(q?.stem)}\n       stimulus=${truncate(q?.stimulus)}\n       choices=${truncate(q?.choices, 200)}\n       answer=${truncate(q?.answer, 80)}`,
+          );
+        });
+        console.warn(`[Generator] DIAGNOSTIC: All validation reasons:`, validation.reasons);
+      }
+
       feedback = validation.reasons;
     } catch (error: any) {
       console.error(`[Generator] ERROR on attempt ${attempt}:`, error.message);
