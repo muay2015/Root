@@ -489,17 +489,50 @@ export function validateEnglishGrammarVocabulary(
     return;
   }
 
+  // 지문은 stem 또는 stimulus 어느 쪽에도 들어올 수 있으므로 둘 다 합쳐서 검사한다.
   const stem = String(question.stem ?? '');
-  
-  // 밑줄 패턴 체크 (① <u>단어</u> 또는 <u>①</u> 형식 모두 허용하되, AI에게는 새로운 형식을 권장)
-  const underlineMatches = stem.match(/([①-⑤]\s*<u>[^<]+<\/u>)|(<u>\s*[①-⑤]\s*<\/u>)|([①-⑤]\s*[A-Za-z]+)/g);
-  
-  if (!underlineMatches || underlineMatches.length < 3) {
+  const stimulus = String((question as any).stimulus ?? '');
+  const passage = `${stem}\n${stimulus}`;
+
+  // 번호가 매겨진 서로 다른 밑줄이 최소 3개(가능하면 5개) 있는지 확인한다.
+  // 아래 포맷을 모두 허용:
+  //   ① <u>word</u>               (권장 포맷)
+  //   ①<u>word</u>                (공백 없음)
+  //   <u>① word</u>               (번호가 태그 안에 있음)
+  //   <u>word</u> ①               (번호가 태그 뒤에 있음)
+  //   [u]① word[/u]               (대괄호 표기)
+  //   ① word                      (태그 없이 번호+단어)
+  //   (1) word / 1) word / [1] word (아라비아 숫자 대체 표기)
+  const circledNumbers = new Set<string>();
+  const circleMap: Record<string, string> = { '1': '①', '2': '②', '3': '③', '4': '④', '5': '⑤' };
+
+  // 1) 원형 숫자(①~⑤)가 포함된 모든 조합
+  const circledPattern = /[①-⑤]/g;
+  const circledHits = passage.match(circledPattern);
+  if (circledHits) {
+    for (const c of circledHits) circledNumbers.add(c);
+  }
+
+  // 2) 아라비아 숫자를 괄호/대괄호/점 등으로 감싼 밑줄 번호 표기
+  const arabicPattern = /(?:\(\s*([1-5])\s*\)|\[\s*([1-5])\s*\]|(?:^|[\s>])([1-5])\s*[.)])/g;
+  let m: RegExpExecArray | null;
+  while ((m = arabicPattern.exec(passage)) !== null) {
+    const digit = m[1] || m[2] || m[3];
+    if (digit && circleMap[digit]) circledNumbers.add(circleMap[digit]);
+  }
+
+  // 밑줄 태그가 하나라도 있는지 (너무 엄격하지 않게 존재 여부만 확인)
+  const hasUnderlineTag = /<\s*u\s*>|\[\s*u\s*\]/i.test(passage);
+
+  // 번호는 최소 3개 이상이어야 하고, 밑줄 태그 또는 번호 뒤 단어 패턴이 존재해야 한다.
+  const hasNumberedWord = /[①-⑤]\s*[A-Za-z]/.test(passage);
+
+  if (circledNumbers.size < 3 || (!hasUnderlineTag && !hasNumberedWord)) {
     pushReason(
       reasons,
       issueCounts,
       'english_grammar_vocab_missing_underlines',
-      `Question ${index}: "어법/어휘" 유형의 지문에는 ① <u>단어</u> 또는 <u>①</u> 형식을 사용한 밑줄이 5개 포함되어야 합니다. 현재 형식을 확인해 주세요.`,
+      `Question ${index}: "어법/어휘" 유형의 지문에는 ① <u>단어</u> ~ ⑤ <u>단어</u> 형식의 밑줄이 최소 3개(권장 5개) 포함되어야 합니다. 현재 형식을 확인해 주세요.`,
     );
   }
 

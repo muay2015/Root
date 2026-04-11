@@ -522,9 +522,28 @@ export function normalizeQuestion(
         ? normalizeEmotionChangeChoices(extractedChoices)
         : extractedChoices
   ).slice(0, 5);
+
+  // 어법/어휘 유형은 선택지(예: "interested", "was")가 지문 내 밑줄 단어 그 자체이므로,
+  // removeChoiceBlockFromStem이 지문 마지막 줄의 밑줄 단어를 "선택지 블록"으로 오인해
+  // 지문을 뒤에서부터 잘라내는 치명적 부작용을 일으킨다. 해당 유형에서는 건너뛴다.
+  const questionTypeText = String(context.questionType ?? '');
+  const topicText = String(raw?.topic ?? '');
+  const isEnglishGrammarVocabType =
+    String(context.subject).toLowerCase().includes('english') &&
+    (questionTypeText.includes('어법') ||
+      questionTypeText.includes('어휘') ||
+      questionTypeText.includes('문법') ||
+      topicText.includes('어법') ||
+      topicText.includes('어휘') ||
+      topicText.includes('문법'));
+
+  const stemAfterChoiceBlockStrip = isEnglishGrammarVocabType
+    ? stem
+    : removeChoiceBlockFromStem(stem, choices);
+
   stem = dedupeRepeatedPassageBlocks(
     stripRepeatedBlankInferenceInstruction(
-      dedupeBilingualInstruction(removeChoiceBlockFromStem(stem, choices)),
+      dedupeBilingualInstruction(stemAfterChoiceBlockStrip),
       context.questionType,
     ),
   );
