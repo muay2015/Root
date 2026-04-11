@@ -269,6 +269,7 @@ export default function App() {
                     exams={sync.savedExams}
                     onOpen={onOpenSavedExam}
                     onDelete={sync.removeSavedExam}
+                    onDeleteMultiple={sync.removeSavedExams}
                     onContinueGenerate={onContinueGenerate}
                     onCreate={() => navigate('create')}
                     onLogin={() => navigate('account')}
