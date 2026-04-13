@@ -14,7 +14,16 @@ export function useQuestionTypeDetection(question: ExamQuestion, rawPrompt: stri
     const topicLower = question.topic.toLowerCase();
     
     // 기본 유형 판별용 메타데이터
-    const isEnglishSubject = checkEnglishSubject(question.topic) || topicLower.includes('english') || topicLower.includes('영어');
+    // 1. 영어 과목 여부 판별 (토픽명 검사 + 지적 텍스트 기반 검사 병행)
+    const isEnglishSubject = (() => {
+      if (checkEnglishSubject(question.topic) || topicLower.includes('english') || topicLower.includes('영어')) return true;
+      
+      // 토픽에 키워드가 없더라도 지문/발문에 영어 문자가 압도적으로 많으면 영어 과목으로 간주
+      const combinedText = (rawPrompt + (rawStimulus ?? '') + question.stem).trim();
+      if (!combinedText) return false;
+      const englishChars = (combinedText.match(/[a-zA-Z]/g) || []).length;
+      return englishChars > 40 && (englishChars / combinedText.length) > 0.3;
+    })();
     
     // 1. 문장 삽입 (Sentence Insertion)
     const isInsertionType =
@@ -61,7 +70,11 @@ export function useQuestionTypeDetection(question: ExamQuestion, rawPrompt: stri
       question.topic.includes('문법') || 
       question.topic.includes('낱말') ||
       topicLower.includes('vocabulary') ||
-      topicLower.includes('grammar')
+      topicLower.includes('grammar') ||
+      // topic에 키워드가 없는 구버전 저장 문항을 위해 stem(발문)에서 직접 탐지
+      question.stem.includes('어법상 틀린 것은') ||
+      question.stem.includes('문맥상 낱말의 쓰임') ||
+      question.stem.includes('밑줄 친 부분 중')
     );
 
     const isEnglishSummaryCompletion =
@@ -112,14 +125,15 @@ export function useQuestionTypeDetection(question: ExamQuestion, rawPrompt: stri
     })();
 
     // 5. 어법/어휘 문항 판별 — 번호 기호가 지문 흐름 중간에 박혀 있는 유형
-    //    선택지가 순수 단어(짧은 텍스트, 기호 없음)이고 topic에 어법/어휘 키워드가 포함될 때
+    //    이 유형은 텍스트 흐름이 중요하므로 다른 독해 유형보다 우선순위를 높게 잡거나 
+    //    다른 유형이 섞여있더라도 어법 패턴이 뚜렷하면 grammar 모드를 활성화한다.
     const isEnglishGrammar =
       isEnglishSubject &&
       isVocabularyType &&
+      // 문장 삽입이나 순서 배열은 별도 박스 렌더링이 필요하므로 제외하되, 
+      // 일반적인 독해(빈칸 등)와 어법이 겹치면 어법용 인라인 렌더링을 우선함
       !isEnglishSentenceInsertion &&
-      !isEnglishOrderArrangement &&
-      !isEnglishIrrelevantSentence &&
-      !isEnglishSummaryCompletion;
+      !isEnglishOrderArrangement;
 
     return {
       isEnglishSubject,

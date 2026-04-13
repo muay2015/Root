@@ -115,12 +115,25 @@ export function PromptRenderer({
   isEnglishSentenceInsertion?: boolean;
   isEnglishGrammar?: boolean;
 }) {
-  const markedText = isEnglishSentenceInsertion ? text : injectDataBlockMarkers(text);
+  // 어법/어휘 문항이거나 문장 삽입 문항인 경우 지문 가공 마커 주입을 건너뜁니다.
+  const markedText = (isEnglishSentenceInsertion || isEnglishGrammar) ? text : injectDataBlockMarkers(text);
 
   // 어법/어휘 문항에서는 ①~⑤가 문장 흐름 중간에 인라인으로 사용되므로
   // 강제 줄바꿈을 삽입하면 텍스트가 끊겨 보인다. grammar 모드에서는 건너뜀.
+  // 또한 지문 내 기존 \n도 공백으로 유지시켜 한 덩어리 흐름으로 렌더링한다.
   let processedText = markedText;
-  if (!isEnglishGrammar) {
+  if (isEnglishGrammar) {
+    // 발문(한국어)과 지문(영어)을 구분하는 이중 줄바꿈은 그대로 두고
+    // 지문 내부의 단순 줄바꿈은 공백으로 치환하여 텍스트 흐름을 유지
+    processedText = processedText
+      .replace(/\r\n/g, '\n')        // CRLF -> LF 통일
+      .replace(/\n{2,}/g, '\u0000') // 이중 줄바꿈을 임시 마커로 치환
+      .replace(/\n/g, ' ')           // 모든 단일 줄바꿈 -> 공백
+      .replace(/\u0000/g, '\n\n')    // 이중 줄바꿈 복원
+      .replace(/\s+/g, ' ')          // 모든 연속 공백(탭, 줄바꿈 등) -> 단일 공백
+      .replace(/\s*(\n\n)\s*/g, '$1') // 이중 줄바꿈 주변 공백 정리
+      .trim();
+  } else {
     processedText = processedText
       .replace(/([^\n<])\s*(\([1-5]\))/g, '$1\n$2')
       .replace(/([^\n<])\s*(①|②|③|④|⑤)/g, '$1\n$2')

@@ -15,11 +15,9 @@ export function repairEnglishQuestion(params: {
   stimulus: string | null;
   finalChoices: any[];
   types: {
-    isEnglishSentenceInsertion: boolean;
-    isEnglishOrderArrangement: boolean;
-    isEnglishIrrelevantSentence: boolean;
-    isEnglishContentMatching: boolean;
     isEnglishSummaryCompletion: boolean;
+    isEnglishGrammar: boolean;
+    isEnglishReading: boolean;
   };
 }) {
   const { question, types } = params;
@@ -170,7 +168,7 @@ export function repairEnglishQuestion(params: {
     return text.replace(/<[\/]?[uU][^>]*>|\[[\/]?[uU][^\]]*\]/g, ''); 
   };
 
-  if (types.isEnglishReading && !question.topic.includes('어법') && !question.topic.includes('어휘')) {
+  if (types.isEnglishReading && !types.isEnglishGrammar && !question.topic.includes('어법') && !question.topic.includes('어휘')) {
     prompt = prompt.replace(/<[\/]?[uU][^>]*>|\[[\/]?[uU][^\]]*\]/g, '');
     if (stimulus) {
       stimulus = stimulus.replace(/<[\/]?[uU][^>]*>|\[[\/]?[uU][^\]]*\]/g, '');

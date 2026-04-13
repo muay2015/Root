@@ -171,6 +171,24 @@ export function EnglishQuestionItem(props: ExamQuestionItemProps) {
       );
     }
 
+    // ───── 어법/어휘 전용 경로 ─────
+    // stimulus에 ① ~ ⑤ 인라인 번호가 포함된 지문이 들어있으므로
+    // QuestionStimulusBox(단순 줄 분리) 대신 EnglishReadingLayout으로 렌더링해야
+    // 번호 앞 강제 줄바꿈 없이 흐름이 유지된다.
+    if (isEnglishGrammar) {
+      // stimulus가 실제 영어 지문이고 prompt(instruction)는 발문만 포함하는 케이스
+      const grammarPassage = stimulus || passage;
+      const grammarInstruction = instruction || prompt.trim();
+      return (
+        <EnglishReadingLayout
+          instruction={grammarInstruction}
+          passage={grammarPassage ?? ''}
+          isEnglishReading={false}
+          isEnglishGrammar={true}
+        />
+      );
+    }
+
     return (
       <>
         <EnglishReadingLayout instruction={instruction} passage={passage} isEnglishReading={isEnglishReading} isEnglishGrammar={isEnglishGrammar} />
@@ -181,6 +199,7 @@ export function EnglishQuestionItem(props: ExamQuestionItemProps) {
         )}
       </>
     );
+
   };
 
   return (
