@@ -30,7 +30,7 @@ export function hasPlaceholderChoices(choices?: string[]) {
   }
 
   return choices.every((choice, index) => {
-    const normalized = choice.trim().toLowerCase();
+    const normalized = String(choice ?? '').trim().toLowerCase();
     return normalized === `choice ${index + 1}` || normalized === `보기 ${index + 1}`;
   });
 }
@@ -73,7 +73,7 @@ function inferQuestionKind(
     return MULTIPLE_LABEL;
   }
 
-  if (/^\d+$/.test(question.answer.trim())) {
+  if (/^\d+$/.test(String(question.answer ?? '').trim())) {
     return MULTIPLE_LABEL;
   }
 

@@ -19,10 +19,19 @@ console.log('Checking .env.local at:', envLocalPath);
 dotenv.config({ path: envPath });
 dotenv.config({ path: envLocalPath, override: true });
 
+function sanitizeEnvStyleValue(value?: string) {
+  const trimmed = String(value ?? '').trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  return trimmed.replace(/^['"]+|['"]+$/g, '').trim();
+}
+
 const app = express();
 const port = Number(process.env.PORT || 8787);
-const openAiApiKey = process.env.OPENAI_API_KEY?.trim() || '';
-const openAiModel = process.env.OPENAI_MODEL?.trim() || 'gpt-5.4-mini';
+const openAiApiKey = sanitizeEnvStyleValue(process.env.OPENAI_API_KEY);
+const openAiModel = sanitizeEnvStyleValue(process.env.OPENAI_MODEL) || 'gpt-4o';
 const hasOpenAiKey = openAiApiKey.length > 0;
 
 if (hasOpenAiKey) {
@@ -102,4 +111,3 @@ app.post('/api/ai/segment-exam', async (req, res) => {
 app.listen(port, '0.0.0.0', () => {
   console.log(`ROOT API server listening on http://0.0.0.0:${port} (also accessible via http://127.0.0.1:${port})`);
 });
-

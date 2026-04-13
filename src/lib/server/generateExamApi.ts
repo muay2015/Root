@@ -64,6 +64,15 @@ export function getOpenAiErrorMessage(error: unknown) {
   return 'Unknown error';
 }
 
+function sanitizeEnvStyleValue(value?: string) {
+  const trimmed = String(value ?? '').trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  return trimmed.replace(/^['"]+|['"]+$/g, '').trim();
+}
+
 export async function generateExamApiResponse(input: {
   payload: any;
   openAiApiKey?: string;
@@ -71,8 +80,10 @@ export async function generateExamApiResponse(input: {
 }): Promise<GenerateExamApiResult> {
   const startTime = Date.now();
   const { payload, openAiApiKey, openAiModel } = input;
+  const apiKey = sanitizeEnvStyleValue(openAiApiKey);
+  const resolvedModel = sanitizeEnvStyleValue(openAiModel) || 'gpt-4o';
 
-  const openai = openAiApiKey ? new OpenAI({ apiKey: openAiApiKey }) : null;
+  const openai = apiKey ? new OpenAI({ apiKey }) : null;
 
   try {
     const subject = normalizeSubject(payload.subject);
@@ -97,7 +108,7 @@ export async function generateExamApiResponse(input: {
         images.map((img) =>
           generateValidatedQuestions({
             openai,
-            model: openAiModel || 'gpt-4o',
+            model: resolvedModel,
             materialText: payload.materialText,
             count: 1, // 개별 이미지당 최소 1점 확보
             subject,
@@ -127,7 +138,7 @@ export async function generateExamApiResponse(input: {
       // 단일 이미지 또는 텍스트 기반 기존 로직
       const generated = await generateValidatedQuestions({
         openai,
-        model: openAiModel || 'gpt-4o',
+        model: resolvedModel,
         materialText: payload.materialText,
         count: Number(payload.count) || 12,
         subject,

@@ -1,5 +1,5 @@
 const ZERO_WIDTH_PATTERN = /[\u200B-\u200D\u2060\uFEFF]/g;
-const CHOICE_MARKER_PATTERN = /^(?:(?:\(?\d+\)?|[A-Za-z]|[\u3131-\u314E\uAC00-\uD7A3])[\.\)]|[\u2022\u00B7\u25AA-])\s*/u;
+const CHOICE_MARKER_PATTERN = /^(?:(?:\(?\d+\)?|[A-Za-z]|[\u3131-\u314E\uAC00-\uD7A3])[\.\)]|[\u2460-\u2473\u2022\u00B7\u25AA-])\s*/u;
 const EMPTY_LATEX_PATTERN = /\\\(\s*\\\)|\\\[\s*\\\]/g;
 export function isSingleFragment(value) {
     return /^[\p{L}\p{N}]$/u.test(value);
@@ -81,6 +81,10 @@ function mergeFragmentRuns(tokens) {
 export function normalizeChoiceText(value) {
     if (typeof value !== 'string') {
         return '';
+    }
+    const raw = value.trim();
+    if (/^(?:\(?[1-5]\)?|[\u2460-\u2464])$/.test(raw)) {
+        return raw;
     }
     // 0. 불필요한 빈 수식 기호 제거
     let normalized = (typeof value === 'string' ? value : '').replace(EMPTY_LATEX_PATTERN, '');

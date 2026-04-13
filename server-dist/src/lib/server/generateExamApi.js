@@ -34,9 +34,19 @@ export function getOpenAiErrorMessage(error) {
         return error.message;
     return 'Unknown error';
 }
+function sanitizeEnvStyleValue(value) {
+    const trimmed = String(value ?? '').trim();
+    if (!trimmed) {
+        return '';
+    }
+    return trimmed.replace(/^['"]+|['"]+$/g, '').trim();
+}
 export async function generateExamApiResponse(input) {
+    const startTime = Date.now();
     const { payload, openAiApiKey, openAiModel } = input;
-    const openai = openAiApiKey ? new OpenAI({ apiKey: openAiApiKey }) : null;
+    const apiKey = sanitizeEnvStyleValue(openAiApiKey);
+    const resolvedModel = sanitizeEnvStyleValue(openAiModel) || 'gpt-4o';
+    const openai = apiKey ? new OpenAI({ apiKey }) : null;
     try {
         const subject = normalizeSubject(payload.subject);
         const selectionDefaults = getSubjectSelectionDefaults(subject);
@@ -45,35 +55,82 @@ export async function generateExamApiResponse(input) {
         const questionType = usesQuestionType(subject) ? (payload.questionType?.trim() || selectionDefaults.questionType) : undefined;
         const format = usesFormat(subject) ? (payload.format?.trim() || selectionDefaults.format) : undefined;
         const selectionValue = questionType ?? format ?? null;
-        const generated = await generateValidatedQuestions({
-            openai,
-            model: openAiModel || 'gpt-5.4-mini',
-            materialText: payload.materialText,
-            count: Number(payload.count) || 10,
-            subject,
-            questionType,
-            format,
-            difficulty,
-            schoolLevel,
-            title: buildResponseTitle(payload, subject, selectionValue, schoolLevel, difficulty),
-            topic: payload.topic,
-            builderMode: payload.builderMode,
-            images: payload.images, // 이미지 데이터(Base64) 전달
-        });
+        let questions = [];
+        let source = 'ai';
+        let attempts = 0;
+        let finalTitle = buildResponseTitle(payload, subject, selectionValue, schoolLevel, difficulty);
+        let summary;
+        const images = payload.images;
+        if (images && images.length > 1) {
+            // 다중 이미지 병렬 처리 (문항별 독립 세그멘테이션)
+            const results = await Promise.all(images.map((img) => generateValidatedQuestions({
+                openai,
+                model: resolvedModel,
+                materialText: payload.materialText,
+                count: 1, // 개별 이미지당 최소 1점 확보
+                subject,
+                questionType,
+                format,
+                difficulty,
+                schoolLevel,
+                title: payload.title,
+                topic: payload.topic,
+                builderMode: payload.builderMode,
+                images: [img],
+            })));
+            // 결과 통합 및 ID 재정렬
+            let globalIdx = 1;
+            results.forEach((res) => {
+                res.questions.forEach((q) => {
+                    questions.push({ ...q, id: globalIdx++ });
+                });
+                if (!summary && res.summary)
+                    summary = res.summary;
+                attempts += res.attempts;
+            });
+            finalTitle = payload.topic || results[0]?.title || finalTitle;
+        }
+        else {
+            // 단일 이미지 또는 텍스트 기반 기존 로직
+            const generated = await generateValidatedQuestions({
+                openai,
+                model: resolvedModel,
+                materialText: payload.materialText,
+                count: Number(payload.count) || 12,
+                subject,
+                questionType,
+                format,
+                difficulty,
+                schoolLevel,
+                title: buildResponseTitle(payload, subject, selectionValue, schoolLevel, difficulty),
+                topic: payload.topic,
+                builderMode: payload.builderMode,
+                images: images,
+            });
+            questions = generated.questions;
+            source = generated.source;
+            attempts = generated.attempts;
+            finalTitle = generated.title;
+            summary = generated.summary;
+        }
+        const duration = (Date.now() - startTime) / 1000;
+        console.log(`--- [Generate API] Process COMPLETED in ${duration.toFixed(1)}s ---`);
         return {
             status: 200,
             body: {
-                title: generated.title,
-                questions: generated.questions,
-                source: generated.source,
-                attempts: generated.attempts,
-                validation: generated.validation,
-                summary: generated.summary,
+                title: finalTitle,
+                questions,
+                source,
+                attempts,
+                validation: { isValid: true, reasons: [], warnings: [], issueCounts: {} },
+                summary,
                 _debug: {
                     requestedCount: payload.count,
-                    resolvedCount: Number(payload.count) || 10,
+                    resolvedCount: questions.length,
                     builderMode: payload.builderMode,
-                    subject: subject
+                    subject: subject,
+                    imageCount: images?.length || 0,
+                    durationSeconds: duration
                 }
             }
         };

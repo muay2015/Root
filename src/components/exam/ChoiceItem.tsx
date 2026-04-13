@@ -41,7 +41,45 @@ export function ChoiceItem({ number, text, selected, onSelect, hideText }: Choic
             overflowWrap: 'break-word',
           }}
         >
-          <MathRenderer text={text} />
+          {text.includes(' / ') && text.split(' / ').length === 2 ? (
+            <div className="flex w-full flex-wrap gap-y-1 sm:grid sm:grid-cols-2 sm:gap-4 sm:flex-nowrap">
+              <div className="flex w-full items-baseline gap-1.5 sm:w-auto">
+                <span className="font-semibold text-blue-600">(A)</span>
+                <span className="flex-1 break-words">
+                  <MathRenderer text={text.split(' / ')[0].replace(/(?:\([^A-Za-z0-9]*\s*[A-Ca-c]\s*\)|\b[A-Ca-c]\))\s*/, '').trim()} />
+                </span>
+              </div>
+              <div className="flex w-full items-baseline gap-1.5 sm:w-auto">
+                <span className="font-semibold text-blue-600">(B)</span>
+                <span className="flex-1 break-words">
+                  <MathRenderer text={text.split(' / ')[1].replace(/(?:\([^A-Za-z0-9]*\s*[A-Ca-c]\s*\)|\b[A-Ca-c]\))\s*/, '').trim()} />
+                </span>
+              </div>
+            </div>
+          ) : text.includes(' / ') && text.split(' / ').length === 3 ? (
+            <div className="flex w-full flex-wrap gap-y-1 sm:grid sm:grid-cols-3 sm:gap-3 sm:flex-nowrap">
+              <div className="flex w-full items-baseline gap-1.5 sm:w-auto">
+                <span className="font-semibold text-blue-600">(A)</span>
+                <span className="flex-1 break-words">
+                  <MathRenderer text={text.split(' / ')[0].replace(/(?:\([^A-Za-z0-9]*\s*[A-Ca-c]\s*\)|\b[A-Ca-c]\))\s*/, '').trim()} />
+                </span>
+              </div>
+              <div className="flex w-full items-baseline gap-1.5 sm:w-auto">
+                <span className="font-semibold text-blue-600">(B)</span>
+                <span className="flex-1 break-words">
+                  <MathRenderer text={text.split(' / ')[1].replace(/(?:\([^A-Za-z0-9]*\s*[A-Ca-c]\s*\)|\b[A-Ca-c]\))\s*/, '').trim()} />
+                </span>
+              </div>
+              <div className="flex w-full items-baseline gap-1.5 sm:w-auto">
+                <span className="font-semibold text-blue-600">(C)</span>
+                <span className="flex-1 break-words">
+                  <MathRenderer text={text.split(' / ')[2].replace(/(?:\([^A-Za-z0-9]*\s*[A-Ca-c]\s*\)|\b[A-Ca-c]\))\s*/, '').trim()} />
+                </span>
+              </div>
+            </div>
+          ) : (
+            <MathRenderer text={text} />
+          )}
         </div>
       )}
     </button>

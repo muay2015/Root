@@ -10,6 +10,7 @@ export type GeneratedQuestionDraft = {
   items?: string[] | null;
   answer: string;
   explanation: string;
+  stimulus?: string | null;
 };
 
 export type ValidationResult = {

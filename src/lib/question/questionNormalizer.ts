@@ -432,6 +432,238 @@ function normalizeBlankInferenceStem(stem: string, answer: string, choices: stri
   return nextStem;
 }
 
+/**
+ * 국어 문학/독서 유형 전용 지문-발문 분리기.
+ *
+ * AI가 지문을 stem·stimulus 어디에 넣든, 렌더링 시 발문과 지문이 시각적으로 분리되도록
+ * - stem: 발문(도입 발문 + 세부 발문)만
+ * - stimulus: 지문(작품 원문/비문학 본문)만
+ * 로 재배치한다.
+ */
+function splitKoreanLiteraturePassage(
+  stem: string,
+  stimulus: string | null,
+): { stem: string; stimulus: string | null } {
+  const rawStem = String(stem ?? '').trim();
+  const rawStimulus = String(stimulus ?? '').trim();
+
+  if (!rawStem && !rawStimulus) {
+    return { stem: rawStem, stimulus: rawStimulus || null };
+  }
+
+  // 이미 stimulus가 충분히 길면(지문으로 판단) stem에 또 다시 지문이 섞여있는지만 확인해서 제거.
+  const paragraphs = rawStem
+    .split(/\n\s*\n/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  const promptKeywordPattern =
+    /(다음\s+(?:글|시|작품|자료|밑줄|보기)|윗글|윗\s*시|〈보기〉|<보기>|물음에\s+답하시오|가장\s+적절한|적절하지\s+않은|옳은\s+것|고른\s+것|이해한\s+내용|설명으로|감상한\s+내용|읽고\s+물음)/;
+  const endsWithQuestion = (text: string) =>
+    /[?？]\s*$/.test(text) || /다\.\s*$/.test(text) || /것은\s*$/.test(text);
+
+  const looksLikeInstruction = (text: string) => {
+    const compact = text.replace(/\s+/g, ' ').trim();
+    if (!compact) return false;
+    if (compact.length <= 80 && (endsWithQuestion(compact) || promptKeywordPattern.test(compact))) {
+      return true;
+    }
+    if (compact.length <= 40 && promptKeywordPattern.test(compact)) {
+      return true;
+    }
+    return false;
+  };
+
+  const looksLikePassageLine = (text: string) => {
+    const compact = text.replace(/\s+/g, ' ').trim();
+    if (!compact) return false;
+    if (looksLikeInstruction(compact)) return false;
+    if (/^(?:<보기>|〈보기〉|\[보기\]|보기\b)/.test(compact)) return false;
+    return compact.length >= 6;
+  };
+
+  const normalizeEmbeddedViewBlock = (text: string) => {
+    const collapseRepeatedBlocks = (value: string) => {
+      const paragraphs = value
+        .split(/\n\s*\n/)
+        .map((part) => part.trim())
+        .filter(Boolean);
+
+      if (paragraphs.length < 2) {
+        return value.trim();
+      }
+
+      const normalizedParagraphs = paragraphs.map((part) =>
+        part.replace(/\s+/g, ' ').trim().toLowerCase(),
+      );
+
+      const deduped: string[] = [];
+      for (let i = 0; i < paragraphs.length; i += 1) {
+        if (i > 0 && normalizedParagraphs[i] === normalizedParagraphs[i - 1]) {
+          continue;
+        }
+        deduped.push(paragraphs[i]);
+      }
+
+      if (deduped.length % 2 === 0 && deduped.length >= 2) {
+        const half = deduped.length / 2;
+        const left = deduped.slice(0, half).map((part) => part.replace(/\s+/g, ' ').trim().toLowerCase());
+        const right = deduped.slice(half).map((part) => part.replace(/\s+/g, ' ').trim().toLowerCase());
+        if (left.join('\n') === right.join('\n')) {
+          return deduped.slice(0, half).join('\n\n').trim();
+        }
+      }
+
+      return deduped.join('\n\n').trim();
+    };
+
+    const normalized = String(text ?? '')
+      .replace(/(?:^|\n)\s*보기\s*/g, '\n<보기>\n')
+      .replace(/(?:^|\n)\s*〈보기〉\s*/g, '\n<보기>\n')
+      .replace(/(?:^|\n)\s*\[보기\]\s*/g, '\n<보기>\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    if (!normalized.includes('<보기>')) {
+      return normalized;
+    }
+
+    const lines = normalized.split('\n').map((line) => line.trim()).filter(Boolean);
+    const viewIdx = lines.findIndex((line) => line === '<보기>');
+    if (viewIdx === -1) {
+      return normalized;
+    }
+
+    const before = lines.slice(0, viewIdx);
+    const after = lines.slice(viewIdx + 1);
+
+    if (before.length > 0) {
+      return collapseRepeatedBlocks(normalized);
+    }
+
+    const passageStart = after.findIndex((line, idx) => idx > 0 && looksLikePassageLine(line));
+    if (passageStart <= 0) {
+      return collapseRepeatedBlocks(
+        normalized.replace(/^<보기>\n?/u, '').trim(),
+      );
+    }
+
+    const viewLines = after.slice(0, passageStart);
+    const passageLines = after.slice(passageStart);
+    if (viewLines.length === 0 || passageLines.length === 0) {
+      return collapseRepeatedBlocks(normalized);
+    }
+
+    return collapseRepeatedBlocks(
+      `${passageLines.join('\n')}\n\n<보기>\n${viewLines.join('\n')}`.trim(),
+    );
+  };
+
+  const instructionParts: string[] = [];
+  const passageParts: string[] = [];
+
+  for (const paragraph of paragraphs) {
+    if (looksLikeInstruction(paragraph)) {
+      instructionParts.push(paragraph);
+    } else {
+      passageParts.push(paragraph);
+    }
+  }
+
+  // 단일 문단이고 길이가 짧으면 그대로 stem 유지(정상 케이스).
+  if (paragraphs.length <= 1 && passageParts.length === 0) {
+    return { stem: rawStem, stimulus: rawStimulus || null };
+  }
+
+  // 단일 문단이지만 매우 긴 경우: 줄바꿈(\n) 단위로 발문과 지문을 분리 시도.
+  if (paragraphs.length === 1 && passageParts.length === 1 && instructionParts.length === 0) {
+    const lines = paragraphs[0]
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (lines.length >= 2) {
+      const firstInstrIdx = lines.findIndex((line) => looksLikeInstruction(line));
+      if (firstInstrIdx !== -1) {
+        const instructionLines = lines.filter((line) => looksLikeInstruction(line));
+        const passageLines = lines.filter((line) => !looksLikeInstruction(line));
+        if (instructionLines.length > 0 && passageLines.length > 0) {
+          const nextStem = instructionLines.join('\n\n');
+          const passageText = passageLines.join('\n');
+          const nextStimulus = rawStimulus
+            ? `${passageText}\n\n${rawStimulus}`
+            : passageText;
+          return { stem: nextStem, stimulus: nextStimulus };
+        }
+      }
+    }
+    // 분리 실패: stem을 그대로 두되, 최소한 stimulus가 비어있으면 stem 전체를 stimulus로 복제하지 않는다.
+    return { stem: rawStem, stimulus: rawStimulus || null };
+  }
+
+  if (instructionParts.length === 0) {
+    // 발문 문단이 하나도 식별되지 않음 → 맨 앞 문단을 발문으로 간주.
+    if (paragraphs.length >= 2) {
+      instructionParts.push(paragraphs[0]);
+      passageParts.splice(0, passageParts.length, ...paragraphs.slice(1));
+    }
+  }
+
+  if (passageParts.length === 0) {
+    return { stem: rawStem, stimulus: rawStimulus || null };
+  }
+
+  const nextStem = instructionParts.join('\n\n').trim();
+  const passageText = passageParts.join('\n\n').trim();
+  const nextStimulus = rawStimulus
+    ? // 기존 stimulus와 본문 지문이 중복되는 경우 중복 제거.
+      rawStimulus.includes(passageText) || passageText.includes(rawStimulus)
+      ? passageText.length >= rawStimulus.length
+        ? passageText
+        : rawStimulus
+      : `${passageText}\n\n${rawStimulus}`
+    : passageText;
+
+  return {
+    stem: nextStem || rawStem,
+    stimulus: normalizeEmbeddedViewBlock(nextStimulus) || null,
+  };
+}
+
+function normalizeKoreanLiteratureStemAndChoices(
+  stem: string,
+  choices: string[],
+  stimulus: string | null,
+) {
+  let nextStem = String(stem ?? '').trim();
+  let nextChoices = Array.isArray(choices) ? choices.map((choice) => String(choice ?? '').trim()) : [];
+
+  const hasViewBlock =
+    typeof stimulus === 'string' &&
+    /(?:<보기>|〈보기〉|\[보기\]|(?:^|\n)\s*보기(?=\s|\n|$))/u.test(stimulus);
+
+  if (hasViewBlock) {
+    nextStem = nextStem
+      .replace(/^(?:<보기>|〈보기〉|\[보기\]|보기)\s*\n?\s*를 참고할 때\s*,?/u, '다음 글과 <보기>를 참고할 때, ')
+      .replace(/^(?:<보기>|〈보기〉|\[보기\]|보기)\s*\n?\s*를 참고할 때/u, '다음 글과 <보기>를 참고할 때')
+      .replace(/^(?:<보기>|〈보기〉|\[보기\]|보기)\s+/u, '<보기> ')
+      .replace(/<보기>\s*\n+\s*를 참고할 때/u, '<보기>를 참고할 때')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
+    nextChoices = nextChoices.map((choice) =>
+      choice
+        .replace(/^(?:<보기>|〈보기〉|\[보기\]|보기)\s*/u, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim(),
+    );
+  }
+
+  return {
+    stem: nextStem,
+    choices: nextChoices,
+  };
+}
+
 function standardizeEnglishSentenceInsertionItem(stem: string, stimulus: string | null, choices: string[]) {
   let nextStem = String(stem ?? '').replace(/<[\/]?[uU][^>]*>|\[[\/]?[uU][^\]]*\]/g, '');
   let nextStimulus = String(stimulus ?? '').trim();
@@ -489,6 +721,48 @@ function standardizeEnglishSentenceInsertionItem(stem: string, stimulus: string 
   };
 }
 
+export function normalizePhysicsExpression(text: string): string {
+  if (!text) return text;
+
+  let result = text;
+
+  // 1. 이미 \(\)로 감싸진 수식 내부의 백슬래시 과잉 이스케이프 방지 및 정리
+  // (이 로직은 후순위로 밀림)
+
+  // 2. 잘못된 긴 밑줄 형태 복구 (S_________1 -> \(S_1\))
+  // 변수(영문) + 긴 밑줄 + 숫자/문자 조합을 감지하여 수식으로 변환
+  result = result.replace(/([a-zA-Z])_{3,}([0-9a-zA-Z]+)/g, '\\($1_{$2}\\)');
+
+  // 3. 누락된 래퍼 추가: v_0, m_A, x_1 등 간단한 첨자 형태
+  // 이미 \(\) 내부에 있는 경우는 제외하기 위해 순차적으로 처리
+  result = result.replace(/(?<!\\\(|[\w\\])([a-zA-Z])_([0-9a-zA-Z])(?!\w|\\\))/g, '\\($1_$2\\)');
+
+  // 4. 주요 LaTeX 명령어 자동 래핑 (감싸져 있지 않은 경우)
+  // \frac, \sqrt, \times, \pm, \div, \alpha, \beta, \gamma, \delta, \epsilon 등
+  const mathCommands = ['frac', 'sqrt', 'times', 'pm', 'div', 'alpha', 'beta', 'gamma', 'delta', 'epsilon', 'theta', 'pi', 'sigma', 'phi', 'omega', 'leq', 'geq', 'neq', 'approx', 'infty'];
+  mathCommands.forEach(cmd => {
+    // 래퍼 없이 단독으로 쓰인 명령어나 해당 명령어로 시작하는 구문을 찾아 감쌈
+    const regex = new RegExp(`(?<!\\\\\\()\\\\${cmd}\\b(?:\\{[^{}]*\\}|[^{}\\s]*)*`, 'g');
+    result = result.replace(regex, (match) => `\\(${match}\\)`);
+  });
+
+  // 5. 중복 래퍼 정리: \(\( ... \)\) -> \( ... \)
+  result = result.replace(/\\\(+\s*\\\(+/g, '\\(').replace(/\\\)+\s*\\\)+/g, '\\)');
+
+  // 6. 단일 영문 변수 처리 (x, m, v, k, t, F 등 주요 물리 변수)
+  result = result.replace(/(?<![a-zA-Z\\\(])([xytvmakfF])(?![a-zA-Z\)])/g, '\\($1\\)');
+
+  // 7. 하첨자 내의 일반 텍스트 명령어화 (max, min, total, avg 등)
+  result = result.replace(/\\\(([\s\S]*?)\\\)/g, (match, content) => {
+    return `\\(${content.replace(/\b(max|min|total|avg|eff)\b/g, '\\$1')}\\)`;
+  });
+
+  // 8. 수식 근처 이상한 긴 밑줄 제거 (남은 것들)
+  result = result.replace(/_{5,}/g, '______');
+
+  return result;
+}
+
 export function normalizeQuestion(
   raw: any,
   index: number,
@@ -499,6 +773,17 @@ export function normalizeQuestion(
       ? raw.stimulus.trim()
       : null;
   let stem = stripLeadingQuestionNumber(raw.stem || raw.question || '');
+  const isLikelyEnglishOrderType =
+    String(context.subject).toLowerCase().includes('english') &&
+    String(context.questionType ?? '').includes('순서 배열');
+
+  if (isLikelyEnglishOrderType) {
+    stem = stem
+      .replace(/\(\s*([ABC])\s*\)\s*[_\-.~]{1,}/gi, '($1) ')
+      .replace(/\[\s*([ABC])\s*\]\s*[_\-.~]{1,}/gi, '[$1] ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
 
   const isSummaryCompletionType = isEnglishSummaryCompletionType({
     subject: context.subject,
@@ -526,18 +811,22 @@ export function normalizeQuestion(
   // 어법/어휘 유형은 선택지(예: "interested", "was")가 지문 내 밑줄 단어 그 자체이므로,
   // removeChoiceBlockFromStem이 지문 마지막 줄의 밑줄 단어를 "선택지 블록"으로 오인해
   // 지문을 뒤에서부터 잘라내는 치명적 부작용을 일으킨다. 해당 유형에서는 건너뛴다.
+  // 관계없는 문장 유형도 선택지가 (1)~(5)이고 지문에 동일 표기가 있어 같은 문제가 발생한다.
   const questionTypeText = String(context.questionType ?? '');
   const topicText = String(raw?.topic ?? '');
+  const isEnglishSubject = String(context.subject).toLowerCase().includes('english');
   const isEnglishGrammarVocabType =
-    String(context.subject).toLowerCase().includes('english') &&
+    isEnglishSubject &&
     (questionTypeText.includes('어법') ||
       questionTypeText.includes('어휘') ||
       questionTypeText.includes('문법') ||
       topicText.includes('어법') ||
       topicText.includes('어휘') ||
       topicText.includes('문법'));
+  const isEnglishIrrelevantType =
+    isEnglishSubject && questionTypeText.includes('관계없는 문장');
 
-  const stemAfterChoiceBlockStrip = isEnglishGrammarVocabType
+  const stemAfterChoiceBlockStrip = (isEnglishGrammarVocabType || isEnglishIrrelevantType)
     ? stem
     : removeChoiceBlockFromStem(stem, choices);
 
@@ -580,6 +869,11 @@ export function normalizeQuestion(
     stimulus = standardized.stimulus;
     choices = standardized.choices;
     answerStr = standardized.answer || resolveAnswerFromChoicesLoose(raw.answer, choices);
+    stem = stem
+      .replace(/\(\s*([ABC])\s*\)\s*[_\-.~]{1,}/gi, '($1) ')
+      .replace(/\[\s*([ABC])\s*\]\s*[_\-.~]{1,}/gi, '[$1] ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
   }
 
   const isContentMatchingType = isEnglishContentMatchingType({
@@ -653,6 +947,32 @@ export function normalizeQuestion(
         ? raw.answer.split(/\s*\/\s*/)[0].trim()
         : normalizeEmotionChangeAnswer(raw.answer);
     answerStr = resolveAnswerFromChoicesLoose(normalizedEmotionAnswer, choices) || answerStr;
+  }
+
+  // 국어 문학/독서: stem에 뒤섞인 지문을 강제로 stimulus로 분리해 렌더링 시 발문-지문이 별도 영역으로 표시되도록 한다.
+  if (context.subject === 'korean_literature' || context.subject === 'korean_reading') {
+    const split = splitKoreanLiteraturePassage(stem, stimulus);
+    stem = split.stem;
+    stimulus = split.stimulus;
+
+    const normalizedLiterature = normalizeKoreanLiteratureStemAndChoices(stem, choices, stimulus);
+    stem = normalizedLiterature.stem;
+    choices = normalizedLiterature.choices;
+  }
+
+  // 과학/물리 과목 전용 수식 후처리
+  const subjectKey = String(context.subject).toLowerCase();
+  const isScience =
+    subjectKey.includes('science') ||
+    subjectKey.includes('physics') ||
+    subjectKey.includes('chemistry') ||
+    subjectKey.includes('biology');
+
+  if (isScience) {
+    stem = normalizePhysicsExpression(stem);
+    if (stimulus) {
+      stimulus = normalizePhysicsExpression(stimulus);
+    }
   }
 
   return {

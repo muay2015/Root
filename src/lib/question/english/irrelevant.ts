@@ -107,18 +107,22 @@ function isIrrelevantInstructionLike(text: string) {
 }
 
 function removeInstructionFromText(text: string, instruction: string | null) {
-  const lines = text
+  // 발문 텍스트를 먼저 제거한다. dedupeRepeatedPassageBlocks가 공백을 압축하면
+  // 발문과 지문이 한 줄로 합쳐질 수 있는데, 이 경우 줄 전체를 isIrrelevantInstructionLike로
+  // 필터링하면 지문까지 함께 사라지는 문제가 생긴다. 발문을 먼저 지우면 남은 지문 내용은 보존된다.
+  let processed = String(text ?? '');
+  if (instruction) {
+    const escaped = escapeRegex(instruction);
+    processed = processed.replace(new RegExp(escaped, 'g'), ' ');
+  }
+
+  const lines = processed
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
     .filter((line) => !isIrrelevantInstructionLike(line));
 
-  let nextText = lines.join('\n').trim();
-  if (!instruction) return nextText;
-
-  const escaped = escapeRegex(instruction);
-  nextText = nextText.replace(new RegExp(escaped, 'g'), '').trim();
-  return nextText;
+  return lines.join('\n').trim();
 }
 
 /**

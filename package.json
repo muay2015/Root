@@ -10,6 +10,7 @@
     "build:api": "tsc -p tsconfig.server.json",
     "build": "vite build",
     "preview": "vite preview",
+    "check:csat-english": "tsx scripts/check-csat-english.ts",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "start:api": "node server-dist/server/index.js",

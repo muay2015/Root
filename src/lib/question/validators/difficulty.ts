@@ -27,6 +27,12 @@ export function validateGenericDifficulty(
   
   // 과목 분류 확인 (영어 여부)
   const isEnglish = String(input.subject).toLowerCase().includes('english');
+  const isKoreanLiterature = String(input.subject) === 'korean_literature';
+  const hasCsatLiteratureReasoningStem =
+    isKoreanLiterature &&
+    /(?:화자|정서|태도|심경|감상|표현상\s*특징|표현의\s*효과|표현\s*방식|시어|심상|이미지|어조|분위기|갈등|장면|상황|기능|서사\s*전개)/u.test(
+      String(question.stem ?? ''),
+    );
 
   if (difficulty === 'easy' && stemWords > 24) {
     warnings.push(
@@ -36,7 +42,7 @@ export function validateGenericDifficulty(
 
   if (difficulty === 'hard') {
     // [FIX] 영어 과목의 경우 표준 발문이 짧으므로 길이 검증을 완화하거나 건너뜁니다.
-    if (!isEnglish) {
+    if (!isEnglish && !hasCsatLiteratureReasoningStem) {
       if (stemWords < 8 && stemKoreanChars < 18) {
         pushReason(
           reasons,
@@ -47,7 +53,7 @@ export function validateGenericDifficulty(
       }
     }
 
-    if (directCuePattern.test(question.stem)) {
+    if (!isEnglish && directCuePattern.test(question.stem)) {
       pushReason(
         reasons,
         issueCounts,

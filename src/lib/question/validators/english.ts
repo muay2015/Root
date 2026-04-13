@@ -23,7 +23,9 @@ export function validateEnglishOrderArrangement(
     return;
   }
 
-  const stem = question.stem ?? '';
+  const stem = String(question.stem ?? '')
+    .replace(/\(\s*([A-C])\s*\)\s*[_\-.~]{1,}/gi, '($1) ')
+    .replace(/\[\s*([A-C])\s*\]\s*[_\-.~]{1,}/gi, '[$1] ');
   const stimulus = (question as any).stimulus ?? '';
   const hasA = /\(\s*A\s*\)|\[\s*A\s*\]/i.test(stem);
   const hasB = /\(\s*B\s*\)|\[\s*B\s*\]/i.test(stem);
@@ -31,6 +33,10 @@ export function validateEnglishOrderArrangement(
   const hasDOrMore = /\(\s*[D-Z]\s*\)|\[\s*[D-Z]\s*\]/i.test(stem);
   const hasStimulusIntro = typeof stimulus === 'string' && /[A-Za-z]{3,}/.test(stimulus);
   const stimulusHasSections = /\(\s*[A-Z]\s*\)|\[\s*[A-Z]\s*\]/i.test(stimulus);
+  const choices = Array.isArray(question.choices) ? question.choices : [];
+  const hasUnderscoreLabels = /\(\s*[A-C]\s*\)\s*_+/i.test(stem);
+  const orderChoicePattern = /A\s*-\s*B\s*-\s*C|A\s*-\s*C\s*-\s*B|B\s*-\s*A\s*-\s*C|B\s*-\s*C\s*-\s*A|C\s*-\s*A\s*-\s*B|C\s*-\s*B\s*-\s*A/i;
+  const validOrderChoiceCount = choices.filter((choice) => orderChoicePattern.test(String(choice ?? ''))).length;
 
   if (!(hasA && hasB && hasC)) {
     pushReason(reasons, issueCounts, 'english_order_sections', `Question ${index}: sentence ordering items must contain exactly (A), (B), and (C) sections.`);
@@ -43,6 +49,12 @@ export function validateEnglishOrderArrangement(
   }
   if (stimulusHasSections) {
     pushReason(reasons, issueCounts, 'english_order_intro_polluted', `Question ${index}: sentence ordering stimulus must contain only the intro, not (A)/(B)/(C) sections.`);
+  }
+  if (hasUnderscoreLabels) {
+    pushReason(reasons, issueCounts, 'english_order_section_labels_as_blanks', `Question ${index}: sentence ordering items must use (A), (B), and (C) as section labels, not blank placeholders.`);
+  }
+  if (choices.length !== 5 || validOrderChoiceCount < 5) {
+    pushReason(reasons, issueCounts, 'english_order_choice_format', `Question ${index}: sentence ordering items must use five order-combination choices such as A-B-C.`);
   }
 }
 
@@ -69,6 +81,7 @@ export function validateEnglishSentenceInsertion(
   const uniqueNumberedCount = new Set(numberedMatches.map((m) => m.replace(/\s+/g, ''))).size;
   const canonicalChoices = ['①', '②', '③', '④', '⑤'];
   const normalizedChoices = choices.map((choice) => normalizeText(String(choice ?? '')));
+  const sentenceLikeChunks = (stimulus.match(/[.!?](?:\s|$)/g) ?? []).length;
 
   if (!stimulus || !/[A-Za-z]{8,}/.test(stimulus)) {
     pushReason(
@@ -111,6 +124,14 @@ export function validateEnglishSentenceInsertion(
         `Question ${index}: the given sentence must not also remain inside the passage.`,
       );
     }
+  }
+  if (stimulus && (stimulus.length > 220 || sentenceLikeChunks > 2)) {
+    pushReason(
+      reasons,
+      issueCounts,
+      'english_insertion_stimulus_too_long',
+      `Question ${index}: sentence insertion stimulus must contain only the given sentence, not the full passage.`,
+    );
   }
 
   if (/<[\/]?u\b|\[[\/]?u\]/i.test(stem)) {
@@ -325,6 +346,17 @@ export function validateEnglishSummaryCompletion(
     pushReason(reasons, issueCounts, 'summary_completion_missing_blanks', `Question ${index}: summary must contain (A) and (B) blanks.`);
   }
 
+  // stem에 한국어 발문 외에 실제 영어 지문이 있는지 검증
+  const stemWithoutInstruction = stem
+    .replace(/다음 글의 내용을 한 문장으로 요약할 때[^?]*\?/g, '')
+    .replace(/윗글의 내용을[^?]*\?/g, '')
+    .trim();
+  const englishWordCount = (stemWithoutInstruction.match(/[A-Za-z]{3,}/g) ?? []).length;
+  const hasEnglishPassage = englishWordCount >= 15;
+  if (!hasEnglishPassage) {
+    pushReason(reasons, issueCounts, 'summary_completion_missing_passage', `Question ${index}: "요약문 완성" stem must include the English passage, not just the Korean instruction. (English words found: ${englishWordCount})`);
+  }
+
   const choices = question.choices ?? [];
   const invalidChoices = choices.filter(c => !/\s*\/\s*/.test(normalizeSummaryCompletionPairText(String(c))));
   if (invalidChoices.length > 0) {
@@ -363,35 +395,48 @@ export function validateEnglishEmotionAtmosphere(
 
   const asksEmotion = stem.includes('심경');
   const asksAtmosphere = stem.includes('분위기');
+  const asksEmotionChange = asksEmotion && stem.includes('변화');
 
-  // 2. 심경 유형 검증 (이름 포함 변화)
-  if (asksEmotion) {
-    const hasChange = stem.includes('변화');
-    const hasNamedPerson =
-      /의\s*심경\s*변화/.test(stem) &&
-      /[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*의\s*심경\s*변화/.test(stem);
+  // 2-a. 심경 변화 유형: 인물 지칭 + "의 심경 변화" + pair 선택지
+  if (asksEmotionChange) {
+    const hasCharacterRef =
+      /(?:[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*|'I'|주인공|화자|필자|글쓴이|[A-Za-z]+)의\s*심경\s*변화/.test(stem) ||
+      /의\s*심경\s*변화/.test(stem);
 
-    if (!hasChange || !hasNamedPerson) {
+    if (!hasCharacterRef) {
       pushReason(
         reasons,
         issueCounts,
         'emotion_stem_not_named_change',
-        `Question ${index}: "심경" items must ask about a named character's emotional change.`,
+        `Question ${index}: "심경 변화" items must include a character reference (e.g. "Sarah의 심경 변화", "'I'의 심경 변화").`,
       );
     }
 
-    if (choices.some((choice) => !/\s*\/\s*/.test(String(choice).trim()))) {
+    const pairChoiceCount = choices.filter((choice) => /\s*\/\s*/.test(String(choice).trim())).length;
+    if (pairChoiceCount < choices.length * 0.8) {
       pushReason(
         reasons,
         issueCounts,
         'emotion_choices_need_pairs',
-        `Question ${index}: "심경" choices must use "word_A / word_B" emotion-change pairs.`,
+        `Question ${index}: "심경 변화" choices must use "word_A / word_B" emotion-change pairs (e.g. "excited / disappointed").`,
+      );
+    }
+  }
+
+  // 2-b. 심경 단일 유형: "변화" 없이 심경만 묻는 경우 — 단일 감정 단어 선택지
+  if (asksEmotion && !asksEmotionChange) {
+    if (choices.some((choice) => /\s*\/\s*/.test(String(choice).trim()))) {
+      pushReason(
+        reasons,
+        issueCounts,
+        'emotion_single_choices_should_not_pair',
+        `Question ${index}: "심경" items (without 변화) must use single emotion words, not "A / B" pairs.`,
       );
     }
   }
 
   // 3. 분위기 유형 검증
-  if (asksAtmosphere) {
+  if (asksAtmosphere && !asksEmotion) {
     if (stem.includes('변화')) {
       pushReason(
         reasons,

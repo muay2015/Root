@@ -1,257 +1,139 @@
-import { difficultyRules, schoolLevelRules, } from "./generationRules.js";
-import { usesNoSelector } from "./subjectConfig.js";
-import { countAnswerMatches, normalizeAnswerComparison, resolveAnswerFromChoices, } from "./answerMatching.js";
-function pushReason(reasons, issueCounts, key, message) {
-    reasons.push(message);
-    issueCounts[key] = (issueCounts[key] ?? 0) + 1;
+import { difficultyRules, schoolLevelRules } from "./generationRules.js";
+import { pushReason } from "./validators/utils.js";
+import { validateStructure } from "./validators/structure.js";
+import { validateGenericDifficulty, validateTopicReflection, validateSelectionReflection } from "./validators/difficulty.js";
+import { validateHistoryDifficulty, validateHistorySubjectFit } from "./validators/history.js";
+import { validateKoreanLiteratureQuality } from "./validators/korean.js";
+import { validateEnglishBlankInference as valEngBlank, validateEnglishSentenceInsertion as valEngInsertion, validateEnglishOrderArrangement as valEngOrder, validateEnglishIrrelevantSentence as valEngIrrel, validateEnglishContentMatching as valEngContent, validateEnglishSummaryCompletion as valEngSummary, validateEnglishEmotionAtmosphere as valEngEmotion, validateEnglishTitleThemeGist as valEngTitle, validateEnglishGrammarVocabulary as valEngGrammar } from "./validators/english.js";
+function normalizeDuplicateText(value) {
+    return String(value ?? '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
 }
-function tokenize(value) {
-    return value
-        .toLowerCase()
-        .split(/[^a-z0-9\u3131-\u314e\uac00-\ud7a3]+/u)
-        .filter((token) => token.length >= 2);
+function normalizeLiteratureBaseStimulus(value) {
+    const raw = String(value ?? '').trim();
+    if (!raw) {
+        return '';
+    }
+    const normalized = raw.replace(/〈보기〉|\[보기\]|보기(?=\s)/g, '<보기>');
+    const splitIdx = normalized.indexOf('<보기>');
+    const base = splitIdx >= 0 ? normalized.slice(0, splitIdx) : normalized;
+    return normalizeDuplicateText(base);
 }
-function countWords(value) {
-    return value.trim().split(/\s+/).filter(Boolean).length;
+function buildQuestionFingerprint(question) {
+    const stem = normalizeDuplicateText(question.stem);
+    const stimulus = normalizeDuplicateText(question.stimulus);
+    const choices = (Array.isArray(question.choices) ? question.choices : [])
+        .map((choice) => normalizeDuplicateText(choice))
+        .filter(Boolean)
+        .join(' | ');
+    return [stem, stimulus, choices].filter(Boolean).join(' || ');
 }
-function countKoreanCharacters(value) {
-    return (value.match(/[\u3131-\u314e\uac00-\ud7a3]/gu) ?? []).length;
+function classifyKoreanLiteratureRole(stem) {
+    const text = String(stem ?? '').replace(/\s+/g, ' ').trim();
+    if (/보기|감상/u.test(text))
+        return 'appreciation';
+    if (/표현상 특징|표현의 효과|표현 방식|시어|심상|이미지/u.test(text))
+        return 'expression';
+    if (/화자|정서|태도|심경|정서 변화/u.test(text))
+        return 'speaker';
+    if (/상황|장면|기능|갈등|전개/u.test(text))
+        return 'scene';
+    return 'other';
 }
-function normalizeText(value) {
-    return normalizeAnswerComparison(value);
+function validateEnglishCoreFormats(question, index, input, reasons, issueCounts) {
+    valEngBlank(question, index, input, reasons, issueCounts);
+    valEngInsertion(question, index, input, reasons, issueCounts);
+    valEngOrder(question, index, input, reasons, issueCounts);
+    valEngIrrel(question, index, input, reasons, issueCounts);
+    valEngContent(question, index, input, reasons, issueCounts);
+    valEngSummary(question, index, input, reasons, issueCounts);
+    valEngEmotion(question, index, input, reasons, issueCounts);
+    valEngTitle(question, index, input, reasons, issueCounts);
+    valEngGrammar(question, index, input, reasons, issueCounts);
 }
-function parseLetterChoiceIndex(value) {
-    const compact = value.trim().toUpperCase();
-    const match = compact.match(/^(?:ANSWER[:\s]*)?([A-E])(?:[.)])?$/);
-    if (!match)
-        return null;
-    return match[1].charCodeAt(0) - 65;
-}
-function parseAnswerChoiceIndex(value) {
-    const compact = value.trim().replace(/\s+/g, '');
-    const circledDigitMap = {
-        '①': 0,
-        '②': 1,
-        '③': 2,
-        '④': 3,
-        '⑤': 4,
-    };
-    if (compact in circledDigitMap) {
-        return circledDigitMap[compact];
-    }
-    if (/^[1-5][.)]?$/.test(compact)) {
-        return Number.parseInt(compact[0], 10) - 1;
-    }
-    const labeledDigit = compact.match(/^(?:[^0-9]*:)?[^0-9]*([1-5])(?:번|번이다|번임|번정답|번이정답)?$/u);
-    if (labeledDigit) {
-        return Number.parseInt(labeledDigit[1], 10) - 1;
-    }
-    return parseLetterChoiceIndex(compact);
-}
-function validateStructure(question, index, reasons, issueCounts) {
-    const choices = Array.isArray(question.choices) ? question.choices : [];
-    if (choices.length !== 5) {
-        pushReason(reasons, issueCounts, 'choice_count', `Question ${index}: choices must contain exactly 5 options.`);
-    }
-    if (choices.some((choice) => choice.trim().length === 0)) {
-        pushReason(reasons, issueCounts, 'empty_choice', `Question ${index}: every choice must be non-empty.`);
-    }
-    const placeholderRegex = /^(?:choice|option|\ubcf4\uae30|\uc120\ud0dd\uc9c0)\s*\d+$/iu;
-    const commonPlaceholders = ['placeholder', '...', '-', 'tbd'];
-    if (choices.length > 0 &&
-        choices.some((choice) => {
-            const c = choice.trim().toLowerCase();
-            return placeholderRegex.test(c) || commonPlaceholders.includes(c);
-        })) {
-        pushReason(reasons, issueCounts, 'placeholder_choice', `Question ${index}: choices contain placeholder or empty text.`);
-    }
-    const answerWithoutLeadingLabel = question.answer
-        .replace(/^(?:answer|correct answer)\s*[:\-]?\s*/i, '')
-        .replace(/^(?:정답|답)\s*[:：\-]?\s*/u, '')
-        .trim();
-    const numericAnswerIndex = parseAnswerChoiceIndex(answerWithoutLeadingLabel);
-    const normalizedAnswer = numericAnswerIndex !== null
-        ? normalizeText(choices[numericAnswerIndex] ?? '')
-        : normalizeText(answerWithoutLeadingLabel);
-    const answerMatches = choices.filter((choice) => normalizeText(choice) === normalizedAnswer).length;
-    const relaxedNormalizedAnswer = answerMatches === 1
-        ? normalizedAnswer
-        : normalizeAnswerComparison(resolveAnswerFromChoices(question.answer, choices));
-    const finalAnswerMatches = answerMatches === 1 ? answerMatches : countAnswerMatches(question.answer, choices);
-    if (finalAnswerMatches !== 1) {
-        console.warn(`[Validation Failure] Q${index} - Answer: "${question.answer}" matched ${finalAnswerMatches} choices.`);
-        console.warn(`Normalized Answer: "${relaxedNormalizedAnswer}"`);
-        choices.forEach((choice, choiceIndex) => console.warn(`Choice ${choiceIndex + 1}: "${choice}" (Normalized: "${normalizeText(choice)}")`));
-        pushReason(reasons, issueCounts, 'answer_match', `Question ${index}: answer must match exactly one choice. (Matches: ${finalAnswerMatches}; Answer: "${question.answer}"; Choices: ${JSON.stringify(choices.slice(0, 5))})`);
-    }
-    if (question.stem.trim().length < 8) {
-        pushReason(reasons, issueCounts, 'empty_stem', `Question ${index}: stem is too short or missing.`);
-    }
-    if (question.explanation.trim().length < 12) {
-        pushReason(reasons, issueCounts, 'explanation', `Question ${index}: explanation is too weak or missing.`);
-    }
-}
-function validateGenericDifficulty(question, index, difficulty, reasons, warnings, issueCounts) {
-    const stemWords = countWords(question.stem);
-    const stemKoreanChars = countKoreanCharacters(question.stem);
-    const explanationWords = countWords(question.explanation);
-    const directCuePattern = /\bwhat is stated|which is true|directly\b|다음 중 옳은 것|맞는 것/i;
-    if (difficulty === 'easy' && stemWords > 24) {
-        warnings.push(`Question ${index}: easy difficulty stem is longer than expected.`);
-    }
-    if (difficulty === 'hard') {
-        if (stemWords < 8 && stemKoreanChars < 18) {
-            pushReason(reasons, issueCounts, 'hard_too_short', `Question ${index}: hard difficulty stem is too short for deep reasoning.`);
-        }
-        if (directCuePattern.test(question.stem)) {
-            pushReason(reasons, issueCounts, 'hard_too_direct', `Question ${index}: hard difficulty question is too direct.`);
-        }
-        if (explanationWords < 5) {
-            pushReason(reasons, issueCounts, 'hard_explanation', `Question ${index}: hard difficulty explanation is too thin.`);
-        }
-    }
-}
-function validateHistoryDifficulty(question, index, difficulty, reasons, warnings, issueCounts) {
-    if (difficulty !== 'hard') {
-        if (difficulty === 'medium' && countWords(question.stem) < 8) {
-            warnings.push(`Question ${index}: medium history item may be too short.`);
-        }
-        return;
-    }
-    const normalizedStem = normalizeText(question.stem);
-    const normalizedAnswer = normalizeText(question.answer);
-    const directHistoryPatterns = [
-        /관련된 인물/,
-        /해당하는 것/,
-        /옳은 것을 고른/,
-        /설명한 것/,
-    ];
-    if (directHistoryPatterns.some((pattern) => pattern.test(question.stem))) {
-        pushReason(reasons, issueCounts, 'history_hard_direct', `Question ${index}: hard history item is too direct.`);
-    }
-    if (normalizedAnswer.length >= 8 && normalizedStem.includes(normalizedAnswer)) {
-        pushReason(reasons, issueCounts, 'history_hard_overlap', `Question ${index}: hard history answer is too directly exposed in the stem.`);
-    }
-    const choices = question.choices ?? [];
-    const averageLength = choices.length > 0
-        ? choices.reduce((sum, choice) => sum + choice.length, 0) / choices.length
-        : 0;
-    if (averageLength > 0 && question.answer.length > averageLength * 1.9) {
-        pushReason(reasons, issueCounts, 'history_hard_distractor', `Question ${index}: hard history distractors are too weak compared with the answer.`);
-    }
-    const reasoningMarkers = [
-        '자료',
-        '비교',
-        '원인',
-        '결과',
-        '추론',
-        '시기',
-        '변화',
-        '해석',
-    ];
-    if (!reasoningMarkers.some((marker) => question.stem.includes(marker))) {
-        warnings.push(`Question ${index}: hard history item may still lean too much toward recall.`);
-    }
-}
-function validateTopicReflection(question, index, title, topic, warnings) {
-    const text = `${question.topic} ${question.stem} ${question.explanation}`.toLowerCase();
-    const titleTokens = tokenize(title ?? '');
-    const topicTokens = tokenize(topic ?? '');
-    if (titleTokens.length > 0 && !titleTokens.some((token) => text.includes(token))) {
-        warnings.push(`Question ${index}: title reflection is weak (expected keywords from "${title}").`);
-    }
-    if (topicTokens.length > 0 && !topicTokens.some((token) => text.includes(token))) {
-        warnings.push(`Question ${index}: topic reflection is weak (expected keywords from "${topic}").`);
-    }
-}
-function validateSelectionReflection(question, index, input, warnings) {
-    if (usesNoSelector(input.subject)) {
-        return;
-    }
-    const selectionValue = String(input.subject) === 'social' ? input.format : input.questionType;
-    if (!selectionValue || selectionValue === '전체') {
-        return;
-    }
-    const text = `${question.topic} ${question.stem} ${question.explanation}`.toLowerCase();
-    const tokens = tokenize(selectionValue);
-    const subject = String(input.subject);
-    if (subject === 'social' ||
-        subject.includes('social_') ||
-        subject === 'science') {
-        return;
-    }
-    if (tokens.length > 0 && !tokens.some((token) => text.includes(token))) {
-        warnings.push(`Question ${index}: selected ${subject === 'social' ? 'format' : 'question type'} is weakly reflected.`);
-    }
-}
-function validateHistorySubjectFit(question, index, reasons, warnings, issueCounts) {
-    const text = `${question.topic} ${question.stem} ${question.choices?.join(' ') ?? ''} ${question.explanation}`.toLowerCase();
-    const historyMarkers = [
-        '조선',
-        '고려',
-        '신라',
-        '백제',
-        '고구려',
-        '대한제국',
-        '일제',
-        '개항',
-        '왕',
-        '제도',
-        '사건',
-        '문화',
-        '경제',
-        '사회',
-        '정치',
-        '역사',
-        '인물',
-    ];
-    const offTopicMarkers = [
-        'exercise',
-        'fitness',
-        'health',
-        'athlete',
-        'main idea',
-        'best title',
-        'author',
-    ];
-    const koreanCount = (text.match(/[\u3131-\u314e\uac00-\ud7a3]{2,}/gu) ?? []).length;
-    const englishCount = (text.match(/[a-z]{4,}/g) ?? []).length;
-    if (englishCount > 20 && englishCount > koreanCount * 1.5) {
-        pushReason(reasons, issueCounts, 'history_language', `Question ${index}: history output contains too much English.`);
-    }
-    if (!historyMarkers.some((marker) => text.includes(marker))) {
-        warnings.push(`Question ${index}: history context markers not clearly detected.`);
-    }
-    if (offTopicMarkers.some((marker) => text.includes(marker))) {
-        pushReason(reasons, issueCounts, 'history_scope', `Question ${index}: history item drifted into unrelated generic content.`);
-    }
-}
+/**
+ * 생성된 전체 문항들을 검증합니다.
+ * 이 함수는 주 검증 진입점으로 각 세부 검증 모듈을 호출합니다.
+ */
 export function validateGeneratedQuestions(input) {
     const reasons = [];
     const warnings = [];
     const issueCounts = {};
-    if (input.questions.length !== input.count) {
-        pushReason(reasons, issueCounts, 'question_count', `Expected ${input.count} questions but received ${input.questions.length}.`);
+    // 1. 문항 개수 검증
+    if (input.questions.length === 0) {
+        pushReason(reasons, issueCounts, 'question_count_zero', `Expected ${input.count} questions but received 0.`);
+    }
+    else if (input.questions.length !== input.count) {
+        warnings.push(`Expected ${input.count} questions but received ${input.questions.length}.`);
     }
     const subject = String(input.subject);
+    const fingerprintMap = new Map();
+    const literatureSetRoleMap = new Map();
+    // 2. 개별 문항 검증 루프
     input.questions.forEach((question, zeroBasedIndex) => {
         const index = zeroBasedIndex + 1;
+        const fingerprint = buildQuestionFingerprint(question);
+        if (fingerprint) {
+            const seen = fingerprintMap.get(fingerprint) ?? [];
+            seen.push(index);
+            fingerprintMap.set(fingerprint, seen);
+        }
+        if (subject === 'korean_literature') {
+            const stimulusKey = normalizeLiteratureBaseStimulus(question.stimulus);
+            if (stimulusKey) {
+                const seenRoles = literatureSetRoleMap.get(stimulusKey) ?? [];
+                seenRoles.push({ index, role: classifyKoreanLiteratureRole(question.stem) });
+                literatureSetRoleMap.set(stimulusKey, seenRoles);
+            }
+        }
+        // 기본 구조 검증 (선지, 정답 매칭 등)
         validateStructure(question, index, reasons, issueCounts);
+        // 주제 및 요청 사항 반영 검증
         validateTopicReflection(question, index, input.title, input.topic, warnings);
         validateSelectionReflection(question, index, input, warnings);
-        if (subject === 'korean_history') {
+        // 영어는 생성 후 억지 수정보다, 유형별 핵심 형식만 검증합니다.
+        validateEnglishCoreFormats(question, index, input, reasons, issueCounts);
+        // 과목별 난이도/특화 검증
+        if (subject === 'korean_history' || subject === 'high_korean_history' || subject === 'middle_history') {
             validateHistoryDifficulty(question, index, input.difficulty, reasons, warnings, issueCounts);
             validateHistorySubjectFit(question, index, reasons, warnings, issueCounts);
         }
         else {
-            validateGenericDifficulty(question, index, input.difficulty, reasons, warnings, issueCounts);
+            validateGenericDifficulty(question, index, input, reasons, warnings, issueCounts);
         }
+        validateKoreanLiteratureQuality(question, index, input, reasons, warnings, issueCounts);
     });
-    const _metadata = {
-        difficultyLabel: difficultyRules[input.difficulty].label,
-        schoolLevelLabel: schoolLevelRules[input.schoolLevel].label,
-    };
-    void _metadata;
+    for (const indexes of fingerprintMap.values()) {
+        if (indexes.length < 2) {
+            continue;
+        }
+        pushReason(reasons, issueCounts, 'duplicate_questions', `Duplicate question detected across items ${indexes.join(', ')}.`);
+    }
+    if (subject === 'korean_literature') {
+        for (const entries of literatureSetRoleMap.values()) {
+            if (entries.length <= 1) {
+                continue;
+            }
+            if (entries.length > 3) {
+                pushReason(reasons, issueCounts, 'korean_literature_set_too_large', `Korean literature shared-passage set exceeds 3 questions: ${entries.map((entry) => entry.index).join(', ')}.`);
+            }
+            const roleGroups = new Map();
+            entries.forEach(({ index, role }) => {
+                const seen = roleGroups.get(role) ?? [];
+                seen.push(index);
+                roleGroups.set(role, seen);
+            });
+            for (const [role, indexes] of roleGroups.entries()) {
+                if (role === 'other' || indexes.length < 2) {
+                    continue;
+                }
+                pushReason(reasons, issueCounts, 'korean_literature_set_role_overlap', `Korean literature shared-passage set repeats the same role "${role}" across items ${indexes.join(', ')}.`);
+            }
+        }
+    }
     return {
         isValid: reasons.length === 0,
         reasons,

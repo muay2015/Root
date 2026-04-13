@@ -3,14 +3,23 @@ import { resolveAnswerFromChoices } from '../answerMatching';
 import { isEnglishSubject, normalizeEnglishPlainText, countEnglishWords } from './core';
 
 export const CANONICAL_ORDER_CHOICES = [
-  '(A) - (C) - (B)',
-  '(B) - (A) - (C)',
-  '(B) - (C) - (A)',
-  '(C) - (A) - (B)',
-  '(C) - (B) - (A)',
+  'A-B-C',
+  'A-C-B',
+  'B-A-C',
+  'B-C-A',
+  'C-A-B',
 ];
 
 const ORDER_MARKER_REGEX = /(\(\s*([ABC])\s*\)|\[\s*([ABC])\s*\])/gi;
+
+function sanitizeOrderMarkers(text: string) {
+  return normalizeEnglishPlainText(text)
+    .replace(/\(\s*([ABC])\s*\)\s*[_\-.~]{2,}/gi, '($1) ')
+    .replace(/\[\s*([ABC])\s*\]\s*[_\-.~]{2,}/gi, '[$1] ')
+    .replace(/\(\s*([ABC])\s*\)\s*_{1,}/gi, '($1) ')
+    .replace(/\[\s*([ABC])\s*\]\s*_{1,}/gi, '[$1] ')
+    .replace(/(\(\s*[ABC]\s*\)|\[\s*[ABC]\s*\])\s{2,}/gi, '$1 ');
+}
 
 /**
  * 순서 배열 유형 판별
@@ -41,7 +50,7 @@ export function isEnglishOrderArrangementType(params: {
  * 지문에서 (A), (B), (C) 섹션 추출
  */
 export function extractOrderArrangementSections(text: string) {
-  const normalized = normalizeEnglishPlainText(text).replace(
+  const normalized = sanitizeOrderMarkers(text).replace(
     /([^\n])\s*(\(\s*[ABC]\s*\)|\[\s*[ABC]\s*\])/g,
     '$1\n$2',
   );
@@ -55,7 +64,11 @@ export function extractOrderArrangementSections(text: string) {
       const label = (match[2] || match[3] || '').toUpperCase();
       const start = (match.index ?? 0) + marker.length;
       const end = index + 1 < matches.length ? matches[index + 1].index ?? normalized.length : normalized.length;
-      const content = normalized.slice(start, end).replace(/^\s*[:\-–—]?\s*/, '').trim();
+      const content = normalized
+        .slice(start, end)
+        .replace(/^_+/g, '')
+        .replace(/^\s*[:\-–—]?\s*/, '')
+        .trim();
 
       return { label, content };
     })
@@ -75,7 +88,7 @@ export function reconstructOrderArrangementStem(
     .map((label) => sections.find((section) => section.label === label))
     .filter((section): section is { label: string; content: string } => Boolean(section));
 
-  if (ordered.length < 3) return normalizeEnglishPlainText(fallbackStem);
+  if (ordered.length < 3) return sanitizeOrderMarkers(fallbackStem);
 
   return ordered.map((section) => `(${section.label}) ${section.content.trim()}`).join('\n\n').trim();
 }
@@ -166,8 +179,8 @@ export function standardizeEnglishOrderArrangement(params: {
   materialText?: string;
   answer?: unknown;
 }) {
-  const normalizedStem = normalizeEnglishPlainText(params.stem);
-  const normalizedStimulus = normalizeEnglishPlainText(params.stimulus);
+  const normalizedStem = sanitizeOrderMarkers(params.stem);
+  const normalizedStimulus = sanitizeOrderMarkers(params.stimulus);
   let sections = extractOrderArrangementSections(`${normalizedStimulus}\n${normalizedStem}`);
 
   let stimulus =
@@ -185,7 +198,7 @@ export function standardizeEnglishOrderArrangement(params: {
   const answer = resolveAnswerFromChoices(params.answer, choices);
 
   return {
-    stem: reconstructOrderArrangementStem(sections, normalizedStem),
+    stem: sanitizeOrderMarkers(reconstructOrderArrangementStem(sections, normalizedStem)),
     stimulus: stimulus || null,
     choices,
     answer,

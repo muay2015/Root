@@ -9,7 +9,25 @@ export function extractJson(text: string) {
     }
   }
 
-  return clean.replace(/(?<!\\)\\(?![\\"/bfnrtu])/g, '\\\\');
+  // 이스케이프되지 않은 단독 백슬래시 보정
+  clean = clean.replace(/(?<!\\)\\(?![\\"/bfnrtu])/g, '\\\\');
+
+  // trailing comma 제거 (AI가 마지막 항목 뒤에 쉼표를 넣는 흔한 실수)
+  clean = clean.replace(/,\s*([}\]])/g, '$1');
+
+  // single-quoted 키/값을 double-quote로 변환 (문자열 내부의 apostrophe는 보존)
+  // JSON 문맥에서만 동작: 줄 시작 또는 { , [ 뒤의 single-quoted 키
+  clean = clean.replace(
+    /(?<=[\[{,]\s*)'((?:[^'\\]|\\.)*?)'\s*:/g,
+    '"$1":',
+  );
+  // single-quoted 값: 콜론 뒤의 single-quoted 문자열
+  clean = clean.replace(
+    /:\s*'((?:[^'\\]|\\.)*?)'\s*(?=[,\]}])/g,
+    ': "$1"',
+  );
+
+  return clean;
 }
 
 function splitChoiceStringSafely(value: string) {

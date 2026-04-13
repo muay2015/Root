@@ -15,7 +15,9 @@ export function validateStructure(
   reasons: string[],
   issueCounts: Record<string, number>,
 ) {
-  const choices = Array.isArray(question.choices) ? question.choices : [];
+  const choices = Array.isArray(question.choices)
+    ? question.choices.map((choice) => String(choice ?? ''))
+    : [];
 
   // 1. 선지 개수 검증 (5지선다 기준)
   if (choices.length !== 5) {
@@ -85,7 +87,7 @@ export function validateStructure(
   }
 
   // 5. 발문 길이 기초 검증 (최소 8자)
-  if (question.stem.trim().length < 8) {
+  if (String(question.stem ?? '').trim().length < 8) {
     pushReason(
       reasons,
       issueCounts,
@@ -95,7 +97,7 @@ export function validateStructure(
   }
 
   // 6. 해설 길이 기초 검증 (최소 12자)
-  if (question.explanation.trim().length < 12) {
+  if (String(question.explanation ?? '').trim().length < 12) {
     pushReason(
       reasons,
       issueCounts,

@@ -88,6 +88,21 @@ const subjectRules = {
         choiceGuidance: ['유사한 스펠링이나 기초 문법 오류를 오답으로 활용.'],
         explanationGuidance: ['정답이 되는 주요 문법 포인트나 해석을 명확히 제시.']
     },
+    high_english: {
+        objective: '고난도 영어 독해 및 어법 문항 생성',
+        contentScope: '고등학교 영어/영어I/영어II 교과서 및 수능 기출 수준의 외부 지문',
+        evidenceStyle: '맥락적 추론, 논리적 연결성, 구문 분석',
+        stemGuidance: [
+            '요청된 영어 유형의 발문과 지문 형식을 정확히 유지하세요. 서로 다른 유형 형식을 섞지 마세요.',
+            '영어 지문은 한 가지 핵심 평가 포인트로 수렴하도록 구성하고, 지문 내부 근거만으로 정답을 도출할 수 있게 하세요.',
+            '밑줄 표시는 어법/어휘 유형에서만 사용하고, 다른 독해 유형에서는 불필요한 표시를 넣지 마세요.'
+        ],
+        choiceGuidance: [
+            '선지는 해당 유형의 시험 관행에 맞는 형식만 사용하세요.',
+            '매력적인 오답은 같은 논리 축 위에서 경쟁하게 만들고, 엉뚱한 오답은 피하세요.'
+        ],
+        explanationGuidance: ['글의 전체적인 흐름과 함께 결정적인 논리적 단서(지시어, 연결어 등)를 구체적으로 설명하세요.']
+    },
     // --- 고등 전용 규칙 ---
     high_korean: {
         objective: '고등 국어(공통) 문항 생성',
@@ -122,8 +137,55 @@ const subjectRules = {
         choiceGuidance: ['합성함수 미분법 누락이나 적분 상수 오해를 오답으로 구성.'],
         explanationGuidance: ['수리 논술 수준의 상세하고 논리적인 풀이 제공.']
     },
+    // --- 과학 탐구 전용 규칙 ---
+    physics_1: {
+        objective: '물리학 I 문항 생성',
+        contentScope: '고등학교 물리학 I (역학과 에너지, 물질과 전자기, 파동과 정보)',
+        evidenceStyle: '물리 법칙, 공식, 그래프 및 현상 분석',
+        stemGuidance: [
+            '뉴턴 운동 법칙, 역학적 에너지 보존, 특수 상대성 이론 등을 한국어로 정교하게 다루세요.',
+            '수치 계산 문항보다는 물리적 상황의 변화나 관계를 추론하는 문항을 선호합니다.',
+            '모든 텍스트는 반드시 한국어로 작성하십시오. 영어 지문이나 영어 요약문 형식을 절대 사용하지 마십시오.'
+        ],
+        choiceGuidance: ['물리적 오개념(misconception)을 반영한 매력적인 오답을 구성하세요.'],
+        explanationGuidance: ['물리 법칙의 적용 과정과 수식 유도 과정을 단계별로 설명하세요.']
+    },
+    chemistry_1: {
+        objective: '화학 I 문항 생성',
+        contentScope: '고등학교 화학 I (화학의 첫걸음, 원자의 구조, 결합과 분자, 역동적인 화학 반응)',
+        evidenceStyle: '화학적 개념, 양적 관계, 화학 반응식 분석',
+        stemGuidance: [
+            '몰 농도, 원자의 주기적 성질, 산화 환원, 중화 반응 등을 한국어로 다루세요.',
+            '모든 텍스트는 반드시 한국어로 작성하십시오. 영어 지문이나 영어 요약문 형식을 절대 사용하지 마십시오.'
+        ],
+        choiceGuidance: ['양적 관계 계산 실수나 기본 개념 혼동을 오답으로 활용하세요.'],
+        explanationGuidance: ['화학 반응의 원리와 계산 단계를 명확히 제시하세요.']
+    },
+    biology_1: {
+        objective: '생명과학 I 문항 생성',
+        contentScope: '고등학교 생명과학 I (생명 활동, 항상성과 조절, 유전, 생태계)',
+        evidenceStyle: '생명 현상 자료, 가계도, 그래프 해석',
+        stemGuidance: [
+            '항상성 유지, 유전 원리, 신경계 등을 한국어로 정교하게 출제하세요.',
+            '모든 텍스트는 반드시 한국어로 작성하십시오. 영어 지문이나 영어 요약문 형식을 절대 사용하지 마십시오.'
+        ],
+        choiceGuidance: ['유전적 확률 계산이나 자료 해석 오류를 반영한 선지를 구성하세요.'],
+        explanationGuidance: ['제시된 자료의 해석 로직과 유전 원리를 구체적으로 설명하세요.']
+    },
+    earth_science_1: {
+        objective: '지구과학 I 문항 생성',
+        contentScope: '고등학교 지구과학 I (고체 지구, 대기와 해양, 우주)',
+        evidenceStyle: '지구과학적 자료, 연표, 위성 사진 분석',
+        stemGuidance: [
+            '판 구조론, 지구 기후 변화, 외계 행성 탐사 등을 한국어로 출제하세요.',
+            '모든 텍스트는 반드시 한국어로 작성하십시오. 영어 지문이나 영어 요약문 형식을 절대 사용하지 마십시오.'
+        ],
+        choiceGuidance: ['자료 해석의 착오나 선입견을 이용한 오답을 만드세요.'],
+        explanationGuidance: ['지구과학적 현상의 원인과 자료 분석법을 친절하게 설명하세요.']
+    },
     // ... (기타 과목 규칙들은 필요 시 순차적으로 확장)
 };
+;
 export function getGenerationRules(input) {
     const subjectConfig = SUBJECT_CONFIG[input.subject];
     const difficulty = difficultyRules[input.difficulty];
