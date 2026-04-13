@@ -109,16 +109,23 @@ function PromptText({ text, isEnglishReading }: { text: string, isEnglishReading
 export function PromptRenderer({
   text,
   isEnglishSentenceInsertion,
+  isEnglishGrammar,
 }: {
   text: string;
   isEnglishSentenceInsertion?: boolean;
+  isEnglishGrammar?: boolean;
 }) {
   const markedText = isEnglishSentenceInsertion ? text : injectDataBlockMarkers(text);
 
-  let processedText = markedText
-    .replace(/([^\n<])\s*(\([1-5]\))/g, '$1\n$2')
-    .replace(/([^\n<])\s*(①|②|③|④|⑤)/g, '$1\n$2')
-    .replace(/([^\n<])\s+(①|②|③|④|⑤)(?=\s)/g, '$1\n$2');
+  // 어법/어휘 문항에서는 ①~⑤가 문장 흐름 중간에 인라인으로 사용되므로
+  // 강제 줄바꿈을 삽입하면 텍스트가 끊겨 보인다. grammar 모드에서는 건너뜀.
+  let processedText = markedText;
+  if (!isEnglishGrammar) {
+    processedText = processedText
+      .replace(/([^\n<])\s*(\([1-5]\))/g, '$1\n$2')
+      .replace(/([^\n<])\s*(①|②|③|④|⑤)/g, '$1\n$2')
+      .replace(/([^\n<])\s+(①|②|③|④|⑤)(?=\s)/g, '$1\n$2');
+  }
 
   if (isEnglishSentenceInsertion) {
     processedText = processedText

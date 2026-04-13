@@ -5,6 +5,7 @@ interface EnglishReadingLayoutProps {
   instruction: string;
   passage: string;
   isEnglishReading: boolean;
+  isEnglishGrammar?: boolean;
 }
 
 /**
@@ -14,6 +15,7 @@ export const EnglishReadingLayout: React.FC<EnglishReadingLayoutProps> = ({
   instruction,
   passage,
   isEnglishReading,
+  isEnglishGrammar,
 }) => {
   const hasPassage = passage && instruction.trim() !== passage.trim();
 
@@ -22,7 +24,7 @@ export const EnglishReadingLayout: React.FC<EnglishReadingLayoutProps> = ({
       {/* 1. 발문 (Instruction) - 항상 박스 외부 상단에 표시 */}
       {instruction.trim() && (
         <div className="mb-4 text-[16px] leading-[1.7] text-slate-800 sm:text-[17px]">
-          <PromptRenderer text={instruction} isEnglishSentenceInsertion={isEnglishReading} />
+          <PromptRenderer text={instruction} isEnglishSentenceInsertion={isEnglishReading} isEnglishGrammar={isEnglishGrammar} />
         </div>
       )}
 
@@ -31,7 +33,7 @@ export const EnglishReadingLayout: React.FC<EnglishReadingLayoutProps> = ({
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50 shadow-sm">
           <div className="px-5 py-5 sm:px-6 sm:py-6">
             <div className="text-justify whitespace-pre-wrap break-words break-keep text-[16px] leading-[1.85] text-slate-900 sm:text-[17px] sm:leading-[1.9]">
-              <PromptRenderer text={passage} isEnglishSentenceInsertion={isEnglishReading} />
+              <PromptRenderer text={passage} isEnglishSentenceInsertion={isEnglishReading} isEnglishGrammar={isEnglishGrammar} />
             </div>
           </div>
         </div>

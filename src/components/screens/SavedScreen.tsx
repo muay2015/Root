@@ -1,17 +1,9 @@
-import React, { useMemo, useState } from 'react';
-import { EllipsisVertical, Info, RefreshCw, FileText, Search, Plus, LogIn, ChevronRight, CheckCircle2, Trash2, X } from 'lucide-react';
-import { SUBJECT_CONFIG } from '../../lib/question/subjectConfig';
-import { 
-  formatSavedDate, 
-  getDifficultyLabel, 
-  getSchoolLevelLabel, 
-  getSourcePreview, 
-  normalizeToSubjectKey, 
-  isDifficultyLevel, 
-  isSchoolLevel 
-} from '../../lib/examUtils';
-import { SubjectTag } from '../ui/SubjectTag';
+import React from 'react';
+import { RefreshCw, FileText, Search, Plus, LogIn, CheckCircle2, Trash2 } from 'lucide-react';
 import type { PersistedExamRecord } from '../../lib/rootPersistence';
+import { useSavedScreenLogic } from '../../hooks/screens/useSavedScreenLogic';
+import { SavedExamCard } from './saved/SavedExamCard';
+import { SavedSelectionBar } from './saved/SavedSelectionBar';
 
 interface SavedScreenProps {
   exams: PersistedExamRecord[];
@@ -40,97 +32,22 @@ export function SavedScreen({
   selectedSubject,
   onSelectSubject,
 }: SavedScreenProps) {
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [previewExamId, setPreviewExamId] = useState<string | null>(null);
-  const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [isDeleting, setIsDeleting] = useState(false);
-  const totalGeneratedQuestionCount = useMemo(
-    () => exams.reduce((sum, exam) => sum + Number(exam.question_count || 0), 0),
-    [exams],
-  );
-  const allSubjects = useMemo(() => {
-    const list = new Set<string>(['전체']);
-    for (const exam of exams) {
-      const subjectKey = normalizeToSubjectKey(exam.subject, exam.title, exam.questions[0]?.topic, exam.questions, exam.exam_format);
-      const label = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
-      list.add(label);
-    }
-    return Array.from(list).sort((a, b) => {
-      if (a === '전체') return -1;
-      if (b === '전체') return 1;
-      return a.localeCompare(b);
-    });
-  }, [exams]);
-
-  const filteredExams = useMemo(() => {
-    if (selectedSubject === '전체') return exams;
-    return exams.filter((exam) => {
-      const subjectKey = normalizeToSubjectKey(exam.subject, exam.title, exam.questions[0]?.topic, exam.questions, exam.exam_format);
-      const label = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
-      return label === selectedSubject;
-    });
-  }, [exams, selectedSubject]);
-
-  const groupedBySubject = useMemo(() => {
-    const subjectsMap: Record<string, PersistedExamRecord[]> = {};
-
-    for (const exam of filteredExams) {
-      const subjectKey = normalizeToSubjectKey(exam.subject, exam.title, exam.questions[0]?.topic, exam.questions, exam.exam_format);
-      const label = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
-      if (!subjectsMap[label]) subjectsMap[label] = [];
-      subjectsMap[label].push(exam);
-    }
-
-    return Object.entries(subjectsMap).sort((a, b) => {
-      if (a[0] === '기타 과목') return 1;
-      if (b[0] === '기타 과목') return -1;
-      return a[0].localeCompare(b[0]);
-    });
-  }, [filteredExams]);
-
-  const toggleSelection = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const selectAll = () => {
-    if (selectedIds.size === filteredExams.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filteredExams.map((e) => e.id)));
-    }
-  };
-
-  const handleDeleteSelected = async () => {
-    if (selectedIds.size === 0 || isDeleting) return;
-    if (window.confirm(`${selectedIds.size}개의 문항을 영구적으로 삭제하시겠습니까?`)) {
-      try {
-        setIsDeleting(true);
-        await onDeleteMultiple(Array.from(selectedIds));
-        setIsSelectionMode(false);
-        setSelectedIds(new Set());
-      } finally {
-        setIsDeleting(false);
-      }
-    }
-  };
+  const { state, actions } = useSavedScreenLogic({
+    exams,
+    selectedSubject,
+    onDeleteMultiple,
+  });
 
   return (
     <main className="min-h-screen bg-surface px-4 pb-28 pt-8 sm:px-6 sm:pt-10">
       <div className="mx-auto max-w-5xl space-y-8">
-        {/* 메뉴 오픈 시 외부 클릭을 감지하기 위한 투명 오버레이 */}
-        {openMenuId && (
-          <div 
-            className="fixed inset-0 z-[15] bg-transparent" 
-            onClick={() => setOpenMenuId(null)}
+        {state.openMenuId && (
+          <div
+            className="fixed inset-0 z-[15] bg-transparent"
+            onClick={() => actions.setOpenMenuId(null)}
           />
         )}
-        {/* Header Area */}
+
         <header className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -138,38 +55,40 @@ export function SavedScreen({
                 <FileText className="h-6 w-6" />
               </div>
               <div>
-                <h1 className="text-3xl font-black tracking-tight text-slate-900">나의 학습 보관함</h1>
-                <p className="text-sm font-medium text-slate-500">생성된 모든 평가 데이터가 안전하게 보관 중입니다.</p>
+                <h1 className="text-3xl font-black tracking-tight text-slate-900">
+                  나의 학습 보관함
+                </h1>
+                <p className="text-sm font-medium text-slate-500">
+                  생성된 모든 평가 데이터가 안전하게 보관 중입니다.
+                </p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <button
-                onClick={() => {
-                  setIsSelectionMode(!isSelectionMode);
-                  setSelectedIds(new Set());
-                }}
+                onClick={actions.handleToggleSelectionMode}
                 className={`flex h-12 items-center gap-2 rounded-2xl px-5 text-sm font-black transition-all ${
-                  isSelectionMode 
-                    ? 'bg-slate-900 text-white' 
+                  state.isSelectionMode
+                    ? 'bg-slate-900 text-white'
                     : 'bg-white text-slate-600 ring-1 ring-outline hover:bg-slate-50'
                 }`}
               >
-                {isSelectionMode ? '선택 취소' : '선택'}
+                {state.isSelectionMode ? '선택 취소' : '선택'}
               </button>
-              <button 
+              <button
                 onClick={onCreate}
                 className="hidden sm:flex h-12 items-center gap-2 rounded-2xl premium-gradient px-6 text-sm font-black text-white shadow-lg shadow-blue-900/10 transition-all hover:scale-105 active:scale-95"
               >
-                <Plus className="h-5 w-5" />
-                새 문제 생성
+                <Plus className="h-5 w-5" />새 문제 생성
               </button>
             </div>
           </div>
 
           <div className="inline-flex w-fit items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-outline">
             <span className="text-slate-400">총 생성 문항</span>
-            <span className="text-lg font-black text-slate-900">{totalGeneratedQuestionCount.toLocaleString()}</span>
+            <span className="text-lg font-black text-slate-900">
+              {state.totalGeneratedQuestionCount.toLocaleString()}
+            </span>
             <span className="text-slate-500">문항</span>
           </div>
 
@@ -186,7 +105,9 @@ export function SavedScreen({
                 <LogIn className="h-5 w-5" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-black text-slate-900">클라우드 동기화가 활성화되지 않았습니다</p>
+                <p className="text-sm font-black text-slate-900">
+                  클라우드 동기화가 활성화되지 않았습니다
+                </p>
                 <p className="mt-1 text-[13px] font-medium leading-relaxed text-slate-500">
                   로그인하시면 모바일과 PC를 넘나들며 모든 학습 데이터를 실시간으로 공유할 수 있습니다.
                 </p>
@@ -201,19 +122,20 @@ export function SavedScreen({
           )}
         </header>
 
-        {/* Filters */}
         <section className="sticky top-[72px] z-10 -mx-4 bg-surface/80 px-4 py-4 backdrop-blur-md sm:mx-0 sm:px-0">
           <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
-            {isSelectionMode && (
+            {state.isSelectionMode && (
               <button
-                onClick={selectAll}
+                onClick={actions.selectAll}
                 className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-[13px] font-black transition-all ${
-                  selectedIds.size === filteredExams.length && filteredExams.length > 0
+                  state.selectedIds.size === state.filteredExams.length &&
+                  state.filteredExams.length > 0
                     ? 'bg-slate-900 text-white shadow-md'
                     : 'bg-white text-slate-500 ring-1 ring-outline hover:bg-slate-50'
                 }`}
               >
-                {selectedIds.size === filteredExams.length && filteredExams.length > 0 ? (
+                {state.selectedIds.size === state.filteredExams.length &&
+                state.filteredExams.length > 0 ? (
                   <CheckCircle2 className="h-4 w-4" />
                 ) : (
                   <div className="h-4 w-4 rounded-full border-2 border-slate-300" />
@@ -221,7 +143,7 @@ export function SavedScreen({
                 전체 선택
               </button>
             )}
-            {allSubjects.map((subj) => (
+            {state.allSubjects.map((subj) => (
               <button
                 key={subj}
                 onClick={() => onSelectSubject(subj)}
@@ -237,180 +159,59 @@ export function SavedScreen({
           </div>
         </section>
 
-        {filteredExams.length === 0 ? (
+        {state.filteredExams.length === 0 ? (
           <section className="premium-card flex flex-col items-center justify-center py-24 text-center">
             <Search className="mb-4 h-12 w-12 text-slate-200" />
             <p className="text-lg font-bold text-slate-400">
-              {selectedSubject === '전체' ? '보관된 데이터가 없습니다.' : `'${selectedSubject}' 관련 자료를 찾을 수 없습니다.`}
+              {selectedSubject === '전체'
+                ? '보관된 데이터가 없습니다.'
+                : `'${selectedSubject}' 관련 자료를 찾을 수 없습니다.`}
             </p>
-            <button onClick={onCreate} className="mt-6 text-sm font-black text-accent hover:underline">
+            <button
+              onClick={onCreate}
+              className="mt-6 text-sm font-black text-accent hover:underline"
+            >
               첫 문제 생성 시작하기
             </button>
           </section>
         ) : (
           <div className="space-y-10">
-            {groupedBySubject.map(([subjectLabel, examList]) => (
+            {state.groupedBySubject.map(([subjectLabel, examList]) => (
               <section key={subjectLabel} className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   {examList.map((exam) => (
-                    <article 
-                      key={exam.id} 
-                      onClick={() => isSelectionMode && toggleSelection(exam.id)}
-                      className={`premium-card group relative p-5 transition-all hover:ring-2 hover:ring-accent/20 ${
-                        isSelectionMode ? 'cursor-pointer active:scale-[0.98]' : ''
-                      } ${
-                        selectedIds.has(exam.id) ? 'ring-2 ring-accent bg-accent/[0.02]' : ''
-                      }`}
-                    >
-                      <div className="flex flex-col h-full">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-start gap-3 min-w-0">
-                             {isSelectionMode && (
-                               <div className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-all ${
-                                 selectedIds.has(exam.id) 
-                                   ? 'bg-accent text-white shadow-sm' 
-                                   : 'bg-white ring-2 ring-slate-200'
-                               }`}>
-                                 {selectedIds.has(exam.id) && <CheckCircle2 className="h-4 w-4" />}
-                               </div>
-                             )}
-                             <div className="flex flex-col gap-1.5 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <SubjectTag subject={exam.subject} title={exam.title} altText={exam.questions[0]?.topic} questions={exam.questions} schoolLevel={exam.exam_format} />
-                                  <span className="text-[10px] font-bold text-slate-300">/</span>
-                                  <span className="text-[10px] font-bold text-slate-400">{formatSavedDate(exam.created_at)}</span>
-                                </div>
-                                <h3 className={`line-clamp-2 text-[16px] font-black leading-snug transition-colors ${
-                                  selectedIds.has(exam.id) ? 'text-accent' : 'text-slate-900 group-hover:text-accent'
-                                }`}>
-                                  {exam.title}
-                                </h3>
-                             </div>
-                          </div>
-                          
-                          {!isSelectionMode && (
-                            <div className="relative shrink-0">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenMenuId((current) => (current === exam.id ? null : exam.id));
-                                }}
-                                className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-900 transition-all"
-                              >
-                                <EllipsisVertical className="h-3.5 w-3.5" />
-                              </button>
-                            {openMenuId === exam.id && (
-                              <div className="absolute right-0 top-9 z-20 flex min-w-[160px] flex-col rounded-2xl bg-white p-1.5 shadow-2xl ring-1 ring-outline animate-in fade-in zoom-in-95 duration-200">
-                                {exam.source_text?.trim() && (
-                                  <button
-                                    onClick={() => {
-                                      setPreviewExamId((current) => (current === exam.id ? null : exam.id));
-                                      setOpenMenuId(null);
-                                    }}
-                                    className="rounded-xl px-3 py-2 text-left text-[13px] font-bold text-slate-600 hover:bg-slate-50"
-                                  >
-                                    원문 텍스트 {previewExamId === exam.id ? '숨기기' : '미리보기'}
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => onContinueGenerate(exam)}
-                                  className="rounded-xl px-3 py-2 text-left text-[13px] font-bold text-slate-600 hover:bg-slate-50"
-                                >
-                                  유사 문항 생성
-                                </button>
-                                <div className="my-1 border-t border-outline" />
-                                <button
-                                  onClick={() => {
-                                    onDelete(exam.id);
-                                    setOpenMenuId(null);
-                                  }}
-                                  className="rounded-xl px-3 py-2 text-left text-[13px] font-bold text-red-500 hover:bg-red-50"
-                                >
-                                  영구 삭제
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        </div>
- 
-                        <div className="mt-auto pt-3 border-t border-slate-50/50">
-                          {/* 메타 정보와 이동 버튼 */}
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-slate-400">
-                              <span className="whitespace-nowrap shrink-0">{isSchoolLevel(exam.exam_format) ? getSchoolLevelLabel(exam.exam_format) : exam.exam_format}</span>
-                              <span className="opacity-20 shrink-0">•</span>
-                              <span className="whitespace-nowrap shrink-0">{isDifficultyLevel(exam.difficulty) ? getDifficultyLabel(exam.difficulty) : exam.difficulty}</span>
-                              <span className="opacity-20 shrink-0">•</span>
-                              <span className="whitespace-nowrap shrink-0 text-slate-600">{exam.question_count}문항</span>
-                            </div>
-
-                            <button
-                              onClick={(e) => {
-                                if (isSelectionMode) return;
-                                e.stopPropagation();
-                                onOpen(exam);
-                              }}
-                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all active:scale-95 ${
-                                isSelectionMode 
-                                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-50' 
-                                  : 'bg-slate-900 text-white shadow-lg shadow-slate-900/10 hover:scale-110'
-                              }`}
-                            >
-                              <ChevronRight className="h-4 w-4" />
-                            </button>
-                          </div>
-
-                          {/* 파일 첨부 영역 (있는 경우만 하단에 별도로 표시) */}
-                          {(exam.question_files?.length > 0 || exam.answer_files?.length > 0) && (
-                            <div className="mt-4 flex flex-col gap-1.5 border-t border-slate-50/30 pt-3">
-                              <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">첨부 자료</p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {exam.question_files?.map((f, i) => (
-                                  <div key={`q-${i}`} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1 text-[10px] font-medium text-slate-500 ring-1 ring-slate-200/50 max-w-full">
-                                    <FileText className="h-3 w-3 shrink-0" />
-                                    <span className="truncate">{f}</span>
-                                  </div>
-                                ))}
-                                {exam.answer_files?.map((f, i) => (
-                                  <div key={`a-${i}`} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1 text-[10px] font-medium text-blue-500 ring-1 ring-blue-100/50 max-w-full">
-                                    <CheckCircle2 className="h-3 w-3 shrink-0" />
-                                    <span className="truncate">{f}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {previewExamId === exam.id && exam.source_text && (
-                          <div className="mt-6 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
-                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">Source Insight</p>
-                            <p className="text-[13px] leading-relaxed text-slate-600 line-clamp-5">{getSourcePreview(exam.source_text, 1200)}</p>
-                          </div>
-                        )}
-                      </div>
-                    </article>
+                    <SavedExamCard
+                      key={exam.id}
+                      exam={exam}
+                      isSelectionMode={state.isSelectionMode}
+                      isSelected={state.selectedIds.has(exam.id)}
+                      openMenuId={state.openMenuId}
+                      previewExamId={state.previewExamId}
+                      onToggleSelection={actions.toggleSelection}
+                      onOpenMenu={actions.setOpenMenuId}
+                      onTogglePreview={actions.setPreviewExamId}
+                      onOpen={onOpen}
+                      onDelete={onDelete}
+                      onContinueGenerate={onContinueGenerate}
+                    />
                   ))}
                 </div>
               </section>
             ))}
           </div>
         )}
-        
+
         <div className="sm:hidden fixed bottom-24 right-4 z-40">
-          <button 
-            disabled={isDeleting}
-            onClick={isSelectionMode ? handleDeleteSelected : onCreate}
+          <button
+            disabled={state.isDeleting}
+            onClick={state.isSelectionMode ? actions.handleDeleteSelected : onCreate}
             className={`flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-2xl transition-all active:scale-90 ${
-              isSelectionMode 
-                ? 'bg-red-500 animate-in zoom-in-50 duration-300' 
-                : 'premium-gradient'
-            } ${isDeleting ? 'opacity-50 cursor-wait' : ''}`}
+              state.isSelectionMode ? 'bg-red-500 animate-in zoom-in-50 duration-300' : 'premium-gradient'
+            } ${state.isDeleting ? 'opacity-50 cursor-wait' : ''}`}
           >
-            {isDeleting ? (
+            {state.isDeleting ? (
               <RefreshCw className="h-6 w-6 animate-spin" />
-            ) : isSelectionMode ? (
+            ) : state.isSelectionMode ? (
               <Trash2 className="h-6 w-6" />
             ) : (
               <Plus className="h-6 w-6" />
@@ -418,41 +219,13 @@ export function SavedScreen({
           </button>
         </div>
 
-        {/* Selection Action Bar (Desktop & Mobile Tablet) */}
-        {isSelectionMode && (
-          <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 transform items-center gap-6 rounded-3xl bg-slate-900/90 px-8 py-4 text-white shadow-2xl backdrop-blur-xl animate-in slide-in-from-bottom-10 duration-500 min-w-[320px] max-w-[90vw] justify-between border border-white/10">
-            <div className="flex flex-col">
-              <span className="text-xs font-black text-slate-400">선택된 문항</span>
-              <span className="text-lg font-black">{selectedIds.size}개</span>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => {
-                  setIsSelectionMode(false);
-                  setSelectedIds(new Set());
-                }}
-                className="rounded-xl px-4 py-2 text-[13px] font-black text-slate-300 hover:bg-white/10 transition-colors"
-              >
-                취소
-              </button>
-              <button
-                disabled={selectedIds.size === 0 || isDeleting}
-                onClick={handleDeleteSelected}
-                className="flex items-center gap-2 rounded-xl bg-red-500 px-6 py-2.5 text-[13px] font-black text-white shadow-lg shadow-red-900/20 transition-all hover:bg-red-600 active:scale-95 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
-              >
-                {isDeleting ? (
-                  <>
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                    삭제 중...
-                  </>
-                ) : (
-                  '삭제하기'
-                )}
-              </button>
-            </div>
-          </div>
-        )}
+        <SavedSelectionBar
+          isSelectionMode={state.isSelectionMode}
+          selectedCount={state.selectedIds.size}
+          isDeleting={state.isDeleting}
+          onCancel={actions.handleCancelSelection}
+          onDelete={actions.handleDeleteSelected}
+        />
       </div>
     </main>
   );

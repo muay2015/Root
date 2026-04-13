@@ -74,6 +74,7 @@ export function EnglishQuestionItem(props: ExamQuestionItemProps) {
     isEnglishIrrelevantSentence,
     isEnglishSummaryCompletion,
     isEnglishReading,
+    isEnglishGrammar,
     isOXQuestion,
   } = repaired;
 
@@ -172,7 +173,7 @@ export function EnglishQuestionItem(props: ExamQuestionItemProps) {
 
     return (
       <>
-        <EnglishReadingLayout instruction={instruction} passage={passage} isEnglishReading={isEnglishReading} />
+        <EnglishReadingLayout instruction={instruction} passage={passage} isEnglishReading={isEnglishReading} isEnglishGrammar={isEnglishGrammar} />
         {stimulus && (
           <div className="my-5">
             <QuestionStimulusBox content={stimulus} />

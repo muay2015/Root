@@ -111,6 +111,16 @@ export function useQuestionTypeDetection(question: ExamQuestion, rawPrompt: stri
       return (hasO && hasX) || (stemHasOXMention && hasO && hasX);
     })();
 
+    // 5. 어법/어휘 문항 판별 — 번호 기호가 지문 흐름 중간에 박혀 있는 유형
+    //    선택지가 순수 단어(짧은 텍스트, 기호 없음)이고 topic에 어법/어휘 키워드가 포함될 때
+    const isEnglishGrammar =
+      isEnglishSubject &&
+      isVocabularyType &&
+      !isEnglishSentenceInsertion &&
+      !isEnglishOrderArrangement &&
+      !isEnglishIrrelevantSentence &&
+      !isEnglishSummaryCompletion;
+
     return {
       isEnglishSubject,
       isEnglishSentenceInsertion,
@@ -119,7 +129,9 @@ export function useQuestionTypeDetection(question: ExamQuestion, rawPrompt: stri
       isEnglishContentMatching,
       isEnglishSummaryCompletion,
       isEnglishReading,
+      isEnglishGrammar,
       isOXQuestion,
     };
   }, [question, rawPrompt, rawStimulus]);
 }
+

@@ -448,3 +448,50 @@ export function buildEnglishIrrelevantStrictPrompt(input: PromptBuildInput, isCs
         buildSourceMaterialBlock(input),
   ].join('\n');
 }
+
+export function buildEnglishGrammarStrictPrompt(input: PromptBuildInput, isCsatMode: boolean) {
+  const rules = getGenerationRules({
+    subject: input.subject,
+    selectionLabel: '문제유형',
+    selectionValue: input.questionType ?? '어법/어휘',
+    difficulty: input.difficulty,
+    schoolLevel: isCsatMode ? 'csat' : input.schoolLevel,
+  });
+  return [
+        isCsatMode
+            ? '당신은 대한민국 수능 영어 어법/어휘 문항만 전문적으로 출제하는 평가원 스타일 출제 위원입니다.'
+            : '당신은 고등학교 영어 어법/어휘 문항만 전문적으로 출제하는 출제자입니다.',
+        '반드시 JSON 배열만 반환하십시오.',
+        `반드시 정확히 ${input.count}개 문항만 생성하십시오.`,
+        '이 요청은 오직 "어법/어휘" (Grammar or Vocabulary) 유형입니다. 빈칸 추론이나 순서 배열 등 다른 유형으로 바꾸지 마십시오.',
+        '각 문항은 반드시 다음 키만 포함해야 합니다: ["topic","type","stem","choices","answer","explanation","stimulus"]',
+        '',
+        '- [HARD FORMAT LOCK] stem에는 한국어 발문과 영어 지문 전체를 포함하십시오.',
+        '- [HARD FORMAT LOCK] 발문은 "다음 글의 밑줄 친 부분 중, 어법상 틀린 것은?" 또는 "다음 글의 밑줄 친 부분 중, 문맥상 낱말의 쓰임이 적절하지 않은 것은?" 중 하나만 랜덤으로 선택하여 쓰십시오.',
+        '- [HARD FORMAT LOCK] 지문 내에는 문법적/문맥적으로 평가할 대상 5개의 단어(또는 짧은 구)를 선정하여 반드시 다음과 같이 표기하십시오: ① <u>단어1</u>, ② <u>단어2</u>, ③ <u>단어3</u>, ④ <u>단어4</u>, ⑤ <u>단어5</u>',
+        '- [HARD FORMAT LOCK] ⚠️ CRITICAL: 번호 기호(①~⑤)는 절대로 문장 맨 앞에 넣지 말고 "밑줄 친 단어 바로 앞"에 밀착시켜 위치해야 합니다. 올바른 예: "... this shows that ① <u>they</u> are..." (O) / 잘못된 예: "① This shows that <u>they</u>..." (X)',
+        '- [HARD FORMAT LOCK] choices 배열은 지문에 표시된 5개의 밑줄 친 단어를 번호 순서대로 포함해야 합니다. 기호나 HTML 태그 없이 순수 텍스트만 넣으십시오. (올바른 예: ["they", "has", "adjusted", "aligned", "are"])',
+        '- [HARD FORMAT LOCK] answer는 choices 중 어법상 틀리거나 문맥상 부적절하여 "정답"이 되는 단어 하나와 정확히 100% 일치해야 합니다.',
+        '- [HARD FORMAT LOCK] stimulus는 필요하지 않으므로 사용하지 마십시오 (null).',
+        '',
+        '- [EXAMPLE JSON]',
+        '[',
+        '  {',
+        '    "topic": "Urban Planning",',
+        '    "type": "multiple",',
+        '    "stem": "다음 글의 밑줄 친 부분 중, 문맥상 낱말의 쓰임이 적절하지 않은 것은?\\n\\nIn many cities, urban planners are trying to make public spaces more resilient to heat and flooding. ① <u>Green</u> roofs, for instance, absorb rainwater and lower building temperatures. Some streets are redesigned with wider sidewalks and shade trees to encourage walking. However, these projects can fail when officials ② <u>ignore</u> community support without first consulting residents. In one neighborhood, a park renovation was delayed because the proposed play area ③ <u>aligned</u> poorly with the needs of older visitors. The final design succeeded only after planners ④ <u>adjusted</u> the benches, paths, and lighting to match how people ⑤ <u>actually</u> used the space.",',
+        '    "choices": ["Green", "ignore", "aligned", "adjusted", "actually"],',
+        '    "answer": "ignore",',
+        '    "explanation": "주민들과의 상의 없이 지지를 받고 있다고 섣불리 \'추측한다(presume)\'는 내용이 논리상 자연스러우므로 ignore는 부적절합니다.",',
+        '    "stimulus": null',
+        '  }',
+        ']',
+        '',
+        ...rules.combinedConstraints.map((rule) => `- ${rule}`),
+        '',
+        buildFeedbackBlock(input.validationFeedback),
+        '',
+        buildSourceMaterialBlock(input),
+  ].join('\\n');
+}
+

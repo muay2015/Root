@@ -10,7 +10,8 @@ import {
   buildEnglishOrderStrictArrayPrompt,
   buildEnglishSummaryStrictPrompt,
   buildEnglishInsertionStrictPrompt,
-  buildEnglishIrrelevantStrictPrompt
+  buildEnglishIrrelevantStrictPrompt,
+  buildEnglishGrammarStrictPrompt
 } from './prompts/english';
 import { buildCsatKoreanLiteratureRules, buildKoreanPassageRules, buildCsatKoreanLiteratureSetPrompt } from './prompts/korean';
 import { isScienceSubject, buildSciencePromptRules } from './prompts/science';
@@ -280,6 +281,10 @@ export function buildQuestionPrompt(input: PromptBuildInput & { images?: { mimeT
     return buildEnglishIrrelevantStrictPrompt(input, builderMode === 'csat');
   }
 
+  if (isEnglishQuestionTypeSafe(input.questionType, '어법/어휘')) {
+    return buildEnglishGrammarStrictPrompt(input, builderMode === 'csat');
+  }
+
   if (isEnglishQuestionType(input as any, '요약문 완성')) {
     return buildEnglishSummaryStrictPrompt(input, builderMode === 'csat');
   }
@@ -290,6 +295,10 @@ export function buildQuestionPrompt(input: PromptBuildInput & { images?: { mimeT
 
   if (isEnglishQuestionType(input as any, '관계없는 문장')) {
     return buildEnglishIrrelevantStrictPrompt(input, builderMode === 'csat');
+  }
+
+  if (isEnglishQuestionType(input as any, '어법/어휘')) {
+    return buildEnglishGrammarStrictPrompt(input, builderMode === 'csat');
   }
 
   if (isEnglishQuestionType(input as any, '순서 배열')) {
