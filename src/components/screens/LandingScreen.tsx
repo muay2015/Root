@@ -62,9 +62,9 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
             <div className="flex flex-col justify-center gap-4 sm:flex-row w-full px-4 sm:px-0">
               <button
                 onClick={() => onNavigate('create-selection')}
-                className="inline-flex h-16 items-center justify-center gap-2 rounded-2xl bg-white px-10 text-lg font-black text-primary shadow-2xl shadow-primary/20 transition-all hover:scale-105 hover:bg-blue-50 active:scale-95"
+                className="inline-flex h-14 sm:h-16 items-center justify-center gap-2 rounded-2xl bg-white px-6 sm:px-10 text-base sm:text-lg font-black text-primary shadow-2xl shadow-primary/20 transition-all hover:scale-105 hover:bg-blue-50 active:scale-95"
               >
-                <PlusCircle className="h-6 w-6" />
+                <PlusCircle className="h-5 w-5 sm:h-6 sm:w-6" />
                 무료 문제 5개 만들기
               </button>
             </div>
@@ -108,7 +108,7 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
       <section className="mx-auto mt-32 max-w-6xl px-4 sm:px-6">
         <div className="mb-16 text-center">
           <h2 className="text-3xl font-black tracking-tight text-slate-900 sm:text-5xl">합리적인 학습 비용</h2>
-          <p className="mt-4 text-lg font-medium text-slate-500">문제집 1/3 값으로 누리는 무제한 학습 경험</p>
+          <p className="mt-4 text-lg font-medium text-slate-500">문제집 1/3 값으로 누리는<br className="sm:hidden" /> 무제한 학습 경험</p>
         </div>
 
         <div className="grid gap-8 md:grid-cols-3">
@@ -192,10 +192,10 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
             <div className="mt-12 flex justify-center">
               <button
                 onClick={() => onNavigate(isAnonymous ? 'account' : 'create')}
-                className="inline-flex h-16 items-center justify-center gap-3 rounded-2xl bg-white px-12 text-xl font-black text-slate-900 shadow-2xl transition-all hover:scale-105 hover:shadow-white/20 active:scale-95"
+                className="inline-flex h-14 sm:h-16 items-center justify-center gap-3 rounded-2xl bg-white px-8 sm:px-12 text-lg sm:text-xl font-black text-slate-900 shadow-2xl transition-all hover:scale-105 hover:shadow-white/20 active:scale-95"
               >
                 무료로 시작하기
-                <ArrowRight className="h-6 w-6 animate-arrow-right" />
+                <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6 animate-arrow-right" />
               </button>
             </div>
           </div>
