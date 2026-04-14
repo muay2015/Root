@@ -309,7 +309,7 @@ export default function App() {
                     onSignOut={auth.handleSignOut} 
                   />
                 ) : (
-                  <AuthScreen onSuccess={() => window.location.reload()} />
+                  <AuthScreen onSuccess={() => navigate('dashboard')} />
                 );
               case 'image-scan':
                 return (

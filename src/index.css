@@ -89,5 +89,15 @@
   .animate-arrow-down {
     animation: arrow-down-flow 2s infinite;
   }
+
+  @keyframes arrow-right-flow {
+    0% { transform: translateX(0); }
+    50% { transform: translateX(5px); }
+    100% { transform: translateX(0); }
+  }
+
+  .animate-arrow-right {
+    animation: arrow-right-flow 1.5s infinite ease-in-out;
+  }
 }
 

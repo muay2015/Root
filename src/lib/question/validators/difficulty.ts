@@ -55,7 +55,14 @@ export function validateGenericDifficulty(
         effectiveKoreanChars += countKoreanCharacters(question.stimulus);
       }
 
-      if (effectiveWords < 8 && effectiveKoreanChars < 18) {
+      // 수학 과목: stem이 짧고 stimulus에 LaTeX 수식이 들어가는 구조가 정상이므로,
+      // 단어/한글 수가 부족해도 stem+stimulus 원시 길이가 충분하면 통과
+      const mathContentSufficient =
+        isMath &&
+        question.stimulus &&
+        (question.stem.length + question.stimulus.length) >= 40;
+
+      if (!mathContentSufficient && effectiveWords < 8 && effectiveKoreanChars < 18) {
         pushReason(
           reasons,
           issueCounts,

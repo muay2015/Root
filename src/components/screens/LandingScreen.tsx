@@ -9,6 +9,7 @@ import {
   CheckCircle2, 
   ArrowRight,
   Target,
+  Check,
   ChevronDown
 } from 'lucide-react';
 import type { Screen } from '../../lib/examTypes';
@@ -38,7 +39,7 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
           </div>
 
           <h1 className="font-headline text-3xl font-black tracking-tight sm:text-6xl text-balance break-keep leading-[1.15]">
-            중고등 내신 및 수능 대비<br />
+            중·고등 내신 및 수능 대비<br />
             <span className="text-blue-300">AI 문제은행</span>
           </h1>
 
@@ -71,20 +72,34 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
         </div>
       </section>
 
-      {/* 2. Feature Cards Section */}
       <section className="relative z-10 mx-auto mt-[-40px] max-w-6xl px-4 sm:px-6">
         <div className="grid gap-6 md:grid-cols-3">
           <FeatureCard 
-            title={<>난이도·문항 수,<br />내가 직접 설정</>}
-            description="쉬운 문제로 개념 확인, 어려운 문제로 실전 대비 필요한 수준으로 원하는 만큼 바로 생성"
+            titleMain="난이도 · 문항 수"
+            titleSub="내가 직접 설정"
+            items={[
+              "쉬운 문제로 개념 확인",
+              "어려운 문제로 실전 대비",
+              "원하는 만큼 실시간 생성"
+            ]}
           />
           <FeatureCard 
-            title={<>오답노트,<br />직접 만들 필요 없어요</>}
-            description="틀린 문제는 해설과 함께 오답노트에 자동 저장되어 왜 틀렸는지 바로 확인하고, 이해되면 언제든 꺼내서 다시 풀 수 있어요"
+            titleMain="오답노트"
+            titleSub="자동 저장"
+            items={[
+              "해설과 함께 자동 저장",
+              "오답 원인 즉시 확인",
+              "언제든 취약점 보완 풀기"
+            ]}
           />
           <FeatureCard 
-            title={<>기출문제,<br />나만의 맞춤 생성</>}
-            description="실제 기출 모의고사나 수능 문제의 사진을 찍거나 이미지를 업로드하세요. AI가 즉시 나만의 디지털 기출 문제집으로 변환해 드립니다."
+            titleMain="기출문제"
+            titleSub="하이브리드 문제 생성"
+            items={[
+              "사진 촬영 및 이미지 업로드",
+              "AI가 디지털 문제로 변환",
+              "나만의 맞춤 기출 완성"
+            ]}
           />
         </div>
       </section>
@@ -160,12 +175,12 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
 
           <div className="relative z-10">
             <h2 className="text-3xl font-black sm:text-5xl leading-tight break-keep text-white">
-              종이로 문제를 푸는 시대는<br />
-              얼마 남지 않았습니다.
+              가방 속 무거운 짐은 들어내고,<br />
+              공부는 더 가볍게.
             </h2>
             <p className="mx-auto mt-8 max-w-2xl text-lg font-medium text-blue-100/80 leading-relaxed break-keep">
-              난이도도, 문항 수도 직접 고르고 AI가 그 자리에서 시험지를 만들어줘요. <br className="hidden sm:block" />
-              풀고 나서 버려야 하는 종이 문제집과는 달리, 틀린 문제는 완전히 이해할 때까지 반복돼요.
+              필요한 문제만, 필요한 만큼.<br />
+              AI가 바로 만들어주는 나만의 시험지.
             </p>
             
             <div className="mt-12 inline-block rounded-2xl bg-white/10 px-6 py-4 backdrop-blur-md ring-1 ring-white/20">
@@ -179,8 +194,8 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
                 onClick={() => onNavigate(isAnonymous ? 'account' : 'create')}
                 className="inline-flex h-16 items-center justify-center gap-3 rounded-2xl bg-white px-12 text-xl font-black text-slate-900 shadow-2xl transition-all hover:scale-105 hover:shadow-white/20 active:scale-95"
               >
-                지금 무료로 시작하기
-                <ArrowRight className="h-6 w-6" />
+                무료로 시작하기
+                <ArrowRight className="h-6 w-6 animate-arrow-right" />
               </button>
             </div>
           </div>
@@ -190,16 +205,33 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
   );
 }
 
-function FeatureCard({ title, description }: { title: React.ReactNode, description: string }) {
+function FeatureCard({ titleMain, titleSub, items }: { titleMain: string, titleSub: string, items: string[] }) {
   return (
     <div className="premium-card p-8 sm:p-10 group transition-all duration-300 border-blue-100/50 shadow-sm hover:shadow-md">
-      <h3 className="mb-6 text-xl sm:text-2xl font-black text-slate-900 break-keep leading-tight min-h-[3.5em] flex items-end">
-        {title}
-      </h3>
+      <div className="mb-6 min-h-[4.5em] flex flex-col justify-end">
+        <h3 className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight">
+          {titleMain}
+        </h3>
+        <div className="mt-1 flex items-center gap-2 text-lg sm:text-xl font-bold text-slate-700">
+          <span className="text-slate-900 shrink-0">→</span>
+          <span className="whitespace-nowrap">{titleSub}</span>
+        </div>
+      </div>
       <div className="mb-6 h-[1px] w-full bg-slate-100" />
-      <p className="text-[15px] sm:text-[16px] font-medium leading-[1.8] text-slate-500 break-keep text-balance">
-        {description}
-      </p>
+      <ul className="space-y-4">
+        {items.map((item, idx) => (
+          <li key={idx} className="flex items-start gap-3">
+            <div className="mt-1 flex-shrink-0">
+              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                <Check className="h-3.5 w-3.5" strokeWidth={3} />
+              </div>
+            </div>
+            <span className="text-[15px] sm:text-[16px] font-bold leading-relaxed text-slate-600 break-keep">
+              {item}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
