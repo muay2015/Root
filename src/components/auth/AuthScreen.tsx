@@ -172,7 +172,7 @@ export function AuthScreen({ onSuccess = () => window.location.reload() }: { onS
                 {mode === 'sign_in' 
                   ? '내 계정으로 로그인하여 학습 기록을 관리하세요.' 
                   : mode === 'sign_up' 
-                    ? 'ROOT CBT와 함께 지능형 학습을 시작하세요.'
+                    ? '풀고 AI와 함께 지능형 학습을 시작하세요.'
                     : '가입하신 이메일을 입력하시면 재설정 링크를 보내드립니다.'}
               </p>
             </div>

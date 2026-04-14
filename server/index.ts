@@ -109,5 +109,5 @@ app.post('/api/ai/segment-exam', async (req, res) => {
 });
 
 app.listen(port, '0.0.0.0', () => {
-  console.log(`ROOT API server listening on http://0.0.0.0:${port} (also accessible via http://127.0.0.1:${port})`);
+  console.log(`Pool-go API server listening on http://0.0.0.0:${port} (also accessible via http://127.0.0.1:${port})`);
 });

@@ -1,4 +1,4 @@
-# ROOT CBT App
+# Pool-go AI (formerly ROOT CBT)
 
 React/Vite 프런트엔드와 시험 생성 API가 함께 있는 프로젝트입니다.
 

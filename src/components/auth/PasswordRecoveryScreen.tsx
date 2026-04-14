@@ -39,7 +39,7 @@ export function PasswordRecoveryScreen({ onDone }: { onDone: () => void }) {
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900 sm:px-6">
       <div className="mx-auto max-w-xl border border-slate-200 bg-white px-6 py-8 sm:px-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">ROOT</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">풀고</p>
         <h1 className="mt-4 text-3xl font-bold">새 비밀번호 설정</h1>
         <p className="mt-3 text-sm leading-7 text-slate-600">
           메일의 재설정 링크로 들어온 상태입니다. 새 비밀번호를 저장한 뒤 계정 화면으로 돌아갑니다.

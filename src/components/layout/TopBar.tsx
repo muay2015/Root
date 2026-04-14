@@ -36,11 +36,15 @@ export function TopBar({
 
             <button
               onClick={() => onNavigate('landing')}
-              className="group relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl transition-all active:scale-95"
+              className="group relative flex h-11 w-11 items-center justify-center overflow-hidden transition-all active:scale-95"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-700 to-primary opacity-90 transition-all group-hover:scale-110 group-hover:opacity-100" />
-              <div className="absolute inset-0 shadow-[inset_0_1px_2px_rgba(255,255,255,0.4)]" />
-              <Bot className="relative h-6 w-6 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)] transition-transform group-hover:rotate-6" />
+              <img 
+                src="/logo_ai.png" 
+                alt="풀고 AI 로고" 
+                className="h-10 w-10 object-contain transition-transform group-hover:scale-110"
+                loading="eager"
+                decoding="async"
+              />
             </button>
           </div>
 

@@ -30,7 +30,7 @@ export function useExamSession(
   onSyncWrong: (next: WrongNote[]) => void
 ) {
   const [questions, setQuestions] = useState<ExamQuestion[]>([]);
-  const [examTitle, setExamTitle] = useState('ROOT CBT');
+  const [examTitle, setExamTitle] = useState('풀고 AI');
   const [responses, setResponses] = useState<Record<number, string>>({});
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(1);
   const [generatedQuestionMode, setGeneratedQuestionMode] = useState<GeneratedQuestionMode>('mixed');
