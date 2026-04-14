@@ -8,7 +8,8 @@ import {
   Monitor, 
   CheckCircle2, 
   ArrowRight,
-  Target
+  Target,
+  ChevronDown
 } from 'lucide-react';
 import type { Screen } from '../../lib/examTypes';
 
@@ -19,9 +20,9 @@ interface LandingScreenProps {
 
 export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
   return (
-    <main className="min-h-screen bg-surface pb-28 pt-0">
+    <main className="min-h-screen bg-surface pb-16 pt-0">
       {/* 1. Hero Section */}
-      <section className="premium-gradient relative overflow-hidden px-4 pb-20 pt-28 text-white sm:px-6 sm:pb-32 sm:pt-40">
+      <section className="premium-gradient relative overflow-hidden px-4 pb-12 pt-20 text-white sm:px-6 sm:pb-20 sm:pt-32">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute -left-10 -top-10 h-64 w-64 rounded-full bg-white blur-3xl" />
           <div className="absolute -right-10 bottom-10 h-96 w-96 rounded-full bg-blue-400 blur-3xl" />
@@ -29,43 +30,43 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
         
         <div className="relative mx-auto max-w-5xl text-center">
           {/* Badge */}
-          <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
+          <div className="mb-6 animate-in fade-in slide-in-from-top-4 duration-700">
             <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-black backdrop-blur-md ring-1 ring-white/20">
               <Zap className="h-4 w-4 text-amber-300 fill-amber-300" />
-              <span>문제집 한 권 값으로, 1,200문제</span>
+              <span>맞춤형 문제 생성 전문 AI</span>
             </span>
           </div>
 
           <h1 className="font-headline text-3xl font-black tracking-tight sm:text-6xl text-balance break-keep leading-[1.15]">
-            아직도 문제집 사세요?<br />
-            <span className="text-blue-300">난이도도, 문항 수도 내가 정하는 시대</span>
+            중고등 내신 및 수능 대비<br />
+            <span className="text-blue-300">AI 문제은행</span>
           </h1>
 
-          <div className="mx-auto mt-8 max-w-3xl space-y-4">
-            <p className="text-lg font-bold text-orange-200 sm:text-2xl break-keep">
-              한 번 풀고 버릴 문제집에 15,000원이 아깝지 않으세요?
-            </p>
-            <p className="text-base leading-relaxed text-blue-100/80 sm:text-xl break-keep text-balance font-medium">
-              원하는 주제로 난이도와 문항 수를 직접 고르면 — AI가 그 자리에서 시험지를 만들어요.<br className="hidden sm:block" />
-              틀린 문제는 해설과 함께 오답노트에 쌓이고, 언제든 꺼내서 다시 풀 수 있어요.
-            </p>
-          </div>
+          <p className="mt-10 text-lg font-bold text-orange-200 sm:text-2xl break-keep">
+            한 번 풀고 버릴 문제집에 15,000원이 아깝지 않으세요?
+          </p>
           
-          <div className="mt-12 flex flex-col justify-center gap-4 sm:flex-row px-4 sm:px-0">
-            <button
-              onClick={() => onNavigate('create-selection')}
-              className="inline-flex h-16 items-center justify-center gap-2 rounded-2xl bg-white px-10 text-lg font-black text-primary shadow-2xl shadow-primary/20 transition-all hover:scale-105 hover:bg-blue-50 active:scale-95"
-            >
-              <PlusCircle className="h-6 w-6" />
-              오늘 무료 문제 10개 만들기
-            </button>
-            <button
-              onClick={() => onNavigate('pdf-import')}
-              className="inline-flex h-16 items-center justify-center gap-2 rounded-2xl bg-white/10 px-10 text-lg font-black text-white backdrop-blur-md ring-1 ring-white/30 transition-all hover:bg-white/20 active:scale-95"
-            >
-              <Target className="h-6 w-6" />
-              수능 기출 바로 풀기
-            </button>
+          <div className="mt-6 flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-base leading-relaxed text-blue-100 sm:text-2xl break-keep text-balance font-black">
+                지금 바로 과목, 난이도 설정만 하면 문제가 생성이 됩니다.
+              </p>
+              <div className="flex flex-col items-center gap-1 py-1">
+                <ChevronDown className="h-5 w-5 text-blue-400/40 animate-arrow-down" style={{ animationDelay: '0s' }} strokeWidth={2.5} />
+                <ChevronDown className="h-6 w-6 text-blue-300/70 animate-arrow-down" style={{ animationDelay: '0.15s' }} strokeWidth={2.5} />
+                <ChevronDown className="h-7 w-7 text-blue-200 animate-arrow-down" style={{ animationDelay: '0.3s' }} strokeWidth={2.5} />
+              </div>
+            </div>
+
+            <div className="flex flex-col justify-center gap-4 sm:flex-row w-full px-4 sm:px-0">
+              <button
+                onClick={() => onNavigate('create-selection')}
+                className="inline-flex h-16 items-center justify-center gap-2 rounded-2xl bg-white px-10 text-lg font-black text-primary shadow-2xl shadow-primary/20 transition-all hover:scale-105 hover:bg-blue-50 active:scale-95"
+              >
+                <PlusCircle className="h-6 w-6" />
+                무료 문제 5개 만들기
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -79,11 +80,11 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
           />
           <FeatureCard 
             title={<>오답노트,<br />직접 만들 필요 없어요</>}
-            description="틀린 문제는 해설과 함께 오답노트에 자동 저장 — 왜 틀렸는지 바로 확인하고, 이해되면 언제든 꺼내서 다시 풀 수 있어요"
+            description="틀린 문제는 해설과 함께 오답노트에 자동 저장되어 왜 틀렸는지 바로 확인하고, 이해되면 언제든 꺼내서 다시 풀 수 있어요"
           />
           <FeatureCard 
-            title={<>실전처럼 풀고,<br />결과는 바로 확인</>}
-            description="생성 문제를 CBT로 풀면 점수·취약 단원이 즉시 표시 모의고사·수능 기출은 무료로 제공"
+            title={<>기출문제,<br />나만의 맞춤 생성</>}
+            description="실제 기출 모의고사나 수능 문제의 사진을 찍거나 이미지를 업로드하세요. AI가 즉시 나만의 디지털 기출 문제집으로 변환해 드립니다."
           />
         </div>
       </section>
@@ -92,7 +93,7 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
       <section className="mx-auto mt-32 max-w-6xl px-4 sm:px-6">
         <div className="mb-16 text-center">
           <h2 className="text-3xl font-black tracking-tight text-slate-900 sm:text-5xl">합리적인 학습 비용</h2>
-          <p className="mt-4 text-lg font-medium text-slate-500">문제집 한 권 값으로 누리는 무제한 학습 경험</p>
+          <p className="mt-4 text-lg font-medium text-slate-500">문제집 1/3 값으로 누리는 무제한 학습 경험</p>
         </div>
 
         <div className="grid gap-8 md:grid-cols-3">
@@ -102,10 +103,9 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
             price="0"
             description="영원히 무료"
             features={[
-              '매일 문제 10개 생성',
-              '난이도·문항 수 설정',
-              '수능 기출 전과목',
-              '모의고사 무제한',
+              '매일 문제 5개 생성',
+              '한 달 총 150문제 무료',
+              '난이도 설정 (문항 수 5개 고정)',
               '오답노트 자동 생성'
             ]}
             onAction={() => onNavigate('create')}
@@ -116,12 +116,13 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
           <PricingCard 
             title="스탠다드"
             price="5,000"
-            description="문제 500개"
-            badge="문제집 ₩15,000의 1/3"
+            description="보너스 300개"
+            badge="문제집 1/3 값으로 450문제"
             features={[
-              '난이도별 집중 생성',
-              '유사 문제 재생성',
-              '모든 무료 혜택 포함',
+              '매달 총 450문제 이용',
+              '무료 150 + 보너스 300개',
+              '매일 무료 5개 우선 소진',
+              '난이도·문항 수 자유 설정',
               '개인별 오답 분석'
             ]}
             onAction={() => onNavigate(isAnonymous ? 'account' : 'create')}
@@ -132,16 +133,17 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
           <PricingCard 
             title="인기·베스트"
             price="10,000"
-            description="문제 1,200개"
-            badge="문제집 1권 값으로 1,200문제"
+            description="보너스 700개"
+            badge="문제집 2/3 값으로 850문제"
             isPopular
             features={[
+              '매달 총 850문제 이용',
+              '무료 150 + 보너스 700개',
+              '매일 무료 5개 우선 소진',
               '난이도·문항 수 자유 설정',
-              '문제집 구매 완전히 대체',
-              '문제당 8원, 99% 저렴',
-              '전용 학습 서포트'
+              '문제집 구매 완전히 대체'
             ]}
-            footerText="문제당 8원, 문제집보다 99% 저렴"
+            footerText="문제당 약 11원, 문제집보다 99% 저렴"
             onAction={() => onNavigate(isAnonymous ? 'account' : 'create')}
             actionText="선택하기"
           />
@@ -158,11 +160,11 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
 
           <div className="relative z-10">
             <h2 className="text-3xl font-black sm:text-5xl leading-tight break-keep text-white">
-              5년 후엔 다 이렇게 공부할 텐데,<br />
-              왜 지금 시작하지 않으세요?
+              종이로 문제를 푸는 시대는<br />
+              얼마 남지 않았습니다.
             </h2>
             <p className="mx-auto mt-8 max-w-2xl text-lg font-medium text-blue-100/80 leading-relaxed break-keep">
-              난이도도, 문항 수도 직접 고르고 — AI가 그 자리에서 시험지를 만들어줘요. <br className="hidden sm:block" />
+              난이도도, 문항 수도 직접 고르고 AI가 그 자리에서 시험지를 만들어줘요. <br className="hidden sm:block" />
               풀고 나서 버려야 하는 종이 문제집과는 달리, 틀린 문제는 완전히 이해할 때까지 반복돼요.
             </p>
             
@@ -177,7 +179,7 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
                 onClick={() => onNavigate(isAnonymous ? 'account' : 'create')}
                 className="inline-flex h-16 items-center justify-center gap-3 rounded-2xl bg-white px-12 text-xl font-black text-slate-900 shadow-2xl transition-all hover:scale-105 hover:shadow-white/20 active:scale-95"
               >
-                지금 무료로 시작하기 — 카드 없이
+                지금 무료로 시작하기
                 <ArrowRight className="h-6 w-6" />
               </button>
             </div>
@@ -224,7 +226,7 @@ function PricingCard({
   footerText?: string;
 }) {
   return (
-    <div className={`premium-card p-8 flex flex-col relative ${isPopular ? 'ring-2 ring-primary shadow-2xl scale-105 z-10' : ''}`}>
+    <div className={`premium-card p-8 flex flex-col h-full relative ${isPopular ? 'ring-2 ring-primary shadow-2xl z-10' : ''}`}>
       {isPopular && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-primary px-4 py-1 text-[11px] font-black text-white uppercase tracking-widest">
           인기 · 베스트

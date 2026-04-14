@@ -7,6 +7,10 @@ export function isEnglishSubject(subject: SubjectKey): boolean {
 }
 
 export function isEnglishQuestionType(input: PromptBuildInput, type: string) {
+  // 영어 과목이 아닌 경우 영어 유형으로 판별하지 않음
+  if (!isEnglishSubject(input.subject)) {
+    return false;
+  }
   return (
     input.questionType === type ||
     input.questionType === '전체' ||
@@ -21,7 +25,11 @@ export function isEnglishQuestionType(input: PromptBuildInput, type: string) {
   );
 }
 
-export function isEnglishQuestionTypeSafe(questionTypeValue: string | undefined, target: string) {
+export function isEnglishQuestionTypeSafe(questionTypeValue: string | undefined, target: string, subject?: SubjectKey) {
+  // 과목이 명시된 경우, 영어 과목이 아니면 영어 유형으로 판별하지 않음
+  if (subject != null && !isEnglishSubject(subject)) {
+    return false;
+  }
   const questionType = String(questionTypeValue ?? '').trim();
   if (!questionType) {
     return false;

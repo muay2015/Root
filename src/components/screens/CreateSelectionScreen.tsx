@@ -11,7 +11,7 @@ export function CreateSelectionScreen({ onNavigate }: CreateSelectionScreenProps
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-20">
       <div className="text-center">
         <h1 className="text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
-          학습 방식을 선택하세요
+          문제 생성 방식을 선택하세요
         </h1>
         <p className="mt-4 text-lg font-medium text-slate-500">
           AI와 함께 새로운 문제를 만들거나, 보유한 자료를 디지털로 전환하세요.
@@ -55,13 +55,13 @@ export function CreateSelectionScreen({ onNavigate }: CreateSelectionScreenProps
             </svg>
           </div>
 
-          <h3 className="text-lg font-black text-slate-900 sm:text-xl">이미지 스캔</h3>
+          <h3 className="text-lg font-black text-slate-900 sm:text-xl">기출문제 맞춤 생성</h3>
           <p className="mt-2 text-[14px] font-medium leading-relaxed text-slate-500 break-keep sm:mt-4 sm:text-base">
-            사진이나 스캔 파일을 올리세요. 원본 레이아웃을 보존한 하이브리드 CBT를 생성합니다.
+            실제 기출 모의고사나 수능 문제의 사진을 찍거나 이미지를 업로드하세요. AI가 즉시 나만의 디지털 기출 문제집으로 변환해 드립니다.
           </p>
 
           <div className="mt-auto pt-6 flex items-center font-black text-purple-600 sm:pt-8">
-            <span>사진 찍기</span>
+            <span>바로 만들기</span>
             <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
           </div>
         </button>

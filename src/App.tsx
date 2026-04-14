@@ -40,7 +40,7 @@ export default function App() {
   const sync = useExamSync(auth.sessionUserId, auth.isAnonymous);
 
   // --- 3. 문제 생성 훅 ---
-  const generator = useExamGenerator(auth.sessionUserId, sync.savedExams, sync.setSavedExams);
+  const generator = useExamGenerator(auth.sessionUserId, auth.isAnonymous, sync.savedExams, sync.setSavedExams);
 
   // --- 4. 시험 세션 훅 ---
   const imageScan = useImageScan(auth.sessionUserId, sync.savedExams, sync.setSavedExams);
@@ -55,11 +55,20 @@ export default function App() {
 
   // --- 네비게이션 엔진 ---
   const navigate = (next: Screen, replace = false) => {
-    // 보호가 필요한 화면 리스트
-    const protectedScreens: Screen[] = ['create', 'create-selection', 'image-scan', 'wrong', 'saved'];
+    // 보호가 필요한 화면 리스트 (익명 사용자 체험을 위해 create, create-selection은 제외)
+    const protectedScreens: Screen[] = ['image-scan', 'wrong', 'saved'];
     
     if (protectedScreens.includes(next) && auth.isAnonymous) {
-      alert('이 기능은 로그인 후 이용 가능한 프리미엄 서비스입니다. 로그인 화면으로 이동합니다.');
+      let message = '이 기능은 로그인 후 이용 가능한 서비스입니다. 로그인 화면으로 이동합니다.';
+      if (next === 'wrong') {
+        message = '오답 노트와 지능형 취약점 분석은 회원가입 후 이용하실 수 있습니다. 지금 가입하고 틀린 문제를 관리해보세요!';
+      } else if (next === 'saved') {
+        message = '시험지 저장 및 기기 간 동기화는 회원가입 후 이용하실 수 있습니다.';
+      } else if (next === 'image-scan') {
+        message = 'PDF 분석 및 문제 추출 기능은 회원가입 후 이용 가능합니다.';
+      }
+      
+      alert(message);
       setScreen('account');
       window.history.pushState({ screen: 'account' }, '', '');
       return;
@@ -104,6 +113,14 @@ export default function App() {
   // --- 핸들러 연동 ---
   const onGenerate = async () => {
     const result = await generator.generateExam();
+    
+    // 만약 익명 사용자 제한에 걸렸다면 알림 후 로그인 유도
+    if (!result.success && (result as any).isLimitReached) {
+      alert(result.error);
+      navigate('account');
+      return;
+    }
+
     if (result.success && result.record) {
       session.startExam(result.record);
       // 자동 과목 필터 동기화

@@ -12,6 +12,7 @@ import {
   validateHistorySubjectFit 
 } from './validators/history.ts';
 import { validateKoreanLiteratureQuality } from './validators/korean.ts';
+import { validateMathQuality } from './validators/math.ts';
 
 import { 
   validateEnglishBlankInference as valEngBlank,
@@ -154,6 +155,7 @@ export function validateGeneratedQuestions(input: ValidationInput): ValidationRe
     }
 
     validateKoreanLiteratureQuality(question, index, input, reasons, warnings, issueCounts);
+    validateMathQuality(question, index, input, reasons, warnings, issueCounts);
   });
 
   for (const indexes of fingerprintMap.values()) {

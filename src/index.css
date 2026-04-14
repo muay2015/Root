@@ -78,5 +78,16 @@
   .hide-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
+  /* 화살표 흐름 애니메이션 */
+  @keyframes arrow-down-flow {
+    0% { opacity: 0; transform: translateY(-8px); }
+    50% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(8px); }
+  }
+
+  .animate-arrow-down {
+    animation: arrow-down-flow 2s infinite;
+  }
 }
 

@@ -24,6 +24,8 @@ import {
   saveExamDraft,
   storeLocalExamList,
   storeLocalLastExam,
+  getAnonymousUsageDate,
+  setAnonymousUsageDate,
   type PersistedExamRecord,
 } from '../lib/rootPersistence';
 import { examService } from '../services/examService';
@@ -41,6 +43,7 @@ function buildFallbackMaterialText(_params: {
 
 export function useExamGenerator(
   sessionUserId: string | null,
+  isAnonymous: boolean,
   savedExams: PersistedExamRecord[],
   onSyncExams: (next: PersistedExamRecord[]) => void,
 ) {
@@ -54,7 +57,7 @@ export function useExamGenerator(
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('hard');
   const [schoolLevel, setSchoolLevel] = useState<SchoolLevel>('high');
   const [detailedGrade, setDetailedGrade] = useState<DetailedGrade>('1학년' as DetailedGrade);
-  const [count, setCount] = useState(12);
+  const [count, setCount] = useState(5);
   const [generationTopic, setGenerationTopic] = useState('');
   const [materialText, setMaterialText] = useState('');
   const [ocrPages, setOcrPages] = useState<{ id: string; text: string }[]>([]);
@@ -104,6 +107,20 @@ export function useExamGenerator(
       handleSubjectSelect(availableSubjects[0]);
     }
   }, [mode, schoolLevel, detailedGrade, subject]);
+
+  // 익명 사용자는 문항 수를 항상 5개로 고정
+  useEffect(() => {
+    if (isAnonymous && count !== 5) {
+      setCount(5);
+    }
+  }, [isAnonymous, count]);
+
+  const checkAnonymousLimit = (): boolean => {
+    if (!isAnonymous) return false;
+    const today = new Date().toISOString().split('T')[0];
+    const lastDate = getAnonymousUsageDate();
+    return lastDate === today;
+  };
 
   const finalizeGeneration = async (
     title: string,
@@ -172,6 +189,12 @@ export function useExamGenerator(
   };
 
   const generateExam = async () => {
+    if (checkAnonymousLimit()) {
+      const msg = '오늘의 무료 체험을 모두 사용하셨습니다. 로그인을 통해 더 많은 문제를 이용해 주세요.';
+      setGenerationError(msg);
+      return { success: false, error: msg, isLimitReached: true };
+    }
+
     setIsGenerating(true);
     setGenerationError(null);
 
@@ -220,6 +243,12 @@ export function useExamGenerator(
 
       const resolvedTitle = generationTopic.trim() || data.title || nextTitle;
       const newRecord = await finalizeGeneration(resolvedTitle, subject, nextQuestions, 'multiple');
+
+      // 익명 사용자일 경우 사용 일자 기록
+      if (isAnonymous) {
+        setAnonymousUsageDate(new Date().toISOString().split('T')[0]);
+      }
+
       return { success: true, record: newRecord };
     } catch (error) {
       const msg = error instanceof Error ? error.message : '생성 중 오류 발생';
@@ -251,7 +280,7 @@ export function useExamGenerator(
         difficulty,
         schoolLevel,
         detailedGrade,
-        count: Math.min(Math.max(5, wrongNotes.length), 10),
+        count: Math.min(Math.max(5, wrongNotes.length), 5),
         title: `${baseTitle} - 유사 보완 세트`,
         topic: `${baseTitle} 오답 기반 유사 학습`,
         builderMode: 'school',
@@ -316,5 +345,6 @@ export function useExamGenerator(
     setOcrPages,
     detailedGrade,
     setDetailedGrade,
+    isAnonymous,
   };
 }

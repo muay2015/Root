@@ -30,6 +30,8 @@ export const loadLocalLastExam = localStorageService.loadLastExam;
 export const storeLocalLastExam = localStorageService.storeLastExam;
 export const loadLocalExamList = localStorageService.loadExamList;
 export const storeLocalExamList = localStorageService.storeExamList;
+export const getAnonymousUsageDate = localStorageService.getAnonymousUsageDate;
+export const setAnonymousUsageDate = localStorageService.setAnonymousUsageDate;
 
 // --- Auth Proxy ---
 export const ensureSupabaseUser = authService.ensureSupabaseUser;

@@ -8,7 +8,11 @@
       "Bash(xargs grep:*)",
       "Bash(grep -n \"passage\" src/lib/question/*.ts src/components/exam/*.tsx)",
       "Bash(ls -t \"C:\\\\Users\\\\dykim\\\\OneDrive\\\\바탕 화면\\\\문서저장소\\\\작업\\\\ROOT\"/*.log)",
-      "Bash(grep -rn \"MERGE\\\\|AFTER normalizeQuestion\\\\|IRRELEVANT RAW\" \"C:\\\\Users\\\\dykim\\\\OneDrive\\\\바탕 화면\\\\문서저장소\\\\작업\\\\ROOT\"/*.log)"
+      "Bash(grep -rn \"MERGE\\\\|AFTER normalizeQuestion\\\\|IRRELEVANT RAW\" \"C:\\\\Users\\\\dykim\\\\OneDrive\\\\바탕 화면\\\\문서저장소\\\\작업\\\\ROOT\"/*.log)",
+      "Bash(grep:*)",
+      "Bash(node -e ':*)",
+      "Bash(node --input-type=module -e ':*)",
+      "Bash(node test-answer-match.mjs)"
     ]
   }
 }

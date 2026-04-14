@@ -39,7 +39,7 @@ export function useExamSession(
     subject: 'middle_english' as SubjectKey,
     difficulty: 'hard',
     schoolLevel: 'high',
-    count: 12,
+    count: 5,
   });
 
   const summary = useMemo(() => {

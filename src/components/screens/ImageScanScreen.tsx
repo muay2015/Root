@@ -118,7 +118,7 @@ export function ImageScanScreen({ onImport, isImporting, importError, importProg
       questionText: combinedText,
       answerText: '',
       subject,
-      examTitle: examTitle.trim() || `${SUBJECT_CONFIG[subject].label} 이미지 스캔 기출`,
+      examTitle: examTitle.trim() || `${SUBJECT_CONFIG[subject].label} 기출 맞춤 생성`,
       questionFileName: questionFiles[0].file!.name + (questionFiles.length > 1 ? ` 외 ${questionFiles.length - 1}건` : ''),
       answerFileName: '',
     });
@@ -131,10 +131,10 @@ export function ImageScanScreen({ onImport, isImporting, importError, importProg
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-50 text-purple-600 ring-1 ring-purple-100">
           <Sparkles className="h-7 w-7" />
         </div>
-        <h1 className="text-3xl font-black tracking-tight text-slate-900">이미지 기반 문항 추출</h1>
+        <h1 className="text-3xl font-black tracking-tight text-slate-900">기출문제 맞춤 생성</h1>
         <p className="mt-3 text-[15px] font-medium text-slate-500 break-keep">
-          문제지 이미지를 업로드하세요. <br className="hidden sm:block" />
-          OpenAI Vision AI가 지문과 문항을 분석하여 실제 시험과 동일한 레이아웃의 CBT를 생성합니다.
+          실제 기출 모의고사나 수능 문제지 이미지를 업로드하세요. <br className="hidden sm:block" />
+          AI가 지문과 문항을 정밀 분석하여 나만의 맞춤형 디지털 기출 문제집으로 즉시 변환해 드립니다.
         </p>
       </div>
 
@@ -144,7 +144,7 @@ export function ImageScanScreen({ onImport, isImporting, importError, importProg
           <div className="premium-card p-6 sm:p-8">
             <h2 className="mb-6 flex items-center gap-2 text-lg font-black text-slate-900">
               <SettingsIcon className="h-5 w-5 text-primary" />
-              추출 설정
+              생성 설정
             </h2>
             
             <div className="space-y-6">
@@ -207,7 +207,7 @@ export function ImageScanScreen({ onImport, isImporting, importError, importProg
                   </>
                 ) : (
                   <>
-                    <span>문항 추출 시작하기</span>
+                    <span>기출문제 생성 시작하기</span>
                     <ArrowRight className="h-6 w-6 transition-transform group-hover:translate-x-1" />
                   </>
                 )}
@@ -275,7 +275,7 @@ export function ImageScanScreen({ onImport, isImporting, importError, importProg
               disabled={!canStart}
               className="w-full rounded-[2rem] bg-primary py-5 text-lg font-black text-white shadow-xl shadow-primary/20 transition-all active:scale-95 disabled:opacity-40"
             >
-              {isImporting ? '분석 중...' : '문항 추출 시작하기'}
+              {isImporting ? '분석 중...' : '기출문제 생성 시작하기'}
             </button>
           </div>
         </div>

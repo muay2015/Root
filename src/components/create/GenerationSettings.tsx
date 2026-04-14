@@ -23,6 +23,7 @@ interface GenerationSettingsProps {
   generationTopic: string;
   setGenerationTopic: (val: string) => void;
   mode: BuilderMode;
+  isAnonymous: boolean;
 }
 
 export function GenerationSettings(props: GenerationSettingsProps) {
@@ -43,7 +44,8 @@ export function GenerationSettings(props: GenerationSettingsProps) {
     setDetailedGrade,
     generationTopic,
     setGenerationTopic,
-    mode
+    mode,
+    isAnonymous
   } = props;
 
   const hasCurriculum = !!CURRICULUM_MAP[subject];
@@ -220,13 +222,21 @@ export function GenerationSettings(props: GenerationSettingsProps) {
             min={5}
             max={30}
             value={count}
+            disabled={isAnonymous}
             onChange={(event) => setCount(Number(event.target.value))}
-            className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            className={`w-full h-2 bg-slate-100 rounded-lg appearance-none accent-blue-600 ${isAnonymous ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
           />
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-slate-400">최소 5문항</span>
-            <div className="flex h-12 w-24 items-center justify-center rounded-2xl bg-blue-50 text-xl font-black text-blue-600 ring-1 ring-blue-100">
-              {count}
+            <div className="flex flex-col items-center gap-2">
+              <div className={`flex h-12 w-24 items-center justify-center rounded-2xl text-xl font-black ring-1 ${isAnonymous ? 'bg-slate-50 text-slate-400 ring-slate-100' : 'bg-blue-50 text-blue-600 ring-blue-100'}`}>
+                {count}
+              </div>
+              {isAnonymous && (
+                <span className="text-[10px] font-bold text-blue-500 animate-pulse">
+                  무료 체험은 5문항 고정
+                </span>
+              )}
             </div>
             <span className="text-sm font-bold text-slate-400">최대 30문항</span>
           </div>

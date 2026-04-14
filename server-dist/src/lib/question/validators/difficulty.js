@@ -9,8 +9,10 @@ export function validateGenericDifficulty(question, index, input, reasons, warni
     const stemKoreanChars = countKoreanCharacters(question.stem);
     const explanationWords = countWords(question.explanation);
     const directCuePattern = /\bwhat is stated|which is true|directly\b|다음 중 옳은 것|맞는 것/i;
-    // 과목 분류 확인 (영어 여부)
-    const isEnglish = String(input.subject).toLowerCase().includes('english');
+    // 과목 분류 확인
+    const subjectLower = String(input.subject).toLowerCase();
+    const isEnglish = subjectLower.includes('english');
+    const isMath = subjectLower.includes('math');
     const isKoreanLiterature = String(input.subject) === 'korean_literature';
     const hasCsatLiteratureReasoningStem = isKoreanLiterature &&
         /(?:화자|정서|태도|심경|감상|표현상\s*특징|표현의\s*효과|표현\s*방식|시어|심상|이미지|어조|분위기|갈등|장면|상황|기능|서사\s*전개)/u.test(String(question.stem ?? ''));
@@ -19,8 +21,16 @@ export function validateGenericDifficulty(question, index, input, reasons, warni
     }
     if (difficulty === 'hard') {
         // [FIX] 영어 과목의 경우 표준 발문이 짧으므로 길이 검증을 완화하거나 건너뜁니다.
+        // [FIX] 수학 과목은 stem이 짧고 stimulus에 수식 조건이 들어가는 구조가 정상이므로,
+        //       stem + stimulus 합산으로 검증합니다.
         if (!isEnglish && !hasCsatLiteratureReasoningStem) {
-            if (stemWords < 8 && stemKoreanChars < 18) {
+            let effectiveWords = stemWords;
+            let effectiveKoreanChars = stemKoreanChars;
+            if (isMath && question.stimulus) {
+                effectiveWords += countWords(question.stimulus);
+                effectiveKoreanChars += countKoreanCharacters(question.stimulus);
+            }
+            if (effectiveWords < 8 && effectiveKoreanChars < 18) {
                 pushReason(reasons, issueCounts, 'hard_too_short', `Question ${index}: hard difficulty stem is too short for deep reasoning.`);
             }
         }

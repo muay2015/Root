@@ -40,10 +40,21 @@ function buildFeedbackBlock(validationFeedback) {
     if (!validationFeedback || validationFeedback.length === 0) {
         return 'No previous validation failures.';
     }
-    return [
-        'Previous validation failures that must be fixed in this generation:',
+    const lines = [
+        '[CRITICAL] Previous validation failures that MUST be fixed. If you repeat these errors, the entire output will be discarded again:',
         ...validationFeedback.map((reason, index) => `${index + 1}. ${reason}`),
-    ].join('\n');
+    ];
+    const feedbackText = validationFeedback.join(' ');
+    if (feedbackText.includes('math_sequential_choices') || feedbackText.includes('sequential numbers')) {
+        lines.push('', '[MATH FIX] choices가 "1","2","3","4","5"로 실패했습니다. 각 선지에 실제 수학적 계산 결과값을 넣으십시오.', '올바른 예: choices=["3","5","7","9","11"] 또는 choices=["\\(\\frac{1}{2}\\)","\\(\\frac{3}{4}\\)","1","\\(\\frac{5}{4}\\)","\\(\\frac{3}{2}\\)"]');
+    }
+    if (feedbackText.includes('math_vague_stem') || feedbackText.includes('vague')) {
+        lines.push('', '[MATH FIX] 발문이 "~에 관한 분석/설명으로 적절한 것은?"으로 실패했습니다. 반드시 "\\(f(2)\\)의 값은?", "\\(a+b\\)의 값을 구하시오." 등 구체적 수치를 묻는 발문으로 수정하십시오.');
+    }
+    if (feedbackText.includes('hard_too_short') || feedbackText.includes('too short')) {
+        lines.push('', '[MATH FIX] stem이 너무 짧습니다. 수학 문항에서는 반드시 stimulus 필드에 수식 조건을 넣으십시오. stimulus가 null이면 안 됩니다.', '예: stem="다항함수 \\(f(x)\\)가 다음 조건을 만족시킬 때, \\(f(2)\\)의 값은?", stimulus="\\[f\'(x) = 3x^2 - 4x + 1,\\quad f(0) = 2\\]"');
+    }
+    return lines.join('\n');
 }
 function buildCsatKoreanLiteratureRules(input) {
     if (input.subject !== 'korean_literature' || input.schoolLevel !== 'csat') {
@@ -204,6 +215,30 @@ function buildSciencePromptRules() {
         '- [Science/Physics Rules] 문항 구조는 반드시 아래 순서를 따르십시오: (1) 상황 설명, (2) (필요 시) 그림 설명, (3) 조건 제시, (4) 마지막 줄에 질문.',
         '- [Science/Physics Rules] 핵심 질문은 반드시 마지막 줄에 배치하십시오. 예: "비는 얼마인가?"',
         '- [Science/Physics Rules] 모든 물리 문제는 반드시 stimulus에 [Diagram Description]으로 시작하는 상세한 그림 설명을 포함하십시오. (물체의 위치, 방향, 힘 또는 연결 상태 등)',
+    ];
+}
+function isMathSubject(subject) {
+    if (!subject) return false;
+    return subject.toString().toLowerCase().includes('math');
+}
+function buildMathPromptRules() {
+    return [
+        '- [MATH FATAL] 수식의 평문/LaTeX 이중 출력을 절대 금지합니다. "함수 f(x)\\(f(x)\\)" 또는 "수열 {an}\\(\\{a_n\\}\\)" 처럼 같은 수식을 두 번 쓰면 즉시 폐기합니다. 반드시 LaTeX 한 번만 사용하십시오. 올바른 예: "함수 \\(f(x)\\)에 대하여"',
+        '- [MATH FATAL] 선지(choices)에 "1", "2", "3", "4", "5" 같은 순번만 넣는 것을 절대 금지합니다. 각 선지는 반드시 구체적인 수학적 값이나 수식이어야 합니다. 예: "7", "\\(\\frac{3}{2}\\)", "\\(2\\sqrt{3}\\)", "\\(-1\\)", "12"',
+        '- [MATH FATAL] "~에 관한 분석으로 적절한 것은?", "~에 관한 설명으로 적절한 것은?" 같이 구체적 계산 없이 서술형 해석만 묻는 발문을 금지합니다. 수학 문항의 정답은 반드시 구체적 수치, 수식, 또는 명확한 참/거짓 판별이어야 합니다.',
+        '- [MATH LATEX] 모든 수식 변수, 함수명, 연산은 반드시 LaTeX 구분자 안에서만 표현하십시오. 인라인: \\(...\\), 디스플레이: \\[...\\]',
+        '- [MATH LATEX] 한글 문장 안에 a>=3, f(x)=0, lim 같은 평문 수식을 쓰지 마십시오. 반드시 \\(a \\ge 3\\), \\(f(x)=0\\), \\(\\lim\\) 형태로 작성하십시오.',
+        '- [MATH LATEX] JSON 내의 모든 백슬래시는 이중(\\\\)으로 작성하십시오.',
+        '- [MATH FIELD] stem = 한국어 발문 + 간단한 인라인 수식. stimulus = 함수 정의, 조건식, \\begin{cases}, 점화식 등 복잡한 수식 블록.',
+        '- [MATH FIELD] 수학 문항은 거의 항상 stimulus가 필요합니다. stimulus를 null로 두면 안 됩니다. 최소한 풀이 대상이 되는 수식 조건을 stimulus에 넣으십시오.',
+        '- [MATH FIELD] stimulus 안의 수식은 \\[...\\]로 감싸십시오.',
+        '- [MATH STEM] 발문은 반드시 "무엇을 구하는가"를 명확히 지정해야 합니다. 예: "\\(f(3)\\)의 값은?", "\\(a+b\\)의 값을 구하시오.", "\\(\\lim_{x \\to 1} f(x)\\)의 값은?"',
+        '- [MATH STEM] 발문에 풀이 조건을 장황하게 나열하지 마십시오. 조건은 stimulus에 넣고, stem은 질문만 담으십시오.',
+        '- [MATH CHOICE] 5개 선지는 모두 구체적 수학값이어야 합니다. 정수, 분수, 근호, 수식 등 계산으로 도달 가능한 값을 넣으십시오.',
+        '- [MATH CHOICE] 오답 선지는 흔한 계산 실수(부호 오류, 공식 혼동, 조건 누락 등)에서 나올 법한 값으로 구성하십시오.',
+        '- [MATH CHOICE] answer는 choices 배열의 해당 값과 글자 그대로 동일해야 합니다.',
+        '- [MATH EXAMPLE] 좋은 예: stem="다항함수 \\(f(x)\\)가 다음 조건을 만족시킬 때, \\(f(2)\\)의 값은?", stimulus="\\[f\'(x) = 3x^2 - 4x + 1,\\quad f(0) = 2\\]", choices=["3","5","7","9","11"], answer="7"',
+        '- [MATH EXAMPLE] 좋은 예: stem="등차수열 \\(\\{a_n\\}\\)에 대하여 \\(a_1 + a_{10}\\)의 값은?", stimulus="\\[a_3 = 7,\\quad a_7 = 19\\]", choices=["24","26","28","30","32"], answer="26"',
     ];
 }
 function isEnglishSubject(subject) {
@@ -606,6 +641,7 @@ function buildGenericPrompt(input) {
         ...buildKoreanPassageRules(input.subject),
         ...buildCsatKoreanLiteratureRules(input),
         ...(isScienceSubject(input.subject) ? buildSciencePromptRules() : []),
+        ...(isMathSubject(input.subject) ? buildMathPromptRules() : []),
     ];
     return [
         ...basePrompt,
@@ -755,6 +791,7 @@ function buildCsatPrompt(input) {
     const typeRules = [
         ...buildEnglishTypePromptRules(input, true),
         ...buildKoreanPassageRules(input.subject),
+        ...(isMathSubject(input.subject) ? buildMathPromptRules() : []),
     ];
     return [
         ...basePrompt,

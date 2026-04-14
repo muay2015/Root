@@ -14,17 +14,45 @@ function stripWrappingPunctuation(value) {
     return normalized;
 }
 export function normalizeAnswerComparison(value) {
-    return stripWrappingPunctuation(normalizeChoiceText(value))
-        .toLowerCase()
-        .replace(/\s+(?:and|&)\s+/g, '/')
-        .replace(/\s*\/\s*/g, '/')
-        .replace(/\s+/g, '')
-        .replace(/\\\(|\\\)|\\\[|\\\]|\$|\{|\}/g, '')
-        .replace(/\\text\{([^}]*)\}/g, '$1')
+    // 0단계: 기본 정규화
+    let s = normalizeChoiceText(value).toLowerCase();
+    // 1단계: LaTeX 구분자 제거 (stripWrappingPunctuation보다 먼저)
+    s = s.replace(/\\\(|\\\)|\\\[|\\\]|\$\$?/g, '');
+    // 2단계: LaTeX 명령어 → 기호 변환
+    s = s
+        .replace(/\\(?:text|textbf|mathrm|mathbf)\{([^}]*)\}/g, '$1')
+        .replace(/\\(?:frac|dfrac|tfrac)\{([^}]*)\}\{([^}]*)\}/g, '$1/$2')
+        .replace(/\\geq\b/g, '>=')
+        .replace(/\\ge\b/g, '>=')
+        .replace(/\\leq\b/g, '<=')
+        .replace(/\\le\b/g, '<=')
+        .replace(/\\neq\b/g, '!=')
+        .replace(/\\ne\b/g, '!=')
+        .replace(/\\approx/g, '≈')
         .replace(/\\sqrt/g, 'root')
         .replace(/\\times/g, '*')
+        .replace(/\\cdot/g, '*')
         .replace(/\\div/g, '/')
-        .trim();
+        .replace(/\\pm/g, '+-')
+        .replace(/\\mp/g, '-+')
+        .replace(/\\pi\b/g, 'pi')
+        .replace(/\\alpha\b/g, 'alpha')
+        .replace(/\\beta\b/g, 'beta')
+        .replace(/\\theta\b/g, 'theta')
+        .replace(/\\infty/g, 'inf')
+        .replace(/\\(?:left|right|big|Big|bigg|Bigg|displaystyle|scriptstyle)\b/g, '')
+        .replace(/\\[,;:!]/g, '')
+        .replace(/\\q?quad/g, '')
+        .replace(/\\[a-zA-Z]+/g, '');
+    // 3단계: 래핑 문장부호 제거
+    s = stripWrappingPunctuation(s);
+    // 4단계: 논리적 토큰 변환
+    s = s
+        .replace(/\s+(?:and|&)\s+/g, '/')
+        .replace(/\s*\/\s*/g, '/');
+    // 5단계: 중괄호, 공백 제거
+    s = s.replace(/[{}]/g, '').replace(/\s+/g, '').trim();
+    return s;
 }
 function parseLetterChoiceIndex(value) {
     const compact = value.trim().toUpperCase();

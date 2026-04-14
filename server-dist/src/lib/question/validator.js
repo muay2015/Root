@@ -4,6 +4,7 @@ import { validateStructure } from "./validators/structure.js";
 import { validateGenericDifficulty, validateTopicReflection, validateSelectionReflection } from "./validators/difficulty.js";
 import { validateHistoryDifficulty, validateHistorySubjectFit } from "./validators/history.js";
 import { validateKoreanLiteratureQuality } from "./validators/korean.js";
+import { validateMathQuality } from "./validators/math.js";
 import { validateEnglishBlankInference as valEngBlank, validateEnglishSentenceInsertion as valEngInsertion, validateEnglishOrderArrangement as valEngOrder, validateEnglishIrrelevantSentence as valEngIrrel, validateEnglishContentMatching as valEngContent, validateEnglishSummaryCompletion as valEngSummary, validateEnglishEmotionAtmosphere as valEngEmotion, validateEnglishTitleThemeGist as valEngTitle, validateEnglishGrammarVocabulary as valEngGrammar } from "./validators/english.js";
 function normalizeDuplicateText(value) {
     return String(value ?? '')
@@ -105,6 +106,7 @@ export function validateGeneratedQuestions(input) {
             validateGenericDifficulty(question, index, input, reasons, warnings, issueCounts);
         }
         validateKoreanLiteratureQuality(question, index, input, reasons, warnings, issueCounts);
+        validateMathQuality(question, index, input, reasons, warnings, issueCounts);
     });
     for (const indexes of fingerprintMap.values()) {
         if (indexes.length < 2) {

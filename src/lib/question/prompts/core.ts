@@ -59,8 +59,33 @@ export function buildFeedbackBlock(validationFeedback?: string[]) {
     return 'No previous validation failures.';
   }
 
-  return [
-    'Previous validation failures that must be fixed in this generation:',
+  const lines = [
+    '[CRITICAL] Previous validation failures that MUST be fixed. If you repeat these errors, the entire output will be discarded again:',
     ...validationFeedback.map((reason, index) => `${index + 1}. ${reason}`),
-  ].join('\n');
+  ];
+
+  // 수학 관련 실패가 있으면 구체적 교정 가이드 추가
+  const feedbackText = validationFeedback.join(' ');
+  if (feedbackText.includes('math_sequential_choices') || feedbackText.includes('sequential numbers')) {
+    lines.push(
+      '',
+      '[MATH FIX] choices가 "1","2","3","4","5"로 실패했습니다. 각 선지에 실제 수학적 계산 결과값을 넣으십시오.',
+      '올바른 예: choices=["3","5","7","9","11"] 또는 choices=["\\(\\frac{1}{2}\\)","\\(\\frac{3}{4}\\)","1","\\(\\frac{5}{4}\\)","\\(\\frac{3}{2}\\)"]',
+    );
+  }
+  if (feedbackText.includes('math_vague_stem') || feedbackText.includes('vague')) {
+    lines.push(
+      '',
+      '[MATH FIX] 발문이 "~에 관한 분석/설명으로 적절한 것은?"으로 실패했습니다. 반드시 "\\(f(2)\\)의 값은?", "\\(a+b\\)의 값을 구하시오." 등 구체적 수치를 묻는 발문으로 수정하십시오.',
+    );
+  }
+  if (feedbackText.includes('hard_too_short') || feedbackText.includes('too short')) {
+    lines.push(
+      '',
+      '[MATH FIX] stem이 너무 짧습니다. 수학 문항에서는 반드시 stimulus 필드에 수식 조건을 넣으십시오. stimulus가 null이면 안 됩니다.',
+      '예: stem="다항함수 \\(f(x)\\)가 다음 조건을 만족시킬 때, \\(f(2)\\)의 값은?", stimulus="\\[f\'(x) = 3x^2 - 4x + 1,\\quad f(0) = 2\\]"',
+    );
+  }
+
+  return lines.join('\n');
 }

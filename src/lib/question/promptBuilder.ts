@@ -15,6 +15,7 @@ import {
 } from './prompts/english';
 import { buildCsatKoreanLiteratureRules, buildKoreanPassageRules, buildCsatKoreanLiteratureSetPrompt } from './prompts/korean';
 import { isScienceSubject, buildSciencePromptRules } from './prompts/science';
+import { isMathSubject, buildMathPromptRules } from './prompts/math';
 import { isSocialSubject } from './prompts/social';
 
 function buildGenericPrompt(input: PromptBuildInput) {
@@ -78,6 +79,7 @@ function buildGenericPrompt(input: PromptBuildInput) {
     ...buildKoreanPassageRules(input.subject),
     ...buildCsatKoreanLiteratureRules(input),
     ...(isScienceSubject(input.subject) ? buildSciencePromptRules() : []),
+    ...(isMathSubject(input.subject) ? buildMathPromptRules() : []),
   ];
 
   return [
@@ -235,6 +237,7 @@ function buildCsatPrompt(input: PromptBuildInput) {
   const typeRules = [
     ...buildEnglishTypePromptRules(input, true),
     ...buildKoreanPassageRules(input.subject),
+    ...(isMathSubject(input.subject) ? buildMathPromptRules() : []),
   ];
 
   return [
@@ -265,23 +268,23 @@ export function buildQuestionPrompt(input: PromptBuildInput & { images?: { mimeT
     return buildSummaryPrompt(input);
   }
 
-  if (isEnglishQuestionTypeSafe(input.questionType, '요약문 완성')) {
+  if (isEnglishQuestionTypeSafe(input.questionType, '요약문 완성', input.subject)) {
     return buildEnglishSummaryStrictPrompt(input, builderMode === 'csat');
   }
 
-  if (isEnglishQuestionTypeSafe(input.questionType, '문장 삽입')) {
+  if (isEnglishQuestionTypeSafe(input.questionType, '문장 삽입', input.subject)) {
     return buildEnglishInsertionStrictPrompt(input, builderMode === 'csat');
   }
 
-  if (isEnglishQuestionTypeSafe(input.questionType, '순서 배열')) {
+  if (isEnglishQuestionTypeSafe(input.questionType, '순서 배열', input.subject)) {
     return buildEnglishOrderStrictArrayPrompt(input, builderMode === 'csat');
   }
 
-  if (isEnglishQuestionTypeSafe(input.questionType, '관계없는 문장')) {
+  if (isEnglishQuestionTypeSafe(input.questionType, '관계없는 문장', input.subject)) {
     return buildEnglishIrrelevantStrictPrompt(input, builderMode === 'csat');
   }
 
-  if (isEnglishQuestionTypeSafe(input.questionType, '어법/어휘')) {
+  if (isEnglishQuestionTypeSafe(input.questionType, '어법/어휘', input.subject)) {
     return buildEnglishGrammarStrictPrompt(input, builderMode === 'csat');
   }
 

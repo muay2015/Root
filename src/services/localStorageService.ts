@@ -20,6 +20,7 @@ function stripImageDataFromExams(exams: PersistedExamRecord[], aggressive = fals
 const LOCAL_WRONG_NOTES_KEY = 'root:wrong-notes';
 const LOCAL_LAST_EXAM_KEY = 'root:last-exam';
 const LOCAL_EXAM_LIST_KEY = 'root:exam-list';
+const LOCAL_ANONYMOUS_USAGE_KEY = 'root:anon-usage-date';
 
 export const localStorageService = {
   loadWrongNotes<T extends PersistedWrongNote>(): T[] {
@@ -80,5 +81,13 @@ export const localStorageService = {
         // 저장 실패 시 무시 (메모리 상태는 유지됨)
       }
     }
+  },
+
+  getAnonymousUsageDate(): string | null {
+    return window.localStorage.getItem(LOCAL_ANONYMOUS_USAGE_KEY);
+  },
+
+  setAnonymousUsageDate(date: string) {
+    window.localStorage.setItem(LOCAL_ANONYMOUS_USAGE_KEY, date);
   }
 };

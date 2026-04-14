@@ -47,6 +47,7 @@ export interface CreateScreenProps {
   setImageData: React.Dispatch<React.SetStateAction<{ mimeType: string; data: string }[]>>;
   ocrPages: { id: string; text: string }[];
   setOcrPages: React.Dispatch<React.SetStateAction<{ id: string; text: string }[]>>;
+  isAnonymous: boolean;
 }
 
 export function CreateScreen(props: CreateScreenProps) {
@@ -59,6 +60,7 @@ export function CreateScreen(props: CreateScreenProps) {
     ready, isGenerating, generationError, onGenerate,
     imageData, setImageData,
     ocrPages, setOcrPages,
+    isAnonymous,
   } = props;
 
   const [isParsing, setIsParsing] = React.useState(false);
@@ -175,6 +177,7 @@ export function CreateScreen(props: CreateScreenProps) {
           generationTopic={generationTopic}
           setGenerationTopic={setGenerationTopic}
           mode={mode}
+          isAnonymous={isAnonymous}
         />
 
         <AIDetailsInput 
