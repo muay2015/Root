@@ -303,9 +303,28 @@ export function inferSubjectFromTitle(title: string, schoolLevelHint?: string): 
   }
 
   // 6. 영어
-  if (t.includes('영어') || t.includes('english') || t.includes('grammar') || t.includes('vocabulary') || t.includes('reading') || t.includes('독해') || t.includes('숙어') || t.includes('영단어')) {
+  if (
+    t.includes('영어') || 
+    t.includes('english') || 
+    t.includes('grammar') || 
+    t.includes('vocabulary') || 
+    t.includes('reading') || 
+    t.includes('독해') || 
+    t.includes('숙어') || 
+    t.includes('영단어') ||
+    t.includes('빈칸 추론') ||
+    t.includes('문장 삽입') ||
+    t.includes('순서 배열') ||
+    t.includes('요지/주제/제목') ||
+    t.includes('심경/분위기') ||
+    t.includes('내용 일치') ||
+    t.includes('관계없는 문장') ||
+    t.includes('요약문 완성')
+  ) {
     if (isHigh) return 'high_english';
-    return null; // 불확실할 경우 폴백하지 않음
+    if (isMiddle) return 'middle_english';
+    // 기본적으로 고등/수능 키워드가 없으면 중등으로 보되, 힌트가 있으면 따름
+    return schoolLevelHint === 'high' ? 'high_english' : 'middle_english';
   }
 
   // 7. 기타/예체능/기술가정

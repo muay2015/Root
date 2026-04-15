@@ -92,19 +92,31 @@ export function useExamGenerator(
   };
 
   useEffect(() => {
+    if (mode === 'csat' && schoolLevel !== 'high') {
+      setSchoolLevel('high');
+    }
+
     const availableSubjects = (Object.keys(SUBJECT_CONFIG) as SubjectKey[]).filter((key) => {
       const config = SUBJECT_CONFIG[key];
       if (!config) return false;
 
       if (mode === 'csat') {
-        return config.supportedLevels.includes('high') || key.includes('_');
+        return config.supportedLevels.includes('high');
       }
 
       return config.supportedLevels.includes(schoolLevel) && config.supportedGrades.includes(detailedGrade);
     });
 
     if (availableSubjects.length > 0 && !availableSubjects.includes(subject)) {
-      handleSubjectSelect(availableSubjects[0]);
+      // 현재 과목과 카테고리가 같은 과목이 있으면 우선 선택 (예: 중등 영어 -> 고등 영어)
+      const currentCategory = SUBJECT_CONFIG[subject]?.category;
+      const matchingSubject = availableSubjects.find(s => SUBJECT_CONFIG[s]?.category === currentCategory);
+      
+      if (matchingSubject) {
+        handleSubjectSelect(matchingSubject);
+      } else {
+        handleSubjectSelect(availableSubjects[0]);
+      }
     }
   }, [mode, schoolLevel, detailedGrade, subject]);
 
@@ -262,7 +274,14 @@ export function useExamGenerator(
         nextQuestions = buildQuestions(subject, uploadMode, count);
       }
 
-      const resolvedTitle = generationTopic.trim() || data.title || nextTitle;
+      let resolvedTitle = generationTopic.trim() || data.title || nextTitle;
+      
+      // 제목에 과목 태그가 없는 경우 강제로 추가 (보관함 분류 정확도 향상)
+      const subjectLabel = SUBJECT_CONFIG[subject]?.label;
+      if (subjectLabel && !resolvedTitle.includes(`[${subjectLabel}]`)) {
+        resolvedTitle = `[${subjectLabel}] ${resolvedTitle}`;
+      }
+
       const newRecord = await finalizeGeneration(resolvedTitle, subject, nextQuestions, 'multiple');
 
       // 익명 사용자일 경우 사용 일자 기록
