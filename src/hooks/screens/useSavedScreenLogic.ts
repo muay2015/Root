@@ -61,6 +61,11 @@ export function useSavedScreenLogic({
   }, [exams, selectedSubject]);
 
   const groupedBySubject = useMemo(() => {
+    if (selectedSubject === '전체') {
+      // 전체 보기일 때는 그룹화하지 않고 최신순으로 하나의 섹션에 렌더링
+      return [['최근 생성된 문제', filteredExams]] as [string, PersistedExamRecord[]][];
+    }
+
     const subjectsMap: Record<string, PersistedExamRecord[]> = {};
 
     for (const exam of filteredExams) {
@@ -81,7 +86,7 @@ export function useSavedScreenLogic({
       if (b[0] === '기타 과목') return -1;
       return a[0].localeCompare(b[0]);
     });
-  }, [filteredExams]);
+  }, [filteredExams, selectedSubject]);
 
   const toggleSelection = (id: string) => {
     setSelectedIds((prev) => {

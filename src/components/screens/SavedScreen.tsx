@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw, FileText, Search, Plus, LogIn, CheckCircle2, Trash2 } from 'lucide-react';
+import { RefreshCw, FileText, Search, Plus, LogIn, CheckCircle2, Trash2, ListChecks, X } from 'lucide-react';
 import type { PersistedExamRecord } from '../../lib/rootPersistence';
 import { useSavedScreenLogic } from '../../hooks/screens/useSavedScreenLogic';
 import { SavedExamCard } from './saved/SavedExamCard';
@@ -56,24 +56,26 @@ export function SavedScreen({
               </div>
               <div>
                 <h1 className="text-3xl font-black tracking-tight text-slate-900">
-                  나의 학습 보관함
+                  문제 보관함
                 </h1>
-                <p className="text-sm font-medium text-slate-500">
-                  생성된 모든 평가 데이터가 안전하게 보관 중입니다.
-                </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 onClick={actions.handleToggleSelectionMode}
-                className={`flex h-12 items-center gap-2 rounded-2xl px-5 text-sm font-black transition-all ${
+                className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-all ${
                   state.isSelectionMode
                     ? 'bg-slate-900 text-white'
                     : 'bg-white text-slate-600 ring-1 ring-outline hover:bg-slate-50'
                 }`}
+                title={state.isSelectionMode ? '선택 취소' : '선택'}
               >
-                {state.isSelectionMode ? '선택 취소' : '선택'}
+                {state.isSelectionMode ? (
+                  <X className="h-5 w-5" />
+                ) : (
+                  <ListChecks className="h-5 w-5" />
+                )}
               </button>
               <button
                 onClick={onCreate}
