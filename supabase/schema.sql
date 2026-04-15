@@ -4,6 +4,7 @@ create table if not exists public.exam_attempts (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null,
   title text not null,
+  subject text,
   builder_mode text not null,
   question_type text not null,
   difficulty text not null,
