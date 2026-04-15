@@ -559,6 +559,25 @@ function standardizeEnglishSentenceInsertionItem(stem, stimulus, choices) {
         choices: canonicalChoices,
     };
 }
+/**
+ * 수학 선지에서 단순 숫자값의 불필요한 LaTeX 래핑을 제거하여 포맷을 통일합니다.
+ * 예: "\(7\)" → "7", "\(-3\)" → "-3"
+ * 복잡한 수식("\(\frac{3}{2}\)" 등)은 그대로 유지합니다.
+ */
+function normalizeMathChoices(choices) {
+    return choices.map((choice) => {
+        const trimmed = choice.trim();
+        // \(단순값\) 패턴에서 내부가 정수/음수이면 언래핑
+        const match = trimmed.match(/^\\\((.+)\\\)$/);
+        if (match) {
+            const inner = match[1].trim();
+            if (/^-?\d+$/.test(inner)) {
+                return inner;
+            }
+        }
+        return trimmed;
+    });
+}
 export function normalizePhysicsExpression(text) {
     if (!text)
         return text;
@@ -758,6 +777,12 @@ export function normalizeQuestion(raw, index, context) {
         if (stimulus) {
             stimulus = normalizePhysicsExpression(stimulus);
         }
+    }
+    // 수학 과목 전용: 선지 LaTeX 포맷 통일 (중복 매칭 방지)
+    // AI가 일부 선지만 \(...\)로 감싸는 경우 normalizeText 후 동일 값이 2개로 인식되는 문제 해결
+    if (subjectKey.includes('math')) {
+        choices = normalizeMathChoices(choices);
+        answerStr = resolveAnswerFromChoicesLoose(raw.answer, choices) || answerStr;
     }
     return {
         id: index + 1,

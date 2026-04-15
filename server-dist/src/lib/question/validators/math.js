@@ -1,6 +1,9 @@
 import { pushReason } from "./utils.js";
 /**
  * 수학 문항 전용 품질 검증.
+ * - 선지가 순번(1~5)만으로 구성된 경우 차단
+ * - 수식 이중 출력(평문 + LaTeX) 감지
+ * - stimulus 누락 검증
  */
 export function validateMathQuality(question, index, input, reasons, _warnings, issueCounts) {
     const subjectLower = String(input.subject).toLowerCase();
@@ -17,8 +20,9 @@ export function validateMathQuality(question, index, input, reasons, _warnings, 
             pushReason(reasons, issueCounts, 'math_sequential_choices', `Question ${index}: math choices are just sequential numbers (1-5) with no mathematical content.`);
         }
     }
-    // 2. 수식 이중 출력 감지
+    // 2. 수식 이중 출력 감지: "f(x)\(f(x)\)" 또는 "g(x)g(x)" 패턴
     const stem = String(question.stem ?? '');
+    // 동일 표현이 LaTeX 밖과 안에서 연속으로 나타나는 패턴
     const duplicateExprPattern = /([a-zA-Z]\([a-zA-Z0-9,\s]*\))\s*\\?\(?\\?\(?\1/;
     if (duplicateExprPattern.test(stem)) {
         pushReason(reasons, issueCounts, 'math_duplicate_expression', `Question ${index}: stem contains duplicated plain-text and LaTeX expression.`);

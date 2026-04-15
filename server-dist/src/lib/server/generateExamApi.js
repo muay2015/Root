@@ -96,7 +96,7 @@ export async function generateExamApiResponse(input) {
                 openai,
                 model: resolvedModel,
                 materialText: payload.materialText,
-                count: Number(payload.count) || 12,
+                count: Number(payload.count) || 5,
                 subject,
                 questionType,
                 format,

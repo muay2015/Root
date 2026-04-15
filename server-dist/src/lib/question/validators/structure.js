@@ -30,12 +30,25 @@ export function validateStructure(question, index, reasons, issueCounts) {
         .replace(/^(?:answer|correct answer)\s*[:\-]?\s*/i, '')
         .replace(/^(?:정답|답)\s*[:：\-]?\s*/u, '')
         .trim();
-    const numericAnswerIndex = parseAnswerChoiceIndex(answerWithoutLeadingLabel);
-    const normalizedAnswer = numericAnswerIndex !== null
-        ? normalizeText(choices[numericAnswerIndex] ?? '')
-        : normalizeText(answerWithoutLeadingLabel);
-    const answerMatches = choices.filter((choice) => normalizeText(choice) === normalizedAnswer).length;
-    const finalAnswerMatches = answerMatches === 1 ? answerMatches : countAnswerMatches(question.answer, choices);
+    // 직접 텍스트 매칭 우선: 정답 텍스트가 선지와 1:1 일치하면 인덱스 해석을 건너뜀
+    // (수학 문항에서 answer "1"이 "choice #1"이 아닌 값 "1"인 경우 오판 방지)
+    const directNormalized = normalizeText(answerWithoutLeadingLabel);
+    const directMatches = directNormalized
+        ? choices.filter((choice) => normalizeText(choice) === directNormalized).length
+        : 0;
+    let finalAnswerMatches;
+    if (directMatches === 1) {
+        finalAnswerMatches = 1;
+    }
+    else {
+        const numericAnswerIndex = parseAnswerChoiceIndex(answerWithoutLeadingLabel);
+        const normalizedAnswer = numericAnswerIndex !== null
+            ? normalizeText(choices[numericAnswerIndex] ?? '')
+            : directNormalized;
+        const answerMatches = choices.filter((choice) => normalizeText(choice) === normalizedAnswer).length;
+        finalAnswerMatches =
+            answerMatches === 1 ? answerMatches : countAnswerMatches(question.answer, choices);
+    }
     if (finalAnswerMatches !== 1) {
         pushReason(reasons, issueCounts, 'answer_match', `Question ${index}: answer must match exactly one choice. (Matches: ${finalAnswerMatches}; Answer: "${question.answer}")`);
     }

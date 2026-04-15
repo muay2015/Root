@@ -1,4 +1,4 @@
-import { SUBJECT_CONFIG } from "./subjectConfig.js";
+import { SUBJECT_CONFIG } from './subjectConfig';
 export const difficultyRules = {
     easy: {
         label: 'Easy',
@@ -185,7 +185,6 @@ const subjectRules = {
     },
     // ... (기타 과목 규칙들은 필요 시 순차적으로 확장)
 };
-;
 export function getGenerationRules(input) {
     const subjectConfig = SUBJECT_CONFIG[input.subject];
     const difficulty = difficultyRules[input.difficulty];

@@ -449,16 +449,44 @@ async function requestQuestionsFromModel(input, feedback) {
                 }
                 // 2) stimulus에 지문+요약문이 섞인 경우: (A)/(B)를 포함한 문장만 stimulus로 남기고 나머지를 stem에 병합
                 else if (stimulusText.length > 80 && /[A-Za-z]{10,}/.test(stimulusText)) {
-                    const stimLines = stimulusText.split(/\n+/).map((l) => l.trim()).filter(Boolean);
-                    const summaryLine = stimLines.find((l) => /\(\s*A\s*\)/i.test(l) && /\(\s*B\s*\)/i.test(l) && /[A-Za-z]{5,}/.test(l));
-                    const passageLines = stimLines.filter((l) => !((/\(\s*A\s*\)/i.test(l) && /\(\s*B\s*\)/i.test(l)) || /가장 적절한 것은\?/.test(l)));
-                    if (summaryLine && passageLines.length > 0) {
-                        const passage = passageLines.join(' ');
-                        const instruction = stemText || '다음 글의 내용을 한 문장으로 요약할 때, 빈칸 (A), (B)에 들어갈 말로 가장 적절한 것은?';
-                        q.stem = instruction + '\n\n' + passage;
-                        q.stimulus = summaryLine;
-                        if (idx === 0)
-                            console.log(`[Generator] SUMMARY MERGE(stimulus split): stem now ${q.stem.length}자, stimulus=${q.stimulus.length}자`);
+                    let instruction = stemText || '다음 글의 내용을 한 문장으로 요약할 때, 빈칸 (A), (B)에 들어갈 말로 가장 적절한 것은?';
+                    let cleanedStimulus = stimulusText
+                        .replace(/다음 글의 내용을 한 문장으로 요약할 때,[^?]*\?/g, '')
+                        .replace(/윗글의 내용을 한 문장으로 요약할 때,[^?]*\?/g, '')
+                        .trim();
+                    const segments = cleanedStimulus.split(/(?<=[.!?])\s+|\n+/).map(s => s.trim()).filter(Boolean);
+                    const summaryIdx = segments.findIndex(s => /\(\s*A\s*\)/i.test(s) && /\(\s*B\s*\)/i.test(s) && /[A-Za-z]{3,}/.test(s));
+                    if (summaryIdx !== -1) {
+                        let summaryLine = segments[summaryIdx];
+                        // 혹시 분할 과정에서 summaryLine 앞에 .?!가 없어서 이전 문장과 결합된 경우를 대비 (fallback match)
+                        // (보통 정상이지만, 너무 길면 비정상)
+                        if (summaryLine.length > 250) {
+                            const fallbackMatch = summaryLine.match(/([A-Z"'][^.!?]*\(\s*A\s*\).*?\(\s*B\s*\).*?(?:[.!?]|$))/i);
+                            if (fallbackMatch) {
+                                summaryLine = fallbackMatch[1].trim();
+                            }
+                        }
+                        const passage = cleanedStimulus.replace(summaryLine, '').trim();
+                        if (passage.length > 50) {
+                            q.stem = instruction + '\n\n' + passage;
+                            q.stimulus = summaryLine;
+                            if (idx === 0)
+                                console.log(`[Generator] SUMMARY MERGE(sentence split): stem now ${q.stem.length}자, stimulus=${q.stimulus.length}자`);
+                        }
+                    }
+                    else {
+                        // 완전히 못 찾은 경우 정규식으로 직접 추출 시도 (줄바꿈/온점 오류 극복)
+                        const fallbackMatch = cleanedStimulus.match(/([A-Z"'].*?\(\s*A\s*\).*?\(\s*B\s*\).*?(?:[.!?]|$))/i);
+                        if (fallbackMatch && fallbackMatch[1].length < 250) {
+                            const summaryLine = fallbackMatch[1].trim();
+                            const passage = cleanedStimulus.replace(summaryLine, '').trim();
+                            if (passage.length > 50) {
+                                q.stem = instruction + '\n\n' + passage;
+                                q.stimulus = summaryLine;
+                                if (idx === 0)
+                                    console.log(`[Generator] SUMMARY MERGE(regex fallback): stem now ${q.stem.length}자, stimulus=${q.stimulus.length}자`);
+                            }
+                        }
                     }
                 }
             }

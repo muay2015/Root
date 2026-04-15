@@ -1,4 +1,5 @@
-import { isEnglishSubject, normalizeEnglishPlainText } from './core.js';
+import { SubjectKey } from '../subjectConfig';
+import { isEnglishSubject, normalizeEnglishPlainText } from './core';
 function normalizeSummaryBlankMarkers(value) {
     return value
         .replace(/[\[\uFF3B]\s*a\s*[\]\uFF3D]/gi, '(A)')
@@ -36,6 +37,17 @@ function stripBlanksFromSummaryInstruction(value) {
             .replace(/\(\s*B\s*\)\s*_{2,}/gi, '(B)');
     })
         .join('\n');
+}
+/**
+ * stem에 영어 지문이 이미 올바르게 포함되어 있는지 체크.
+ * 한국어 발문 부분을 제외하고 영어 텍스트만 확인한다.
+ */
+function stemHasEnglishPassage(text) {
+    const withoutInstruction = text
+        .replace(/다음 글의 내용을 한 문장으로 요약할 때[^?]*\?/g, '')
+        .replace(/윗글의 내용을 한 문장으로 요약할 때[^?]*\?/g, '')
+        .trim();
+    return /[A-Za-z]{4,}/.test(withoutInstruction) && withoutInstruction.length > 80;
 }
 export function isEnglishSummaryCompletionType(params) {
     const questionType = String(params.questionType ?? '');
@@ -90,65 +102,75 @@ export function standardizeEnglishSummaryCompletion(params) {
     let stimulus = typeof params.stimulus === 'string'
         ? normalizeSummaryBlankMarkers(normalizeEnglishPlainText(params.stimulus))
         : null;
-    const summarySentenceRegex = /((?:Summary|Result|Conclusion)?[:\s-]*[A-Z0-9][^.?!\n]*(?:\(\s*A\s*\)|\[\s*A\s*\])[^.?!\n]*(?:\(\s*B\s*\)|\[\s*B\s*\])[^.?!\n]*[.?!]?|(?:Summary|Result|Conclusion)?[:\s-]*[A-Z0-9][^.?!\n]*(?:\(\s*B\s*\)|\[\s*B\s*\])[^.?!\n]*(?:\(\s*A\s*\)|\[\s*A\s*\])[^.?!\n]*[.?!]?)/gi;
-    const candidates = [
-        ...stem.split(/\n\s*\n/),
-        ...stem.split('\n'),
-        ...(stem.match(summarySentenceRegex) ?? []),
-    ]
-        .map((part) => stripLeadingSummaryLabel(normalizeSummaryBlankMarkers(normalizeEnglishPlainText(part))))
-        .filter(Boolean)
-        .filter(looksLikeEnglishSummarySentence)
-        .sort((a, b) => b.length - a.length);
-    const extractedSummary = candidates[0] ?? '';
-    if (!stimulus || !hasSummaryBlanks(stimulus) || stimulus.length < extractedSummary.length) {
-        if (extractedSummary) {
-            stimulus = extractedSummary;
+    // -------- [CRITICAL GUARD] --------
+    // stem에 영어 지문이 이미 올바르게 있으면(=정상 케이스):
+    //   - stimulus도 요약문 빈칸을 포함하면 → 모든 것이 정상이므로 stem을 절대 수정하지 않음
+    //   - stimulus가 없거나 빈칸이 없으면 → stem에서 요약문만 추출해 stimulus로 옮김
+    // stem에 영어 지문이 없으면(=AI가 잘못 낸 비정상 케이스):
+    //   - stimulus에서 지문+요약문을 분리해 復구
+    // ----------------------------------
+    const stemOk = stemHasEnglishPassage(stem);
+    if (stemOk) {
+        // [정상 경로] stem에 지문이 있음.
+        if (!stimulus || !hasSummaryBlanks(stimulus)) {
+            // stimulus가 없거나 빈칸이 없을 때만 stem에서 요약문 추출 시도.
+            const summarySentenceRegex = /((?:Summary|Result|Conclusion)?[:\s-]*[A-Z0-9][^.?!\n]*(?:\(\s*A\s*\)|\[\s*A\s*\])[^.?!\n]*(?:\(\s*B\s*\)|\[\s*B\s*\])[^.?!\n]*[.?!]?)/gi;
+            const candidates = [
+                ...stem.split(/\n\s*\n/),
+                ...stem.split('\n'),
+                ...(stem.match(summarySentenceRegex) ?? []),
+            ]
+                .map((part) => stripLeadingSummaryLabel(normalizeSummaryBlankMarkers(normalizeEnglishPlainText(part))))
+                .filter(Boolean)
+                .filter(looksLikeEnglishSummarySentence)
+                .sort((a, b) => b.length - a.length);
+            const extractedSummary = candidates[0] ?? '';
+            if (extractedSummary) {
+                stimulus = extractedSummary;
+                // stem에서 요약문 문장만 제거 (지문 보존)
+                const normalizedStimulus = normalizeEnglishPlainText(stimulus);
+                stem = stem.replace(normalizedStimulus, '').replace(/\n{3,}/g, '\n\n').trim();
+                const core = normalizedStimulus.slice(0, Math.min(normalizedStimulus.length, 40));
+                if (core) {
+                    stem = stem
+                        .split('\n')
+                        .filter((line) => !normalizeEnglishPlainText(line).includes(core))
+                        .join('\n')
+                        .trim();
+                }
+            }
         }
+        // stimulus에 빈칸이 있으면 → 아무것도 하지 않음 (stem/stimulus 모두 정상)
     }
-    if (stimulus && hasSummaryBlanks(stimulus)) {
-        const normalizedStimulus = normalizeEnglishPlainText(stimulus);
-        stem = stem.replace(normalizedStimulus, '').trim();
-        const core = normalizedStimulus.slice(0, Math.min(normalizedStimulus.length, 40));
-        if (core) {
-            stem = stem
-                .split('\n')
-                .filter((line) => !normalizeEnglishPlainText(line).includes(core))
-                .join('\n')
-                .trim();
+    else {
+        // [비정상 경로] stem에 영어 지문이 없음. stimulus에서 복구 시도.
+        if (stimulus && stimulus.length > 60) {
+            const stimParagraphs = stimulus.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+            const stimLines = stimulus.split('\n').map((l) => l.trim()).filter(Boolean);
+            const summaryFromStimulus = [...stimParagraphs, ...stimLines]
+                .map((part) => stripLeadingSummaryLabel(normalizeSummaryBlankMarkers(normalizeEnglishPlainText(part))))
+                .filter(Boolean)
+                .filter(looksLikeEnglishSummarySentence)
+                .sort((a, b) => b.length - a.length)[0] ?? '';
+            if (summaryFromStimulus) {
+                let passage = stimulus
+                    .replace(summaryFromStimulus, '')
+                    .replace(/다음 글의 내용을 한 문장으로 요약할 때[^?]*\?/g, '')
+                    .replace(/윗글의 내용을 한 문장으로 요약할 때[^?]*\?/g, '')
+                    .replace(/\n{3,}/g, '\n\n')
+                    .trim();
+                if (/[A-Za-z]{4,}/.test(passage) && passage.length > 80) {
+                    if (!stem || stem.length < 20) {
+                        stem = '다음 글의 내용을 한 문장으로 요약할 때, 빈칸 (A), (B)에 들어갈 말로 가장 적절한 것은?';
+                    }
+                    stem = stem + '\n\n' + passage;
+                    stimulus = summaryFromStimulus;
+                }
+            }
         }
     }
     stem = stripBlanksFromSummaryInstruction(stem);
     stem = stem.replace(/\n{3,}/g, '\n\n').trim();
-    // 복구: stem에 영어 지문이 없고 stimulus가 지문+요약문을 모두 포함하는 경우
-    // (모델이 stem을 비우고 stimulus에 모든 내용을 넣은 케이스)
-    const stemHasEnglishPassage = (text) => {
-        const withoutInstruction = text.replace(/다음 글의 내용을 한 문장으로 요약할 때[^?]*\?/g, '').trim();
-        return /[A-Za-z]{4,}/.test(withoutInstruction) && withoutInstruction.length > 80;
-    };
-    if (!stemHasEnglishPassage(stem) && stimulus && stimulus.length > 60) {
-        const stimParagraphs = stimulus.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
-        const stimLines = stimulus.split('\n').map((l) => l.trim()).filter(Boolean);
-        const summaryFromStimulus = [...stimParagraphs, ...stimLines]
-            .map((part) => stripLeadingSummaryLabel(normalizeSummaryBlankMarkers(normalizeEnglishPlainText(part))))
-            .filter(Boolean)
-            .filter(looksLikeEnglishSummarySentence)
-            .sort((a, b) => b.length - a.length)[0] ?? '';
-        if (summaryFromStimulus) {
-            let passage = stimulus
-                .replace(summaryFromStimulus, '')
-                .replace(/다음 글의 내용을 한 문장으로 요약할 때[^?]*\?/g, '')
-                .replace(/\n{3,}/g, '\n\n')
-                .trim();
-            if (/[A-Za-z]{4,}/.test(passage) && passage.length > 80) {
-                if (!stem || stem.length < 20) {
-                    stem = '다음 글의 내용을 한 문장으로 요약할 때, 빈칸 (A), (B)에 들어갈 말로 가장 적절한 것은?';
-                }
-                stem = stem + '\n\n' + passage;
-                stimulus = summaryFromStimulus;
-            }
-        }
-    }
     const choices = normalizeSummaryCompletionChoices(params.choices ?? []);
     return { stem, stimulus, choices };
 }

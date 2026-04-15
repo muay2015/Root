@@ -88,9 +88,6 @@ export function normalizeChoiceText(value) {
     }
     // 0. 불필요한 빈 수식 기호 제거
     let normalized = (typeof value === 'string' ? value : '').replace(EMPTY_LATEX_PATTERN, '');
-    // 0.1. 지문 내의 불필요한 슬래시(/) 구분자 줄바꿈 변환 (가독성 개선)
-    // 양쪽에 공백이 있는 슬래시만 대상으로 하여 수학적 분수와 구분
-    normalized = normalized.replace(/\s\/\s/g, '\n');
     // 1. 유니코드 이스케이프 및 수식 기호 정규화 (UI 렌더러와 동일하게)
     normalized = normalized
         .replace(/\\u221a/gi, '√')

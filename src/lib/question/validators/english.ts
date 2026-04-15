@@ -235,6 +235,18 @@ export function validateEnglishBlankInference(
       `Question ${index}: blank inference passage contains instruction text mixed into the passage.`,
     );
   }
+
+  // 선지(choices) 검증: (A), (B) 등 다중 빈칸/요약문 형식 차단
+  const choices = Array.isArray(question.choices) ? question.choices.map(c => String(c ?? '')) : [];
+  const hasInvalidChoiceFormat = choices.some(choice => /\([A-E]\)|\/|\\/.test(choice));
+  if (hasInvalidChoiceFormat) {
+    pushReason(
+      reasons,
+      issueCounts,
+      'english_blank_inference_invalid_choice_format',
+      `Question ${index}: blank inference choices must not contain multi-blank formats like (A) or slashes (/).`,
+    );
+  }
 }
 
 /**
