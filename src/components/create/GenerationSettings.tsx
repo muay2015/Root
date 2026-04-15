@@ -66,25 +66,27 @@ export function GenerationSettings(props: GenerationSettingsProps) {
             if (hasCurriculum) {
               if (val === '전체') {
                 setQuestionType('전체');
+                setGenerationTopic('');
               } else {
-                const currentAreas = (questionType && questionType !== '전체') 
-                  ? questionType.split(',').map(t => t.trim()).filter(Boolean) 
+                const currentAreas = (questionType && questionType !== '전체')
+                  ? questionType.split(',').map(t => t.trim()).filter(Boolean)
                   : [];
-                
-                if (currentAreas.includes(val)) {
-                  // 토글 해제
-                  const nextAreas = currentAreas.filter(a => a !== val);
-                  setQuestionType(nextAreas.length > 0 ? nextAreas.join(', ') : '전체');
+
+                if (currentAreas.includes(val) && currentAreas.length === 1) {
+                  // 토글 해제 (이미 단일 선택된 것을 다시 누름)
+                  setQuestionType('전체');
+                  setGenerationTopic('');
                 } else {
-                  // 토글 추가
-                  setQuestionType([...currentAreas, val].join(', '));
+                  // 단일 선택 (기존 선택 영역을 대체)
+                  setQuestionType(val);
+                  // 영역이 바뀌면 기존 영역의 세부 단원 선택을 초기화
+                  setGenerationTopic('');
                 }
               }
             } else {
               setQuestionType(val);
             }
-          }}
-        >
+          }}        >
           {/* 교육과정 데이터가 있는 과목일 경우 영역 선택 시 바로 아래에 세부 단원 칩 노출 */}
           {hasCurriculum && (
             <div className="flex flex-col gap-5 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -128,6 +130,7 @@ export function GenerationSettings(props: GenerationSettingsProps) {
                           // 정확한 비교를 위해 trim() 적용 후 필터링
                           const nextAreas = currentAreas.filter(a => a.trim() !== areaData.areaName.trim());
                           setQuestionType(nextAreas.length > 0 ? nextAreas.join(', ') : '전체');
+                          setGenerationTopic('');
                         }}
                         className="p-1 rounded-lg text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-all active:scale-90"
                         title="영역 닫기"

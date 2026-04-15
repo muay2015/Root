@@ -53,6 +53,12 @@ export default function App() {
     sync.setWrongNotes
   );
 
+  useEffect(() => {
+    if (screen === 'create-selection') {
+      generator.reset();
+    }
+  }, [screen]);
+
   // --- 네비게이션 엔진 ---
   const navigate = (next: Screen, replace = false) => {
     // 보호가 필요한 화면 리스트 (익명 사용자 체험을 위해 create, create-selection은 제외)
@@ -72,6 +78,10 @@ export default function App() {
       setScreen('account');
       window.history.pushState({ screen: 'account' }, '', '');
       return;
+    }
+
+    if (next === 'create-selection') {
+      generator.reset();
     }
 
     window.scrollTo(0, 0);
@@ -288,7 +298,10 @@ export default function App() {
                     onDelete={sync.removeSavedExam}
                     onDeleteMultiple={sync.removeSavedExams}
                     onContinueGenerate={onContinueGenerate}
-                    onCreate={() => navigate('create')}
+                    onCreate={() => {
+                      generator.reset();
+                      navigate('create-selection');
+                    }}
                     onLogin={() => navigate('account')}
                     isAnonymous={auth.isAnonymous}
                     syncMessage={auth.syncMessage}

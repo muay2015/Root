@@ -1,6 +1,7 @@
 import React, { type ChangeEvent } from 'react';
 import { SUBJECT_CONFIG, getSubjectSelectionDefaults, getSubjectSelectionLabel, usesNoSelector, getSubjectQuestionTypes, getSubjectFormats, type SelectionFormat, type SubjectKey } from '../../lib/question/subjectConfig';
 import type { BuilderMode, DifficultyLevel, SchoolLevel, DetailedGrade } from '../../lib/examTypes';
+import { CURRICULUM_MAP } from '../../lib/question/curriculumConfig';
 import { UploadPanel } from '../ui/UploadPanel';
 import { parseFileToText } from '../../lib/fileParser';
 
@@ -89,10 +90,12 @@ export function CreateScreen(props: CreateScreenProps) {
 
   // 문제 유형 선택 시 단원/주제(학습 집중 영역)에 자동 주입 (UX 개선)
   React.useEffect(() => {
-    if (questionType && questionType !== '전체') {
+    const hasCurriculum = !!CURRICULUM_MAP[subject];
+    // 커리큘럼이 있는 경우(예: 중등수학) 세부 영역이 아니라 세부 단원이 집중 영역에 들어가야 하므로 자동 주입 생략
+    if (!hasCurriculum && questionType && questionType !== '전체') {
       setGenerationTopic(questionType);
     }
-  }, [questionType, setGenerationTopic]);
+  }, [questionType, setGenerationTopic, subject]);
 
   const removeFile = (name: string) => {
     setParsedFiles(prev => prev.filter(f => f !== name));
@@ -146,7 +149,7 @@ export function CreateScreen(props: CreateScreenProps) {
       <div className="mx-auto max-w-5xl space-y-8">
         <header className="flex flex-col gap-2">
           <h1 className="text-3xl font-black tracking-tight text-slate-900">지능형 문제 생성</h1>
-          <p className="text-sm font-medium text-slate-500">학습 목표에 최적화된 평가 환경을 구성합니다. 모든 문항은 정밀 파싱 로직을 거칩니다.</p>
+          <p className="text-sm font-medium text-slate-500">학습 목표에 맞춰 문제를 자동으로 구성합니다.</p>
         </header>
 
         <ModeSelector mode={mode} setMode={setMode} />

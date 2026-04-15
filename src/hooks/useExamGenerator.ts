@@ -122,6 +122,27 @@ export function useExamGenerator(
     return lastDate === today;
   };
 
+  const reset = () => {
+    const nextDefaults = getSubjectSelectionDefaults(defaultSubject);
+    setMode('school');
+    setSubject(defaultSubject);
+    setQuestionType(nextDefaults.questionType);
+    setFormat(nextDefaults.format);
+    setDifficulty('hard');
+    setSchoolLevel('high');
+    setDetailedGrade('1학년' as DetailedGrade);
+    setCount(5);
+    setGenerationTopic('');
+    setMaterialText('');
+    setOcrPages([]);
+    setParsedFiles([]);
+    setQuestionFiles([]);
+    setAnswerFiles([]);
+    setIsGenerating(false);
+    setGenerationError(null);
+    setImageData([]);
+  };
+
   const finalizeGeneration = async (
     title: string,
     sub: SubjectKey,
@@ -346,5 +367,6 @@ export function useExamGenerator(
     detailedGrade,
     setDetailedGrade,
     isAnonymous,
+    reset,
   };
 }

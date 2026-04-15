@@ -123,7 +123,7 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
               '난이도 설정 (문항 수 5개 고정)',
               '오답노트 자동 생성'
             ]}
-            onAction={() => onNavigate('create')}
+            onAction={() => onNavigate('create-selection')}
             actionText="시작하기"
           />
 
@@ -140,7 +140,7 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
               '난이도·문항 수 자유 설정',
               '개인별 오답 분석'
             ]}
-            onAction={() => onNavigate(isAnonymous ? 'account' : 'create')}
+            onAction={() => onNavigate(isAnonymous ? 'account' : 'create-selection')}
             actionText="구입하기"
           />
 
@@ -159,7 +159,7 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
               '문제집 구매 완전히 대체'
             ]}
             footerText="문제당 약 11원, 문제집보다 99% 저렴"
-            onAction={() => onNavigate(isAnonymous ? 'account' : 'create')}
+            onAction={() => onNavigate(isAnonymous ? 'account' : 'create-selection')}
             actionText="선택하기"
           />
         </div>
@@ -175,7 +175,7 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
 
           <div className="relative z-10">
             <h2 className="text-3xl font-black sm:text-5xl leading-tight break-keep text-white">
-              가방 속 무거운 짐은 들어내고,<br />
+              가방 속 무거운 짐은 덜어내고,<br />
               공부는 더 가볍게.
             </h2>
             <p className="mx-auto mt-8 max-w-2xl text-lg font-medium text-blue-100/80 leading-relaxed break-keep">
@@ -185,13 +185,13 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
             
             <div className="mt-12 inline-block rounded-2xl bg-white/10 px-6 py-4 backdrop-blur-md ring-1 ring-white/20">
               <p className="text-xl font-bold text-orange-200 break-keep text-balance">
-                "문제집 살 돈, 아이 미래에 쓰는 건 어때요?"
+                "문제집 살 돈, 우리 아이 미래에 쓰는 건 어때요?"
               </p>
             </div>
 
             <div className="mt-12 flex justify-center">
               <button
-                onClick={() => onNavigate(isAnonymous ? 'account' : 'create')}
+                onClick={() => onNavigate(isAnonymous ? 'account' : 'create-selection')}
                 className="inline-flex h-14 sm:h-16 items-center justify-center gap-3 rounded-2xl bg-white px-8 sm:px-12 text-lg sm:text-xl font-black text-slate-900 shadow-2xl transition-all hover:scale-105 hover:shadow-white/20 active:scale-95"
               >
                 무료로 시작하기

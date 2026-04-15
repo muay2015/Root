@@ -11,10 +11,10 @@ export function CreateSelectionScreen({ onNavigate }: CreateSelectionScreenProps
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-20">
       <div className="text-center">
         <h1 className="text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
-          문제 생성 방식을 선택하세요
+          문제 생성 방식을 <br className="sm:hidden" />선택하세요
         </h1>
         <p className="mt-4 text-lg font-medium text-slate-500">
-          AI와 함께 새로운 문제를 만들거나, 보유한 자료를 디지털로 전환하세요.
+          AI와 함께 새로운 문제를 만들거나, <br className="sm:hidden" />보유한 자료를 디지털로 전환하세요.
         </p>
       </div>
 
@@ -32,7 +32,7 @@ export function CreateSelectionScreen({ onNavigate }: CreateSelectionScreenProps
 
           <h3 className="text-lg font-black text-slate-900 sm:text-xl">지능형 생성</h3>
           <p className="mt-2 text-[14px] font-medium leading-relaxed text-slate-500 break-keep sm:mt-4 sm:text-base">
-            단원명이나 개념 텍스트만 입력하세요. AI가 수준에 맞는 새로운 정품 문항을 생성해 드립니다.
+            학습 목표에 맞춰 문제를 자동으로 구성합니다.
           </p>
 
           <div className="mt-auto pt-6 flex items-center font-black text-blue-600 sm:pt-8">
