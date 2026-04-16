@@ -243,15 +243,15 @@ export function PromptRenderer({
           return (
             <div
               key={index}
-              className="my-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ring-1 ring-black/5"
+              className="my-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ring-1 ring-black/5 lg:rounded-xl lg:border-slate-200 max-lg:rounded-2xl max-lg:border-blue-100 max-lg:shadow-blue-900/5"
             >
-              <div className="flex items-center gap-1.5 border-b border-slate-200/60 bg-slate-50 px-4 py-2.5 sm:px-5">
-                <span className="text-[13px] font-bold tracking-[0.05em] text-slate-700">
+              <div className="flex items-center gap-1.5 border-b border-slate-200/60 bg-slate-50 px-4 py-2.5 sm:px-5 max-lg:bg-blue-50/20 max-lg:border-blue-100/30">
+                <span className="text-[13px] font-bold tracking-[0.05em] text-slate-700 max-lg:text-blue-800/70">
                   {el.title}
                 </span>
               </div>
-              <div className="px-4 py-3.5 sm:px-5 sm:py-4 bg-slate-50/50">
-                <div className="whitespace-pre-wrap break-words text-[15px] leading-[1.7] text-slate-800 sm:text-[16px] sm:leading-[1.8]">
+              <div className="px-4 py-3.5 sm:px-5 sm:py-4 bg-slate-50/50 max-lg:bg-white max-lg:py-5">
+                <div className="whitespace-pre-wrap break-words text-[15px] leading-[1.7] text-slate-800 sm:text-[16px] sm:leading-[1.8] max-lg:text-justify max-lg:break-all max-lg:leading-[1.8] sm:max-lg:leading-[1.9]">
                   <PromptText text={el.text} isEnglishReading={isEnglishSentenceInsertion} />
                 </div>
               </div>
@@ -262,7 +262,7 @@ export function PromptRenderer({
         return (
           <div
             key={index}
-            className="w-full min-w-0 whitespace-pre-wrap break-words text-[15px] leading-[1.75] text-slate-900 sm:text-[16px] sm:leading-[1.8]"
+            className="w-full min-w-0 whitespace-pre-wrap break-words text-[15px] leading-[1.75] text-slate-900 sm:text-[16px] sm:leading-[1.8] max-lg:text-justify max-lg:break-all max-lg:leading-[1.8] sm:max-lg:leading-[1.9]"
           >
             <PromptText text={el.text} isEnglishReading={isEnglishSentenceInsertion} />
           </div>

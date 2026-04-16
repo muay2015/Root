@@ -35,11 +35,15 @@ export function ExamQuestionSectionFrame({
 
         <QuestionRow
           leading={
-            <div className="min-w-[1.75rem] pt-0.5 text-[16px] font-black leading-none text-slate-800 sm:text-[18px]">
+            <div className="min-w-[1.75rem] pt-0.5 text-[16px] font-black leading-none text-slate-800 sm:text-[18px] max-lg:text-slate-900 max-lg:pt-1">
               {questionNumber}.
             </div>
           }
-          content={<QuestionContent>{children}</QuestionContent>}
+          content={
+            <QuestionContent className="max-lg:text-justify max-lg:font-bold">
+              {children}
+            </QuestionContent>
+          }
         />
       </div>
     </section>
