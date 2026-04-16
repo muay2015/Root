@@ -8,6 +8,58 @@ export function isMathSubject(subject: SubjectKey): boolean {
   return s.includes('math');
 }
 
+export function isMiddleMathSubject(subject: SubjectKey): boolean {
+  return subject === 'middle_math';
+}
+
+/**
+ * 중등 수학 전용 프롬프트 규칙.
+ * LaTeX 없이 유니코드 기호와 일반 텍스트만 사용합니다.
+ */
+export function buildMiddleMathPromptRules(): string[] {
+  return [
+    // ========== 절대 금지 ==========
+    '- [MIDDLE FATAL] 선지(choices)에 "1", "2", "3", "4", "5" 같은 순번만 넣는 것을 절대 금지합니다. 각 선지는 반드시 구체적인 수학적 값이어야 합니다.',
+    '- [MIDDLE FATAL] "~에 관한 분석으로 적절한 것은?" 같이 서술형 해석만 묻는 발문을 금지합니다.',
+
+    // ========== 수식 표현: LaTeX 절대 금지 ==========
+    '- [MIDDLE PLAIN] LaTeX 문법을 절대 사용하지 마십시오. \\(, \\), \\[, \\], \\angle, \\circ, \\text{}, \\frac, \\sqrt, \\begin, \\end 등 백슬래시로 시작하는 모든 명령어는 사용 금지입니다.',
+    '- [MIDDLE PLAIN] 중괄호 {} 또는 백슬래시 \\ 가 포함된 표현을 절대 생성하지 마십시오. 이 문자들이 출력 결과에 그대로 노출됩니다.',
+    '- [MIDDLE PLAIN] 모든 수식은 아래 유니코드 기호와 일반 텍스트로 표현하십시오:',
+    '  • 각도: ∠ABC = 90°, ∠x = 35°  (\\angle, \\circ 사용 금지)',
+    '  • 제곱: x², y³  (x^2, x^{2} 사용 금지)',
+    '  • 루트: √2, √(a+b)  (\\sqrt 사용 금지)',
+    '  • 분수: 1/2, (a+1)/3  (\\frac 사용 금지)',
+    '  • 원주율: π  (\\pi 사용 금지)',
+    '  • 합동/닮음: △ABC ≅ △DEF,  △ABC ∼ △DEF',
+    '  • 부등호: ≥, ≤, ≠  (\\ge, \\geq, >= 사용 금지)',
+    '  • 곱셈/나눗셈: ×, ÷  (\\times, \\div 사용 금지)',
+    '  • 선분: AB, BC (평문 대문자만)',
+
+    // ========== stem / stimulus 필드 분리 ==========
+    '- [MIDDLE FIELD] stem = 한국어 발문. stimulus = 주어진 조건·수치 나열.',
+    '- [MIDDLE FIELD] stimulus 조건은 줄바꿈(\\n)으로 구분하십시오. 예: "∠ABC = 90°\\nAB = 6 cm\\nBC = 8 cm"',
+    '- [MIDDLE FIELD] 수학 문항은 stimulus가 거의 항상 필요합니다. null로 두지 마십시오.',
+
+    // ========== 발문(stem) 품질 ==========
+    '- [MIDDLE STEM] 발문은 반드시 "무엇을 구하는가"를 명확히 지정하십시오. 예: "x의 값은?", "AC의 길이를 구하시오.", "∠BDC의 크기는?"',
+
+    // ========== 선지(choices) / 정답(answer) ==========
+    '- [MIDDLE CHOICE] 5개 선지는 모두 구체적인 수학값이어야 합니다. 예: "45", "60°", "5 cm", "√10", "2√3"',
+    '- [MIDDLE CHOICE] 오답 선지는 흔한 계산 실수(공식 혼동, 조건 누락 등)에서 나올 법한 값으로 구성하십시오.',
+    '- [MIDDLE CHOICE] answer는 choices 배열의 해당 값과 글자 그대로 동일해야 합니다.',
+
+    // ========== 그림 참조 일관성 ==========
+    '- [MIDDLE FIGURE] diagram_svg=null로 설정한 경우, stem과 stimulus에 "그림에서", "그림과 같이", "그림을 보고" 등의 표현을 절대 사용하지 마십시오.',
+    '- [MIDDLE FIGURE] 도형 없이 조건을 서술할 때는 "주어진 조건에서", "다음 조건을 이용하여" 형태로 서술하십시오.',
+
+    // ========== 도형 다이어그램 (diagram_svg) ==========
+    '- [MIDDLE DIAGRAM] 기본값은 diagram_svg=null입니다. 도형의 위치 관계 파악이 필수인 경우에만 SVG를 생성하십시오.',
+    '- [MIDDLE DIAGRAM] 생성 금지: 수치 대입만으로 풀리는 문제, 텍스트로 설명 가능한 경우, 그림이 정답을 노출하는 경우.',
+    '- [MIDDLE DIAGRAM] 도형에 정답이 되는 수치를 직접 표시하지 마십시오. 구하는 각도·길이는 "x" 또는 "?" 로만 표기.',
+  ];
+}
+
 /**
  * 수학 과목 전용 프롬프트 규칙.
  * AI가 수학 문항을 생성할 때 LaTeX 표기, 필드 분리, 발문 형식 등의 품질을 보장합니다.
@@ -44,6 +96,11 @@ export function buildMathPromptRules(): string[] {
     '- [MATH CHOICE] answer는 choices 배열의 해당 값과 글자 그대로 동일해야 합니다.',
     '- [MATH CHOICE] 선지 형식을 통일하십시오. 예를 들어 "1"과 "\\\\(1\\\\)"을 함께 쓰면 중복으로 간주되어 오류가 발생합니다. 정수 선지는 모두 평문("1","2","3")으로, LaTeX가 필요한 선지는 모두 LaTeX 형식("\\\\(\\\\frac{1}{2}\\\\)")으로 일관되게 작성하십시오.',
 
+    // ========== 그림 참조 일관성 ==========
+    '- [MATH FIGURE] diagram_svg=null로 설정한 경우, stem과 stimulus에 "그림에서", "다음 그림에서", "위 그림에서", "그림과 같이", "그림을 보고" 등의 표현을 절대 사용하지 마십시오.',
+    '- [MATH FIGURE] diagram_svg가 있는 경우에만 "그림에서", "다음 그림을 보고" 등의 표현을 사용할 수 있습니다.',
+    '- [MATH FIGURE] 도형 없이 조건을 서술할 때는 "주어진 조건에서", "다음 조건을 이용하여", "A, B, C는 원 위의 점이고..." 형태로 자연스럽게 서술하십시오.',
+
     // ========== 도형 다이어그램 (diagram_svg) ==========
     '- [MATH DIAGRAM] 기본값은 diagram_svg=null입니다. 아래 조건을 모두 충족할 때만 SVG를 생성하십시오.',
     '- [MATH DIAGRAM 생성 조건] 다음 중 하나에 해당하는 경우에만 생성:',
@@ -61,83 +118,39 @@ export function buildMathPromptRules(): string[] {
     '  • 문제 이해를 위한 최소한의 구조만 표현하십시오',
     '  • 도형은 정답 보조 도구가 아닌 상황 파악 보조 도구입니다',
     '',
-    '=== 원-직선 관계 다이어그램 생성 지침 (생성이 필요하다고 판단된 경우만 적용) ===',
+    '=== 정답 노출 방지 규칙 (모든 도형에 반드시 적용) ===',
     '',
-    '【STEP 1】 문제에서 d(중심~직선 거리)와 r(반지름) 값을 추출하십시오.',
-    '【STEP 2】 비교하여 3가지 경우 중 하나를 선택하십시오:',
-    '  - d > r  →  경우A: 원 밖 (교점 없음)',
-    '  - d = r  →  경우B: 접함 (접점 1개)',
-    '  - d < r  →  경우C: 두 점에서 만남 (교점 2개)',
-    '【STEP 3】 좌표를 계산하십시오:',
-    '  scale  = min(floor(60 / max(d, r)), 20)   [px/단위]',
-    '  r_px   = r × scale',
-    '  d_px   = d × scale',
-    '  CX=180, CY=115   [원의 중심 캔버스 좌표]',
-    '  foot_y = CY + d_px   [직선의 y좌표 = 수선의 발]',
-    '  경우C 전용: ix_offset = round(sqrt(r_px² - d_px²))   [교점 x거리]',
-    '【STEP 4】 아래 각 경우 예시를 참고하여 실제 좌표로 대입하십시오.',
+    '[규칙1: 각도·길이 값 직접 표시 금지]',
+    '  ❌ 도형 위에 "110°", "35°", "8cm" 등 정답이 되는 수치를 직접 표시하지 마십시오.',
+    '  ✅ 문제가 구하는 값은 반드시 "x" 또는 "?" 로만 표시하십시오.',
+    '  ✅ 주어진 조건 수치(예: 이미 알고 있는 길이)는 텍스트에만 제공하고, 도형에는 선의 위치·비율 관계만 표현.',
+    '  예: 각도를 구하는 문제 → 도형에 "∠x" 표기, 수치 없음',
+    '  예: 길이를 구하는 문제 → 도형에 "x" 표기, 눈금 없음',
     '',
-    '── 공통 SVG 규격 ──',
-    '  viewBox="0 0 360 220"  width="100%"  style="max-width:360px;display:block"',
-    '  stroke="#222"  stroke-width="1.5"  fill="none"  (기본)',
-    '  수선(점선): stroke-dasharray="5,3"  stroke-width="1.2"',
-    '  직각 표시:  <path d="M CX-6,foot_y L CX-6,foot_y-6 L CX,foot_y-6" stroke="#222" stroke-width="1.2" fill="none"/>',
-    '  점(중심/교점/접점): <circle r="3" fill="#222"/>',
-    '  텍스트: font-family="serif"  font-size="13"  fill="#222"  — 레이블은 선에서 6-8px 오프셋',
-    '  ⚠ JSON 안에서 SVG의 큰따옴표(")는 모두 \\" 로 이스케이프하십시오.',
+    '[규칙2: 교점·접점 강조 금지]',
+    '  ❌ 교점 개수, 접점 위치를 ●(filled circle)로 강조 표시하지 마십시오.',
+    '  ❌ 특정 점이나 위치를 시각적으로 두드러지게 하여 정답을 암시하지 마십시오.',
+    '  ✅ 필요한 꼭짓점·기준점은 일반 작은 점(r="2.5")으로만 표시.',
     '',
-    '━━━ 경우A: d > r  (교점 없음) ━━━',
-    '예: d=5, r=3, scale=12 → d_px=60, r_px=36, foot_y=175',
-    '  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 210" width="100%" style="max-width:360px;display:block">',
-    '    <line x1="30" y1="175" x2="320" y2="175" stroke="#222" stroke-width="1.5"/>',
-    '    <text x="326" y="180" font-family="serif" font-size="14" fill="#222" font-style="italic">l</text>',
-    '    <circle cx="180" cy="115" r="36" stroke="#222" stroke-width="1.5" fill="none"/>',
-    '    <circle cx="180" cy="115" r="3" fill="#222"/>',
-    '    <text x="187" y="112" font-family="serif" font-size="14" fill="#222" font-style="italic">O</text>',
-    '    <line x1="180" y1="115" x2="180" y2="175" stroke="#222" stroke-width="1.2" stroke-dasharray="5,3"/>',
-    '    <path d="M 174,175 L 174,169 L 180,169" stroke="#222" stroke-width="1.2" fill="none"/>',
-    '    <text x="185" y="150" font-family="serif" font-size="13" fill="#222">5</text>',
-    '    <line x1="180" y1="115" x2="205" y2="90" stroke="#222" stroke-width="1.2"/>',
-    '    <text x="198" y="96" font-family="serif" font-size="13" fill="#222">3</text>',
-    '  </svg>',
-    '  ※ 직선이 원보다 아래에 위치 / 수선은 원을 통과하여 직선까지 연장 / 교점·접점 표시 없음',
+    '[규칙3: 보조선 최소화]',
+    '  ❌ 풀이 방향을 유도하는 보조선(정답 도출에 직접 쓰이는 선)을 그리지 마십시오.',
+    '  ✅ 풀이에 반드시 필요한 구조(주어진 도형의 외곽선, 기준선)만 포함.',
+    '  ✅ 수선, 보조선은 문제를 이해하는 데 필요한 경우에만, 점선으로 표시.',
     '',
-    '━━━ 경우B: d = r  (접점 1개) ━━━',
-    '예: d=4, r=4, scale=15 → d_px=60, r_px=60, foot_y=175',
-    '접점 = 수선의 발 = 원 위의 점 → 모두 (CX, foot_y) = (180, 175) 으로 일치',
-    '  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 210" width="100%" style="max-width:360px;display:block">',
-    '    <line x1="30" y1="175" x2="320" y2="175" stroke="#222" stroke-width="1.5"/>',
-    '    <text x="326" y="180" font-family="serif" font-size="14" fill="#222" font-style="italic">l</text>',
-    '    <circle cx="180" cy="115" r="60" stroke="#222" stroke-width="1.5" fill="none"/>',
-    '    <circle cx="180" cy="115" r="3" fill="#222"/>',
-    '    <text x="187" y="112" font-family="serif" font-size="14" fill="#222" font-style="italic">O</text>',
-    '    <line x1="180" y1="115" x2="180" y2="175" stroke="#222" stroke-width="1.2" stroke-dasharray="5,3"/>',
-    '    <path d="M 174,175 L 174,169 L 180,169" stroke="#222" stroke-width="1.2" fill="none"/>',
-    '    <circle cx="180" cy="175" r="3.5" fill="#222"/>',
-    '    <text x="185" y="150" font-family="serif" font-size="13" fill="#222">4</text>',
-    '    <line x1="180" y1="115" x2="222" y2="73" stroke="#222" stroke-width="1.2"/>',
-    '    <text x="207" y="87" font-family="serif" font-size="13" fill="#222">4</text>',
-    '  </svg>',
-    '  ※ 직선이 원의 가장 아래 점에 딱 닿음 / 접점(●)을 수선의 발에 표시 / 직각 표시 포함',
+    '[규칙4: "그림만 보고 3초 안에 답을 알 수 있으면 실패"]',
+    '  도형을 완성하기 전에 자문하십시오:',
+    '  "학생이 이 그림만 보고 계산 없이 정답을 바로 알 수 있는가?"',
+    '  → YES이면 정보 과다 → 정답 유도 요소 제거 후 재작성.',
+    '  → NO이면 통과 (개념·계산이 있어야만 답이 나오는 구조).',
     '',
-    '━━━ 경우C: d < r  (교점 2개) ━━━',
-    '예: d=3, r=5, scale=15 → d_px=45, r_px=75, foot_y=160, ix_offset=sqrt(75²−45²)=60',
-    '교점 좌표: (CX−60, foot_y)=(120,160)  /  (CX+60, foot_y)=(240,160)',
-    '  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 220" width="100%" style="max-width:360px;display:block">',
-    '    <line x1="30" y1="160" x2="320" y2="160" stroke="#222" stroke-width="1.5"/>',
-    '    <text x="326" y="165" font-family="serif" font-size="14" fill="#222" font-style="italic">l</text>',
-    '    <circle cx="180" cy="115" r="75" stroke="#222" stroke-width="1.5" fill="none"/>',
-    '    <circle cx="120" cy="160" r="3.5" fill="#222"/>',
-    '    <circle cx="240" cy="160" r="3.5" fill="#222"/>',
-    '    <circle cx="180" cy="115" r="3" fill="#222"/>',
-    '    <text x="187" y="112" font-family="serif" font-size="14" fill="#222" font-style="italic">O</text>',
-    '    <line x1="180" y1="115" x2="180" y2="160" stroke="#222" stroke-width="1.2" stroke-dasharray="5,3"/>',
-    '    <path d="M 174,160 L 174,154 L 180,154" stroke="#222" stroke-width="1.2" fill="none"/>',
-    '    <text x="185" y="141" font-family="serif" font-size="13" fill="#222">3</text>',
-    '    <line x1="180" y1="115" x2="233" y2="62" stroke="#222" stroke-width="1.2"/>',
-    '    <text x="213" y="82" font-family="serif" font-size="13" fill="#222">5</text>',
-    '  </svg>',
-    '  ※ 직선이 원을 관통 / 교점 2개(●)를 원 경계 위에 표시 / 교점 x = CX ± ix_offset',
+    '[규칙5: 수치와 구조 분리]',
+    '  ❌ 수치 정보(각도, 길이 값)와 도형 구조를 동시에 도형에 표현하지 마십시오.',
+    '  ✅ 수치는 문제 텍스트(stem/stimulus)에, 도형에는 위치·관계 구조만.',
+    '',
+    '=== 원-직선 관계 SVG 생성 공식 (필요한 경우만) ===',
+    '판별: d>r→교점 없음 / d=r→접함 / d<r→2교점.',
+    '좌표: scale=min(floor(60/max(d,r)),20), r_px=r×scale, d_px=d×scale, CX=180, CY=115, foot_y=CY+d_px, ix_offset=round(√(r_px²-d_px²)).',
+    'SVG: viewBox="0 0 360 220" width="100%" style="max-width:360px;display:block". 직선 y=foot_y, 원 cx=CX cy=CY r=r_px, 수선(점선) x=CX, 직각표시 6px L자, 중심O r="2.5" fill="#222". 교점·접점 ● 강조 절대 금지. JSON 내 큰따옴표는 \\"로 이스케이프.',
 
     // ========== 올바른 문항 예시 ==========
     '- [MATH EXAMPLE] 좋은 예: stem="다항함수 \\(f(x)\\)가 다음 조건을 만족시킬 때, \\(f(2)\\)의 값은?", stimulus="\\[f\'(x) = 3x^2 - 4x + 1,\\quad f(0) = 2\\]", choices=["3","5","7","9","11"], answer="7", diagram_svg=null',

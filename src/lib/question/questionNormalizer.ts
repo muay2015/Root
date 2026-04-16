@@ -865,6 +865,70 @@ export function normalizePhysicsExpression(text: string): string {
   return result;
 }
 
+// 과학/물리 문항에서 변수 이중 출력 제거
+// AI가 "물체 A \(A\)" 또는 "\(A\) A" 형태로 동일 기호를 두 번 출력하는 버그 수정
+function removeScienceVariableDoubleOutput(text: string): string {
+  if (!text) return text;
+  let s = text;
+
+  // Pattern 1: 일반 텍스트 변수 + LaTeX 같은 변수 (앞에 일반 텍스트)
+  // "A \(A\)" → "\(A\)", "F \(F\)" → "\(F\)", "t \(t\)" → "\(t\)"
+  s = s.replace(/\b([A-Za-z])\s*\\\(\1\\\)/g, '\\($1\\)');
+
+  // Pattern 2: LaTeX 변수 + 일반 텍스트 같은 변수 (앞에 LaTeX)
+  // "\(A\) A" → "\(A\)", "\(F\) F" → "\(F\)"
+  s = s.replace(/\\\(([A-Za-z])\\\)\s+\b\1\b(?=[^a-zA-Z_]|$)/g, '\\($1\\)');
+
+  return s;
+}
+
+// 중등 수학 문항에서 LaTeX 잔재를 유니코드/일반 텍스트로 변환
+function convertLatexToPlainText(text: string): string {
+  let s = text;
+  // 1. 자주 쓰이는 LaTeX 명령어 → 유니코드
+  s = s.replace(/\\angle\s*/g, '∠');
+  s = s.replace(/\\circ\s*/g, '°');
+  s = s.replace(/\\pi\s*/g, 'π');
+  s = s.replace(/\\alpha\s*/g, 'α');
+  s = s.replace(/\\beta\s*/g, 'β');
+  s = s.replace(/\\gamma\s*/g, 'γ');
+  s = s.replace(/\\theta\s*/g, 'θ');
+  s = s.replace(/\\ge\b/g, '≥');
+  s = s.replace(/\\geq\b/g, '≥');
+  s = s.replace(/\\le\b/g, '≤');
+  s = s.replace(/\\leq\b/g, '≤');
+  s = s.replace(/\\neq\b/g, '≠');
+  s = s.replace(/\\times\s*/g, '×');
+  s = s.replace(/\\div\s*/g, '÷');
+  s = s.replace(/\\cdot\s*/g, '·');
+  s = s.replace(/\\infty\s*/g, '∞');
+  s = s.replace(/\\triangle\s*/g, '△');
+  s = s.replace(/\\cong\s*/g, '≅');
+  s = s.replace(/\\sim\s*/g, '∼');
+  // 2. \sqrt{...} → √(...)
+  s = s.replace(/\\sqrt\{([^}]+)\}/g, '√($1)');
+  s = s.replace(/\\sqrt\s*(\w)/g, '√$1');
+  // 3. \frac{A}{B} → (A)/(B)  (단순 숫자는 a/b)
+  s = s.replace(/\\frac\{(\d+)\}\{(\d+)\}/g, '$1/$2');
+  s = s.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)');
+  // 4. \text{...} → 내용만 추출
+  s = s.replace(/\\text\{([^}]*)\}/g, '$1');
+  // 5. 지수 표기: ^2, ^3, ^{2}, ^{3} → ²³
+  s = s.replace(/\^\{2\}/g, '²');
+  s = s.replace(/\^\{3\}/g, '³');
+  s = s.replace(/\^2\b/g, '²');
+  s = s.replace(/\^3\b/g, '³');
+  // 6. LaTeX 구분자 제거: \( \) \[ \]
+  s = s.replace(/\\\[/g, '').replace(/\\\]/g, '');
+  s = s.replace(/\\\(/g, '').replace(/\\\)/g, '');
+  // 7. 남은 \command → 제거
+  s = s.replace(/\\[a-zA-Z]+/g, '');
+  // 8. 빈 중괄호쌍 {}, 또는 잔류 중괄호 제거
+  s = s.replace(/\{([^{}]*)\}/g, '$1');
+  s = s.replace(/[{}]/g, '');
+  return s;
+}
+
 export function sanitizeDiagramSvg(svg: string): string {
   return svg
     .replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -874,6 +938,34 @@ export function sanitizeDiagramSvg(svg: string): string {
     .replace(/href='javascript:[^']*'/gi, '')
     .replace(/\s+(?:xlink:href|href|src)="(?!data:)[^"]*:\/\/[^"]*"/gi, '')
     .trim();
+}
+
+// diagram_svg=null인데 stem/stimulus에 "그림에서" 등의 표현이 남아 있으면 자연스러운 표현으로 교체
+function fixFigureReferenceConsistency(
+  stem: string,
+  stimulus: string | null,
+  diagramSvg: string | null,
+): { stem: string; stimulus: string | null } {
+  if (diagramSvg) {
+    return { stem, stimulus };
+  }
+  const patterns: [RegExp, string][] = [
+    [/(?:위|아래|오른쪽|왼쪽|다음|아래의|위의)?\s*그림에서/g, '주어진 조건에서'],
+    [/다음\s*그림을\s*보고/g, '다음 조건을 이용하여'],
+    [/(?:위|아래|오른쪽|왼쪽|다음|아래의|위의)?\s*그림과\s*같이/g, '다음과 같이'],
+    [/그림에서/g, '주어진 조건에서'],
+    [/그림을\s*보고/g, '조건을 이용하여'],
+    [/그림과\s*같이/g, '다음과 같이'],
+  ];
+  let newStem = stem;
+  let newStimulus = stimulus;
+  for (const [pattern, replacement] of patterns) {
+    newStem = newStem.replace(pattern, replacement);
+    if (newStimulus) {
+      newStimulus = newStimulus.replace(pattern, replacement);
+    }
+  }
+  return { stem: newStem, stimulus: newStimulus };
 }
 
 export function normalizeQuestion(
@@ -1086,6 +1178,12 @@ export function normalizeQuestion(
     if (stimulus) {
       stimulus = normalizePhysicsExpression(stimulus);
     }
+    // 변수 이중 출력 제거: "A \(A\)" / "\(A\) A" → "\(A\)"
+    stem = removeScienceVariableDoubleOutput(stem);
+    if (stimulus) {
+      stimulus = removeScienceVariableDoubleOutput(stimulus);
+    }
+    choices = choices.map(removeScienceVariableDoubleOutput);
   }
 
   // 수학 과목 전용: LaTeX 표기 교정 및 선지 포맷 통일
@@ -1102,11 +1200,24 @@ export function normalizeQuestion(
     answerStr = resolveAnswerFromChoicesLoose(raw.answer, choices) || answerStr;
   }
 
+  // 중등 수학: LaTeX 잔재를 유니코드/일반 텍스트로 변환
+  if (context.subject === 'middle_math') {
+    stem = convertLatexToPlainText(stem);
+    if (stimulus) stimulus = convertLatexToPlainText(stimulus);
+    choices = choices.map(convertLatexToPlainText);
+    answerStr = convertLatexToPlainText(answerStr);
+  }
+
   // SVG 다이어그램 필드 추출 및 sanitize
   let diagram_svg: string | null = null;
   if (typeof raw.diagram_svg === 'string' && raw.diagram_svg.trim().length > 0) {
     diagram_svg = sanitizeDiagramSvg(raw.diagram_svg);
   }
+
+  // diagram_svg=null인데 "그림에서" 등의 표현이 남아 있으면 자연스러운 표현으로 교체
+  const figureFixed = fixFigureReferenceConsistency(stem, stimulus, diagram_svg);
+  stem = figureFixed.stem;
+  stimulus = figureFixed.stimulus;
 
   return {
     id: index + 1,

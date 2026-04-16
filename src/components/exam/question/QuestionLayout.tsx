@@ -10,7 +10,7 @@ export function QuestionRow({
   content: ReactNode;
 }) {
   return (
-    <div className="flex w-full items-start gap-3 sm:gap-4">
+    <div className="flex w-full items-start gap-2 sm:gap-4">
       {leading && <div className="shrink-0 pt-[2px] sm:pt-1">{leading}</div>}
       <div className="w-full min-w-0">{content}</div>
     </div>

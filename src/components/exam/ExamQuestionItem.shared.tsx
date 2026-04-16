@@ -24,7 +24,7 @@ export function ExamQuestionSectionFrame({
       id={`exam-question-${question.id}`}
       data-exam-question={question.id}
       data-exam-layout="paper-template"
-      className={`scroll-mt-28 w-full rounded-2xl border p-5 shadow-sm transition-all duration-300 sm:scroll-mt-32 sm:p-7 ${
+      className={`scroll-mt-28 w-full rounded-2xl border px-3.5 py-5 shadow-sm transition-all duration-300 sm:scroll-mt-32 sm:p-7 ${
         active
           ? 'translate-y-[-0.125rem] border-blue-300 bg-white shadow-md ring-2 ring-blue-50/50'
           : 'border-slate-200/80 bg-white hover:border-blue-200'

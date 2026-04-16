@@ -187,5 +187,5 @@ export function MathRenderer({ text, className = '', inline = true }: MathRender
     renderMath();
   }, [text]);
 
-  return <span ref={containerRef} className={`${className} whitespace-pre-wrap`} style={{ whiteSpace: 'pre-wrap', wordBreak: 'keep-all' }} />;
+  return <span ref={containerRef} className={`${className} whitespace-pre-wrap`} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }} />;
 }

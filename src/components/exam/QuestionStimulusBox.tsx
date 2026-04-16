@@ -31,8 +31,8 @@ export function QuestionStimulusBox({ content, renderMode = 'math' }: QuestionSt
 
   return (
     <div className="w-full min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50 shadow-sm mt-2 mb-1">
-      <div className="px-4 py-4 sm:px-5 sm:py-5">
-        <div className="space-y-3 text-[15px] leading-[1.75] text-slate-800 sm:text-[16px] sm:leading-[1.85] break-keep">
+      <div className="px-3 py-3.5 sm:px-5 sm:py-5">
+        <div className="space-y-3 text-[15px] leading-[1.75] text-slate-800 sm:text-[16px] sm:leading-[1.85]">
           {paragraphs.map((paragraph, index) => (
             <div key={`${index}-${paragraph}`} className="w-full min-w-0 whitespace-pre-wrap break-words overflow-wrap-anywhere">
               {renderMode === 'plain'

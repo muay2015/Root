@@ -14,8 +14,8 @@ import {
   buildEnglishGrammarStrictPrompt
 } from './prompts/english';
 import { buildCsatKoreanLiteratureRules, buildKoreanPassageRules, buildCsatKoreanLiteratureSetPrompt } from './prompts/korean';
-import { isScienceSubject, buildSciencePromptRules } from './prompts/science';
-import { isMathSubject, buildMathPromptRules, buildCsatMathPrompt } from './prompts/math';
+import { isScienceSubject, isMiddleScienceSubject, buildSciencePromptRules, buildMiddleSciencePromptRules } from './prompts/science';
+import { isMathSubject, isMiddleMathSubject, buildMathPromptRules, buildMiddleMathPromptRules, buildCsatMathPrompt } from './prompts/math';
 import { isSocialSubject } from './prompts/social';
 
 function buildGenericPrompt(input: PromptBuildInput) {
@@ -40,6 +40,15 @@ function buildGenericPrompt(input: PromptBuildInput) {
         ]
       : [];
 
+  const needsDiagramSpec = isMathSubject(input.subject) || isScienceSubject(input.subject);
+  const diagramRule = needsDiagramSpec
+    ? '- "diagram_svg": null by default. Generate inline SVG only when spatial layout is ESSENTIAL (positions, directions, connections). viewBox="0 0 360 260" width="100%" style="max-width:360px;display:block"; stroke="#222" stroke-width="1.5" fill="none"; no answer-revealing elements; do not highlight intersection or tangent points.'
+    : '- "diagram_svg": Set to null.';
+
+  const explanationRule = input.difficulty === 'hard'
+    ? '- "explanation": 정답 근거와 주요 오답 이유를 3문장 이내로 작성하십시오.'
+    : '- "explanation": 정답 이유를 1~2문장(40자 이내)으로 간결하게 작성하십시오.';
+
   const basePrompt = [
     'You are generating school exam questions.',
     'Return only a JSON array.',
@@ -48,7 +57,8 @@ function buildGenericPrompt(input: PromptBuildInput) {
     'Use "type" = "multiple".',
     'choices must contain exactly 5 strings.',
     '- "stimulus": Use this field to provide additional material (e.g., a "Given Sentence" box for English sentence insertion, a <보기> block, or complex math/science conditions). If not needed, set to null.',
-    '- "diagram_svg": Default is null. Only generate an SVG when a visual diagram is ESSENTIAL for understanding the problem — i.e., when spatial layout (positions, directions, connections) cannot be conveyed by text alone. Do NOT generate for: simple numeric comparisons, formula-application problems, or cases where the diagram would directly reveal the answer. When generating: viewBox="0 0 360 260" width="100%" style="max-width:360px;display:block"; stroke="#222" stroke-width="1.5" fill="none"; dashed construction lines (stroke-dasharray="5,3"); label actual numbers not variable names; no decorative elements; do not highlight intersection or tangent points.',
+    diagramRule,
+    explanationRule,
     '- [CRITICAL] "answer" must be a string that matches EXACTLY one of the values in the "choices" array. Copy the choice text exactly (including all characters and spaces) into the answer field.',
     '',
     `Subject: ${rules.subjectLabel}`,
@@ -69,7 +79,6 @@ function buildGenericPrompt(input: PromptBuildInput) {
         : '- [CRITICAL] Since the difficulty is "hard", you MUST write a longer, descriptive, and analytic stem. In Korean, use either at least 8 words or at least about 18 Korean characters of reasoning-rich text.'
       : '',
 
-    input.difficulty === 'hard' ? '- [CRITICAL] For "hard" difficulty, provide a deep explanation (at least 10+ words) including the reasoning for the correct answer AND a brief explanation of why the major distractors are incorrect.' : '',
     '- Reflect the provided title and topic directly when they exist.',
     '- Use the source material as the factual basis.',
     '- Do not output duplicate stems or near-duplicate choices.',
@@ -79,16 +88,32 @@ function buildGenericPrompt(input: PromptBuildInput) {
     ...buildEnglishTypePromptRules(input, false),
     ...buildKoreanPassageRules(input.subject),
     ...buildCsatKoreanLiteratureRules(input),
-    ...(isScienceSubject(input.subject) ? buildSciencePromptRules() : []),
-    ...(isMathSubject(input.subject) ? buildMathPromptRules() : []),
+    ...(isMiddleScienceSubject(input.subject)
+      ? buildMiddleSciencePromptRules()
+      : isScienceSubject(input.subject)
+        ? buildSciencePromptRules()
+        : []),
+    ...(isMiddleMathSubject(input.subject)
+      ? buildMiddleMathPromptRules()
+      : isMathSubject(input.subject)
+        ? buildMathPromptRules()
+        : []),
   ];
+
+  const mathFormatRules = isMiddleMathSubject(input.subject)
+    ? [
+        '- [CRITICAL] 이 문제는 중등 수학입니다. LaTeX를 절대 사용하지 마십시오. 백슬래시(\\)와 중괄호({})가 포함된 표현은 화면에 깨져 표시됩니다. 모든 수식은 유니코드 기호(∠, °, √, π, ², ³ 등)와 일반 텍스트로만 표현하십시오.',
+      ]
+    : [
+        '- [CRITICAL] 모든 수학 기호와 수식은 반드시 LaTeX 형식을 사용하십시오. 수식은 반드시 \\( 와 \\) 기호로 감싸야 합니다.',
+        '- [CRITICAL] JSON 결과물 내의 모든 LaTeX 명령어와 구분자는 반드시 이중 역슬래시(\\ )를 사용해야 합니다.',
+      ];
 
   return [
     ...basePrompt,
     ...typeRules,
     '',
-    '- [CRITICAL] 모든 수학 기호와 수식은 반드시 LaTeX 형식을 사용하십시오. 수식은 반드시 \\( 와 \\) 기호로 감싸야 합니다.',
-    '- [CRITICAL] JSON 결과물 내의 모든 LaTeX 명령어와 구분자는 반드시 이중 역슬래시(\\ )를 사용해야 합니다.',
+    ...mathFormatRules,
     '- [CRITICAL] "Choice 1", "Placeholder" 등의 임시 텍스트를 절대 사용하지 마십시오.',
     '- [CRITICAL] 지문이나 발문 내에 불필요한 슬래시(/)를 사용하여 문장을 구분하지 마십시오.',
     '- [CRITICAL] 밑줄 표시가 필요한 경우, 반드시 <u>와 </u> 태그를 사용하십시오.',
@@ -254,7 +279,7 @@ function buildCsatPrompt(input: PromptBuildInput) {
     '- [발문] "가장 적절한 것은?", "적절하지 않은 것은?"과 같은 평가원 표준 발문을 사용하십시오.',
     '- [수식] 모든 수학적 표현은 반드시 LaTeX를 사용하며, \\( 와 \\) 로 감싸십시오.',
     '- [밑줄] 밑줄이 필요한 경우 <u>와 </u> 태그를 사용하십시오.',
-    '- [해설] 정답의 논리적 도출 과정과 오답 매력도 분석을 포함하십시오.',
+    '- [해설] 정답 근거와 주요 오답 이유를 3문장 이내로 작성하십시오.',
     '',
     buildFeedbackBlock(input.validationFeedback),
     '',

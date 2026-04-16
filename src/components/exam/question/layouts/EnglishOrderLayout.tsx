@@ -42,7 +42,7 @@ export const EnglishOrderLayout: React.FC<EnglishOrderLayoutProps> = ({
               <div className="text-[13px] font-bold tracking-[0.05em] text-slate-700">
                 ({section.label})
               </div>
-              <div className="whitespace-pre-wrap break-words break-keep text-[16px] leading-[1.8] text-slate-800 text-justify sm:text-[17px] sm:leading-[1.9]">
+              <div className="whitespace-pre-wrap break-words text-[16px] leading-[1.8] text-slate-800 sm:text-[17px] sm:leading-[1.9]">
                 {section.content}
               </div>
             </div>

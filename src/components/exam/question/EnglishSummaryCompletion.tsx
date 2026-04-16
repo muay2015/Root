@@ -44,7 +44,7 @@ export const EnglishSummaryCompletion: React.FC<EnglishSummaryCompletionProps> =
         return (
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50 shadow-sm">
             <div className="px-5 py-5 sm:px-6 sm:py-6">
-              <div className="text-justify whitespace-pre-wrap break-words break-keep text-[16px] leading-[1.85] text-slate-900 sm:text-[17px] sm:leading-[1.9]">
+              <div className="whitespace-pre-wrap break-words text-[16px] leading-[1.85] text-slate-900 sm:text-[17px] sm:leading-[1.9]">
                 <PromptRenderer text={passage} isEnglishSentenceInsertion={isEnglishReading} />
               </div>
             </div>
@@ -108,7 +108,7 @@ const SummaryStatementBox: React.FC<{ text: string }> = ({ text }) => {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100/50">
       <div className="px-5 py-6 sm:px-7 sm:py-7">
-        <div className="text-[16px] leading-[2] text-slate-900 sm:text-[17px] sm:leading-[2.1] text-justify">
+        <div className="text-[16px] leading-[2] text-slate-900 sm:text-[17px] sm:leading-[2.1]">
           {parts.map((part, i) => {
             const blankMatch = part.match(/^(?:\(|\[)([AB])(?:\)|\])/i);
             if (blankMatch) {
