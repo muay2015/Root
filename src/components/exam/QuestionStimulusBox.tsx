@@ -30,8 +30,8 @@ export function QuestionStimulusBox({ content, renderMode = 'math' }: QuestionSt
   const paragraphs = splitStimulusParagraphs(content);
 
   return (
-    <div className="w-full min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50 shadow-sm mt-2 mb-1 lg:rounded-xl lg:border-slate-200 lg:bg-slate-50/50 max-lg:rounded-2xl max-lg:border-blue-100 max-lg:bg-white max-lg:shadow-blue-900/5">
-      <div className="px-3 py-3.5 sm:px-5 sm:py-5 max-lg:px-4 max-lg:py-5">
+    <div className="w-full min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50 shadow-sm mt-2 mb-1 lg:rounded-xl lg:border-slate-200 lg:bg-slate-50/50 max-lg:rounded-2xl max-lg:border-blue-100 max-lg:bg-white max-lg:shadow-blue-900/5 max-lg:-ml-[1.875rem] max-lg:w-[calc(100%+1.875rem)]">
+      <div className="px-3 py-3.5 sm:px-5 sm:py-5 max-lg:px-1.5 max-lg:py-5">
         <div className="space-y-3 text-[15px] leading-[1.75] text-slate-800 sm:text-[16px] sm:leading-[1.85] max-lg:text-justify max-lg:leading-[1.85] sm:max-lg:leading-[1.95]">
           {paragraphs.map((paragraph, index) => (
             <div key={`${index}-${paragraph}`} className="w-full min-w-0 whitespace-pre-wrap break-words overflow-wrap-anywhere max-lg:break-all">
