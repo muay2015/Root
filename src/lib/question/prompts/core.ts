@@ -86,6 +86,22 @@ export function buildFeedbackBlock(validationFeedback?: string[]) {
       '예: stem="다항함수 \\(f(x)\\)가 다음 조건을 만족시킬 때, \\(f(2)\\)의 값은?", stimulus="\\[f\'(x) = 3x^2 - 4x + 1,\\quad f(0) = 2\\]"',
     );
   }
+  if (feedbackText.includes('math_bare_latex_brace') || feedbackText.includes('bare_latex_brace')) {
+    lines.push(
+      '',
+      '[MATH FIX] stem에 \\{...\\}가 LaTeX 구분자 밖에 있어 실패했습니다.',
+      '❌ 잘못된 예: "수열 \\{an\\}에 대하여" — \\{..\\}가 \\(...\\) 밖에 있음',
+      '✅ 올바른 예: "수열 \\(\\{a_n\\}\\)에 대하여" — 반드시 \\(\\{a_n\\}\\) 형태로 감싸야 함',
+    );
+  }
+  if (feedbackText.includes('math_bare_subscript') || feedbackText.includes('bare_subscript')) {
+    lines.push(
+      '',
+      '[MATH FIX] stem에 첨자가 LaTeX 없이 잘못 표기되어 실패했습니다.',
+      '❌ 잘못된 예: "a4의 값은?", "a---n", "a_____5" — 어떤 방식이든 LaTeX 밖의 첨자 표기는 금지',
+      '✅ 올바른 예: "\\(a_4\\)의 값은?", "\\(a_n\\)" — 반드시 \\(a_4\\) 형태. 하이픈(-) 이나 여러 언더스코어(___) 사용 불가',
+    );
+  }
 
   return lines.join('\n');
 }

@@ -17,6 +17,7 @@ export type ExamQuestion = {
   answer: string;
   explanation: string;
   stimulus?: string | null; // AI가 직접 생성한 제시문(박스 내용)
+  diagram_svg?: string | null; // AI가 생성한 SVG 도형 다이어그램
 };
 
 export type ExamQuestionParts = {

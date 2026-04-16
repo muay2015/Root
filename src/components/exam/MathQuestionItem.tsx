@@ -7,6 +7,7 @@ import {
   QuestionChoiceSection,
   QuestionImageCard,
 } from './ExamQuestionItem.shared';
+import { DiagramDisplay } from './DiagramDisplay';
 
 export function MathQuestionItem(props: ExamQuestionItemProps) {
   const { question, questionNumber, response, active, onSelectChoice, onChangeText } = props;
@@ -30,6 +31,8 @@ export function MathQuestionItem(props: ExamQuestionItemProps) {
       {!shouldInterleaveStimulus ? (
         <CommonStimulusRow stimulus={stimulus} questionHasImage={!!question.image_url} />
       ) : null}
+
+      {question.diagram_svg ? <DiagramDisplay svg={question.diagram_svg} /> : null}
 
       <QuestionChoiceSection
         question={question}

@@ -200,7 +200,9 @@ export function normalizeToSubjectKey(
     const match = title.match(/^\[([^\]]+)\]/);
     if (match) {
       const tagLabel = match[1].trim();
-      const entry = Object.entries(SUBJECT_CONFIG).find(([_, config]) => config.label === tagLabel);
+      const entry = Object.entries(SUBJECT_CONFIG).find(([_, config]) => 
+        config.label.replace(/\s+/g, '') === tagLabel.replace(/\s+/g, '')
+      );
       if (entry) return entry[0] as SubjectKey;
     }
   }
@@ -452,13 +454,12 @@ export function makeExamTitle(
     return topicText.includes(subjectLabel) ? topicText : `[${subjectLabel}] ${topicText}`;
   }
 
+  // 불필요한 정보를 제외하고 간결한 제목 구성
+  // (과목 라벨은 useExamGenerator에서 [태그] 형식으로 추가하므로 여기서 중복 방지를 위해 생략)
   const parts = [
-    mode === 'school' ? '내신 대비' : '수능·모의고사',
-    subjectLabel,
-    selectionLabel,
-    getSchoolLevelLabel(schoolLevel),
-    getDifficultyLabel(difficulty),
-    `${count}문항`,
+    mode === 'school' ? '내신대비' : '수능모의고사',
+    selectionLabel === '전체' ? null : selectionLabel,
   ].filter(Boolean);
+  
   return parts.join(' ');
 }

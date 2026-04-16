@@ -3,6 +3,7 @@ import type { ExamQuestion } from '../exam/types';
 import type { WrongNote } from '../../lib/examTypes';
 import { normalizeAnswer } from '../../lib/examUtils';
 import { CheckCircle2, XCircle, Home, NotebookPen, Target, Award, BarChart2 } from 'lucide-react';
+import { MathRenderer } from '../ui/MathRenderer';
 
 interface ResultScreenProps {
   examTitle: string;
@@ -98,7 +99,7 @@ export function ResultScreen({
                     {isCorrect ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <XCircle className="h-5 w-5 text-rose-500" />}
                   </div>
                   
-                  <h4 className="text-[17px] font-bold leading-relaxed text-slate-900 mb-6">{question.stem}</h4>
+                  <h4 className="text-[17px] font-bold leading-relaxed text-slate-900 mb-6"><MathRenderer text={question.stem} /></h4>
                   
                   <div className="grid gap-4 sm:grid-cols-2 mb-6">
                     <div className={`rounded-xl p-4 ring-1 ${isCorrect ? 'bg-emerald-50 ring-emerald-100' : 'bg-rose-50 ring-rose-100'}`}>
@@ -115,7 +116,7 @@ export function ResultScreen({
                   
                   <div className="rounded-2xl bg-white p-5 ring-1 ring-outline shadow-sm">
                     <p className="text-[11px] font-black uppercase tracking-widest text-accent mb-2">Expert Explanation</p>
-                    <p className="text-[14px] leading-relaxed text-slate-600 font-medium">{question.explanation}</p>
+                    <p className="text-[14px] leading-relaxed text-slate-600 font-medium"><MathRenderer text={question.explanation} /></p>
                   </div>
                 </article>
               );

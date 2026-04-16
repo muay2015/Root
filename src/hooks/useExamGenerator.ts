@@ -279,7 +279,9 @@ export function useExamGenerator(
       // 제목에 과목 태그가 없는 경우 강제로 추가 (보관함 분류 정확도 향상)
       const subjectLabel = SUBJECT_CONFIG[subject]?.label;
       if (subjectLabel && !resolvedTitle.includes(`[${subjectLabel}]`)) {
-        resolvedTitle = `[${subjectLabel}] ${resolvedTitle}`;
+        // 이미 제목에 과목명이 포함되어 있다면 해당 텍스트를 제거하여 [태그]와의 중복 방지
+        const cleanedTitle = resolvedTitle.replace(subjectLabel, '').trim();
+        resolvedTitle = `[${subjectLabel}] ${cleanedTitle}`.replace(/\s+/g, ' ').trim();
       }
 
       const newRecord = await finalizeGeneration(resolvedTitle, subject, nextQuestions, 'multiple');

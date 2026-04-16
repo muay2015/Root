@@ -64,6 +64,25 @@ export function validateStructure(
     .replace(/^(?:정답|답)\s*[:：\-]?\s*/u, '')
     .trim();
 
+  // 중복 선지 감지: 정규화 후 동일한 값이 2개 이상인 경우
+  const normalizedChoiceValues = choices.map((c) => normalizeText(c));
+  const seenNormalized = new Set<string>();
+  const hasDuplicateChoices = normalizedChoiceValues.some((v) => {
+    if (!v) return false;
+    if (seenNormalized.has(v)) return true;
+    seenNormalized.add(v);
+    return false;
+  });
+
+  if (hasDuplicateChoices) {
+    pushReason(
+      reasons,
+      issueCounts,
+      'duplicate_choice',
+      `Question ${index}: choices contain duplicate values after normalization (e.g. "1" and "\\(1\\)" are equivalent).`,
+    );
+  }
+
   // 직접 텍스트 매칭 우선: 정답 텍스트가 선지와 1:1 일치하면 인덱스 해석을 건너뜀
   // (수학 문항에서 answer "1"이 "choice #1"이 아닌 값 "1"인 경우 오판 방지)
   const directNormalized = normalizeText(answerWithoutLeadingLabel);
@@ -73,6 +92,10 @@ export function validateStructure(
 
   let finalAnswerMatches: number;
   if (directMatches === 1) {
+    finalAnswerMatches = 1;
+  } else if (directMatches > 1 && hasDuplicateChoices) {
+    // 중복 선지 때문에 매칭이 2개 이상인 경우: 정답 자체는 유효하므로 통과
+    // (duplicate_choice 에러가 이미 위에서 등록되어 재시도를 유도함)
     finalAnswerMatches = 1;
   } else {
     const numericAnswerIndex = parseAnswerChoiceIndex(answerWithoutLeadingLabel);

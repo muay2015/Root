@@ -30,11 +30,11 @@ export function QuestionStimulusBox({ content, renderMode = 'math' }: QuestionSt
   const paragraphs = splitStimulusParagraphs(content);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50 shadow-sm mt-2 mb-1">
-      <div className="px-5 py-5 sm:px-6 sm:py-6">
-        <div className="space-y-4 text-[16px] leading-[1.8] text-slate-800 sm:text-[17px] sm:leading-[1.9] text-justify break-keep">
+    <div className="w-full min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50 shadow-sm mt-2 mb-1">
+      <div className="px-4 py-4 sm:px-5 sm:py-5">
+        <div className="space-y-3 text-[15px] leading-[1.75] text-slate-800 sm:text-[16px] sm:leading-[1.85] break-keep">
           {paragraphs.map((paragraph, index) => (
-            <div key={`${index}-${paragraph}`} className="whitespace-pre-wrap break-words break-keep text-justify">
+            <div key={`${index}-${paragraph}`} className="w-full min-w-0 whitespace-pre-wrap break-words overflow-wrap-anywhere">
               {renderMode === 'plain'
                 ? normalizePlainStimulusText(paragraph)
                 : <MathRenderer text={paragraph} />}

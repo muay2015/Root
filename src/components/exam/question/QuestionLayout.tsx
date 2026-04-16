@@ -24,6 +24,6 @@ export function QuestionContent({
   children: ReactNode;
   className?: string;
 }) {
-  const classes = [QUESTION_CONTENT_WIDTH, className].filter(Boolean).join(' ');
+  const classes = ['w-full min-w-0 overflow-hidden', QUESTION_CONTENT_WIDTH, className].filter(Boolean).join(' ');
   return <div className={classes}>{children}</div>;
 }

@@ -15,7 +15,7 @@ import {
 } from './prompts/english';
 import { buildCsatKoreanLiteratureRules, buildKoreanPassageRules, buildCsatKoreanLiteratureSetPrompt } from './prompts/korean';
 import { isScienceSubject, buildSciencePromptRules } from './prompts/science';
-import { isMathSubject, buildMathPromptRules } from './prompts/math';
+import { isMathSubject, buildMathPromptRules, buildCsatMathPrompt } from './prompts/math';
 import { isSocialSubject } from './prompts/social';
 
 function buildGenericPrompt(input: PromptBuildInput) {
@@ -44,10 +44,11 @@ function buildGenericPrompt(input: PromptBuildInput) {
     'You are generating school exam questions.',
     'Return only a JSON array.',
     'Each item must contain exactly these keys:',
-    '["topic", "type", "stem", "choices", "answer", "explanation", "stimulus"]',
+    '["topic", "type", "stem", "choices", "answer", "explanation", "stimulus", "diagram_svg"]',
     'Use "type" = "multiple".',
     'choices must contain exactly 5 strings.',
-    '- "stimulus": Use this field to provide additional material (e.g., a "Given Sentence" box for English sentence insertion, a diagram description, or a <보기> block). If not needed, set to null.',
+    '- "stimulus": Use this field to provide additional material (e.g., a "Given Sentence" box for English sentence insertion, a <보기> block, or complex math/science conditions). If not needed, set to null.',
+    '- "diagram_svg": Default is null. Only generate an SVG when a visual diagram is ESSENTIAL for understanding the problem — i.e., when spatial layout (positions, directions, connections) cannot be conveyed by text alone. Do NOT generate for: simple numeric comparisons, formula-application problems, or cases where the diagram would directly reveal the answer. When generating: viewBox="0 0 360 260" width="100%" style="max-width:360px;display:block"; stroke="#222" stroke-width="1.5" fill="none"; dashed construction lines (stroke-dasharray="5,3"); label actual numbers not variable names; no decorative elements; do not highlight intersection or tangent points.',
     '- [CRITICAL] "answer" must be a string that matches EXACTLY one of the values in the "choices" array. Copy the choice text exactly (including all characters and spaces) into the answer field.',
     '',
     `Subject: ${rules.subjectLabel}`,
@@ -226,7 +227,7 @@ function buildCsatPrompt(input: PromptBuildInput) {
     '당신은 대한민국 수능 및 평가원 모의고사를 출제하는 전문 위원입니다.',
     '지엽적인 지식 암기가 아닌, 대학 교육에 필요한 "사고력"과 "문제 해결 능력"을 측정하는 고품질 문항을 생성하십시오.',
     '반드시 JSON 배열 형식으로만 반환하세요.',
-    'JSON의 각 항목은 다음 키를 반드시 포함해야 합니다: ["topic", "type", "stem", "choices", "answer", "explanation", "stimulus"]',
+    'JSON의 각 항목은 다음 키를 반드시 포함해야 합니다: ["topic", "type", "stem", "choices", "answer", "explanation", "stimulus", "diagram_svg"]',
     `반드시 정확히 ${input.count}문항만 생성하십시오.`,
     `요청된 문제 유형은 "${selectionValue}"입니다. 다른 유형의 형식을 섞지 마십시오.`,
     '- [CRITICAL] "stimulus" 필드는 수능 영어의 "주어진 문장", 국어의 "<보기>", 수학의 복잡한 조건 등을 담는 용도로 사용하십시오. 필요 없는 경우 null로 설정하십시오.',
@@ -310,6 +311,10 @@ export function buildQuestionPrompt(input: PromptBuildInput & { images?: { mimeT
 
   if (builderMode === 'csat' && input.subject === 'korean_literature') {
     return buildCsatKoreanLiteratureSetPrompt(input);
+  }
+
+  if (builderMode === 'csat' && isMathSubject(input.subject)) {
+    return buildCsatMathPrompt(input);
   }
 
   if (builderMode === 'csat') {

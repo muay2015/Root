@@ -2,6 +2,26 @@ import React, { ReactNode } from 'react';
 import { MathRenderer } from '../../ui/MathRenderer';
 import { injectDataBlockMarkers } from '../../../lib/question/questionUtils';
 
+/**
+ * LaTeX 블록(\(...\), \[...\])을 보호하면서 빈칸 구분자(2+ 언더스코어, "( )")로만 분할합니다.
+ * 기존 _{1,} 분할은 \(a_{n+1}\) 같은 LaTeX 내부 _까지 잘라내는 버그가 있었습니다.
+ */
+function splitTextAndBlanks(text: string): Array<{ content: string; isBlank: boolean }> {
+  const LATEX_BLOCK = /(\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\])/g;
+  const blocks: string[] = [];
+  const safe = text.replace(LATEX_BLOCK, (match) => {
+    blocks.push(match);
+    return `\x00${blocks.length - 1}\x00`;
+  });
+
+  const parts = safe.split(/(_{2,}|(?:\(\s+\)))/g).filter(Boolean);
+
+  return parts.map(part => ({
+    content: part.replace(/\x00(\d+)\x00/g, (_, i) => blocks[Number(i)]),
+    isBlank: /^(?:_{2,}|\(\s+\))$/.test(part),
+  }));
+}
+
 function PromptText({ text, isEnglishReading }: { text: string, isEnglishReading?: boolean }) {
   const normalizedText = isEnglishReading
     ? text
@@ -80,11 +100,9 @@ function PromptText({ text, isEnglishReading }: { text: string, isEnglishReading
       return;
     }
 
-    const subParts = part.split(/(_{1,}|(?:\(\s+\)))/g).filter(Boolean);
+    const subParts = splitTextAndBlanks(part);
 
-    subParts.forEach((subPart, subIndex) => {
-      const isBlank = /_{1,}|(?:\(\s+\))/.test(subPart);
-
+    subParts.forEach(({ content, isBlank }, subIndex) => {
       if (isBlank) {
         result.push(
           <span
@@ -93,10 +111,10 @@ function PromptText({ text, isEnglishReading }: { text: string, isEnglishReading
             title="빈칸"
           />
         );
-      } else {
+      } else if (content) {
         result.push(
           <span key={`text-${index}-${subIndex}`}>
-            <MathRenderer text={subPart} />
+            <MathRenderer text={content} />
           </span>
         );
       }
@@ -244,7 +262,7 @@ export function PromptRenderer({
         return (
           <div
             key={index}
-            className="whitespace-pre-wrap break-words break-keep text-[16px] leading-[1.7] text-slate-900 sm:text-[17px] sm:leading-[1.7]"
+            className="w-full min-w-0 whitespace-pre-wrap break-words break-keep text-[15px] leading-[1.75] text-slate-900 sm:text-[16px] sm:leading-[1.8]"
           >
             <PromptText text={el.text} isEnglishReading={isEnglishSentenceInsertion} />
           </div>
