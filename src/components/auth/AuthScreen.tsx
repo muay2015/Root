@@ -152,7 +152,7 @@ export function AuthScreen({ onSuccess = () => window.location.reload() }: { onS
         : '재설정 메일 보내기';
 
   return (
-    <main className="min-h-screen bg-slate-50/50 px-4 pb-28 pt-12 sm:px-6 sm:pt-20">
+    <div className="px-4 pb-28 pt-8 sm:px-6 sm:pt-12">
       <div className="mx-auto max-w-lg">
         {/* Auth Card */}
         <div className="premium-card overflow-hidden transition-all duration-500 shadow-2xl shadow-slate-200/50">

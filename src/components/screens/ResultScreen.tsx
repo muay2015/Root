@@ -25,7 +25,7 @@ export function ResultScreen({
   const isPass = summary.score >= 80;
 
   return (
-    <main className="min-h-screen bg-surface px-4 pb-28 pt-8 sm:px-6 sm:pt-12">
+    <div className="px-4 pb-28 pt-4 sm:px-6 sm:pt-6">
       <div className="mx-auto max-w-5xl space-y-10">
         {/* Score Hero */}
         <section className="premium-card relative overflow-hidden bg-white p-8 sm:p-12 border-none shadow-2xl shadow-blue-900/5">

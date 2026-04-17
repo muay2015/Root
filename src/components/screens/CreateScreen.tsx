@@ -143,7 +143,7 @@ export function CreateScreen(props: CreateScreenProps) {
   };
 
   return (
-    <main className="min-h-screen bg-surface px-4 pb-28 pt-8 sm:px-6 sm:pt-10">
+    <div className="px-4 pb-28 pt-4 sm:px-6 sm:pt-6">
       <div className="mx-auto max-w-5xl space-y-8">
         <header className="flex flex-col gap-2">
           <h1 className="text-3xl font-black tracking-tight text-slate-900">지능형 문제 생성</h1>

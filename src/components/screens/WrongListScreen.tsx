@@ -111,7 +111,7 @@ export function WrongListScreen({
   }, [filteredNotes, savedExams]);
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC] pb-28">
+    <div className="pb-28">
       {/* Compact Premium Header */}
       <div className="relative overflow-hidden bg-white pt-10 pb-10 border-b border-slate-100">
         <div className="absolute top-0 right-0 -transe-y-1/2 translate-x-1/4 opacity-5">

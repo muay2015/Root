@@ -39,7 +39,7 @@ export function SavedScreen({
   });
 
   return (
-    <main className="min-h-screen bg-surface px-4 pb-28 pt-8 sm:px-6 sm:pt-10">
+    <div className="px-4 pb-28 pt-4 sm:px-6 sm:pt-6">
       <div className="mx-auto max-w-5xl space-y-8">
         {state.openMenuId && (
           <div

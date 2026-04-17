@@ -21,7 +21,7 @@ interface LandingScreenProps {
 
 export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
   return (
-    <main className="min-h-screen bg-surface pb-16 pt-0">
+    <div className="pb-16 pt-0">
       {/* 1. Hero Section */}
       <section className="premium-gradient relative overflow-hidden px-4 pb-12 pt-20 text-white sm:px-6 sm:pb-20 sm:pt-32">
         <div className="absolute inset-0 opacity-10">

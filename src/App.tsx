@@ -269,7 +269,7 @@ export default function App() {
 
   const renderContent = () => {
     return (
-      <main className="min-h-screen bg-slate-50 px-4 pb-24 pt-6 sm:px-6 lg:pb-10">
+      <main className="min-h-screen pt-4 sm:pt-6">
         <div className="mx-auto max-w-[1280px]">
           {(() => {
             switch (screen) {
