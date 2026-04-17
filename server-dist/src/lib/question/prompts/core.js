@@ -1,5 +1,5 @@
-import {} from '../generationRules.js';
-import {} from '../subjectConfig.js';
+import {} from '../generationRules';
+import {} from '../subjectConfig';
 export const META_INSTRUCTION_PATTERNS = [
     /사용자가 입력한 주제/u,
     /기초로 하여 생성/u,

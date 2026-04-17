@@ -99,6 +99,7 @@ export function useQuestionTypeDetection(question: ExamQuestion, rawPrompt: stri
         topic: question.topic,
         stem: question.stem,
         prompt: rawPrompt,
+        stimulus: rawStimulus,
         choices: question.choices,
       }) ||
 
@@ -161,4 +162,3 @@ export function useQuestionTypeDetection(question: ExamQuestion, rawPrompt: stri
     };
   }, [question, rawPrompt, rawStimulus]);
 }
-

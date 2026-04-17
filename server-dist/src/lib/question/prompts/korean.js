@@ -1,6 +1,6 @@
-import { buildFeedbackBlock, buildSourceMaterialBlock } from './core.js';
-import { getGenerationRules } from '../generationRules.js';
-import {} from '../subjectConfig.js';
+import { buildFeedbackBlock, buildSourceMaterialBlock } from './core';
+import { getGenerationRules } from '../generationRules';
+import {} from '../subjectConfig';
 export function buildCsatKoreanLiteratureRules(input) {
     if (input.subject !== 'korean_literature' || input.schoolLevel !== 'csat') {
         return [];
@@ -8,7 +8,7 @@ export function buildCsatKoreanLiteratureRules(input) {
     return [
         '- [CSAT KOREAN LITERATURE] Treat every item as a real CSAT literature question, not a grammar or casual dialogue question.',
         '- [CSAT KOREAN LITERATURE] Default to set-based generation: up to 3 questions may share one passage, and those questions must use the same base passage with clearly different stems.',
-        '- [CSAT KOREAN LITERATURE] Write a passage of sufficient depth for real interpretation: use 8-16 lines (2-4 stanzas) for verse-like text or 10-18 sentences for prose-like text. Do NOT generate a passage shorter than 2 stanzas or shorter than 8 lines.',
+        '- [CSAT KOREAN LITERATURE] Keep the passage short, but never shallow: use 3-6 lines for verse-like text or 2-5 sentences for prose-like text.',
         '- [CSAT KOREAN LITERATURE] The literary passage MUST go in "stimulus" only. Do not duplicate the passage in "stem".',
         '- [CSAT KOREAN LITERATURE] Do not output a summary-only <보기> as the entire stimulus. The stimulus must contain an actual literary passage first, and <보기> may appear only as a secondary interpretive aid.',
         '- [CSAT KOREAN LITERATURE] The stem MUST ask for literary interpretation such as speaker attitude, emotional movement, expressive feature, function of imagery, function of scene, or appreciation with <보기>.',
@@ -35,7 +35,7 @@ export function buildKoreanPassageRules(subject) {
     const label = isLiterature ? '문학' : '독서';
     const passageLabel = isLiterature ? '시/소설/수필/극 등 작품 원문 전체' : '비문학 지문 전문';
     const lengthRule = isLiterature
-        ? '시는 반드시 3연 이상(8행~16행) 또는 원작의 핵심 연들을 충분히 인용하십시오. 소설·수필·극은 최소 10~18문장 이상의 의미 있는 장면 또는 단락을 인용하십시오. 5행 이하의 단편 지문은 절대 허용되지 않습니다.'
+        ? '시는 최소 2연 이상 또는 원작의 핵심 부분을 1연 이상 인용하고, 소설/수필/극은 최소 6~10문장 이상의 장면 또는 단락을 인용하십시오.'
         : '지문은 최소 4문단(약 600자 이상)의 완결된 글로 구성하십시오.';
     return [
         `- [CRITICAL][국어 ${label} 필드 배치 규칙] 지문과 발문은 화면에서 별도 영역(박스)으로 렌더링되므로, 필드를 아래와 같이 엄격히 구분해서 채우십시오.`,
@@ -49,51 +49,6 @@ export function buildKoreanPassageRules(subject) {
         '- [밑줄 표기] 지문 내 특정 구절을 가리켜야 하는 경우 ㉠, ㉡, ㉢, ㉣, ㉤ 기호를 해당 구절 앞에 붙이거나 <u>태그</u>로 밑줄을 표시하십시오.',
         '- [예시] stem: "다음 글을 읽고 물음에 답하시오.\\n\\n윗글의 화자에 대한 설명으로 가장 적절한 것은?" / stimulus: "[지문 원문 전체]"',
     ];
-}
-export function buildCsatKoreanReadingSetPrompt(input) {
-    const feedbackBlock = buildFeedbackBlock(input.validationFeedback);
-    return [
-        'You are generating Korean CSAT reading comprehension (독서/비문학) question sets.',
-        'Return only one JSON object.',
-        'Do not return a JSON array for this task.',
-        'Use exactly this schema:',
-        '{',
-        '  "title": "string",',
-        '  "sets": [',
-        '    {',
-        '      "passage": "shared expository passage string (at least 4 paragraphs)",',
-        '      "items": [',
-        '        {',
-        '          "topic": "string",',
-        '          "role": "comprehension|inference|application|main-idea|other",',
-        '          "type": "multiple",',
-        '          "stem": "question stem only — no passage text here",',
-        '          "choices": ["...", "...", "...", "...", "..."],',
-        '          "answer": "exact choice text or 1-5 index",',
-        '          "explanation": "brief explanation citing specific passage evidence",',
-        '          "view": "optional <보기> text only for application items; otherwise null"',
-        '        }',
-        '      ]',
-        '    }',
-        '  ]',
-        '}',
-        `Create exactly ${input.count} question(s) total in exactly one set for this response.`,
-        'All questions in the set must share the same passage.',
-        'Do not duplicate the passage in each item — the passage is stored only in "passage".',
-        'The system will automatically combine "passage" and optional "view" into the stimulus field.',
-        'Only application/비판적평가 items may use "view" to provide a <보기> interpretive lens.',
-        'Each item must have exactly 5 choices.',
-        'Each item must be solvable by internal evidence from the passage only.',
-        'Each item in the set must have a clearly different role and different answer logic.',
-        'The passage must be at least 4 paragraphs (approx. 600+ characters) of coherent expository or argumentative text.',
-        'Do not generate literature appreciation or grammar questions.',
-        'Do not include meta commentary, labels like [문제 1], or prose outside the JSON object.',
-        ...buildKoreanPassageRules(input.subject),
-        '',
-        feedbackBlock,
-        '',
-        buildSourceMaterialBlock(input),
-    ].join('\n');
 }
 export function buildCsatKoreanLiteratureSetPrompt(input) {
     const feedbackBlock = buildFeedbackBlock(input.validationFeedback);
@@ -131,7 +86,7 @@ export function buildCsatKoreanLiteratureSetPrompt(input) {
         'Each item must have exactly 5 choices.',
         'Each item must be solvable by internal evidence from the passage only.',
         'Each item in the set must have a different role and a different answer logic.',
-        'Write a passage of substantial length: at least 8-16 lines (2-4 stanzas) for verse-like text, or at least 10-18 sentences for prose-like text. A passage shorter than 2 stanzas or 8 lines is NOT acceptable.',
+        'Keep the passage short but literary: 3-6 lines for verse-like text or 2-5 sentences for prose-like text.',
         'Do not generate grammar-analysis questions.',
         'Do not include meta commentary, labels like [문제 1], or prose outside the JSON object.',
         ...buildCsatKoreanLiteratureRules(input),

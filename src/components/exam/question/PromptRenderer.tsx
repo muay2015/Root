@@ -229,7 +229,7 @@ export function PromptRenderer({
           return (
             <p
               key={index}
-              className="whitespace-pre-wrap break-words text-[16px] leading-[1.7] text-slate-900 sm:text-[17px] sm:leading-[1.7]"
+              className="whitespace-pre-wrap break-words text-[16px] leading-[1.7] text-slate-800 sm:text-[17px] sm:leading-[1.7]"
             >
               <PromptText text={`<${el.title}>`} isEnglishReading={isEnglishSentenceInsertion} />
             </p>
@@ -259,7 +259,7 @@ export function PromptRenderer({
         return (
           <div
             key={index}
-            className="w-full min-w-0 whitespace-pre-wrap break-words text-[15px] leading-[1.75] text-slate-900 sm:text-[16px] sm:leading-[1.8] max-lg:leading-[1.8] sm:max-lg:leading-[1.9]"
+            className="w-full min-w-0 whitespace-pre-wrap break-words text-[15px] leading-[1.75] text-slate-800 sm:text-[16px] sm:leading-[1.8] max-lg:leading-[1.8] sm:max-lg:leading-[1.9]"
           >
             <PromptText text={el.text} isEnglishReading={isEnglishSentenceInsertion} />
           </div>

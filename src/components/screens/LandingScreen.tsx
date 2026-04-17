@@ -38,7 +38,7 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
             </span>
           </div>
 
-          <h1 className="font-headline text-3xl font-black tracking-tight sm:text-6xl text-balance break-keep leading-[1.15]">
+          <h1 className="font-headline text-[26px] font-black tracking-tight sm:text-6xl text-balance break-keep leading-[1.15]">
             중·고등 내신 및 수능 대비<br />
             <span className="text-blue-300">AI 문제은행</span>
           </h1>

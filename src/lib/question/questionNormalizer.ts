@@ -995,6 +995,7 @@ export function normalizeQuestion(
     questionType: context.questionType,
     topic: raw?.topic,
     stem,
+    stimulus,
   });
   const isEmotionAtmosphereType = isEnglishEmotionAtmosphereType({
     subject: context.subject,

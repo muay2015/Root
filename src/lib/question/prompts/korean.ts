@@ -9,7 +9,7 @@ export function buildCsatKoreanLiteratureRules(input: PromptBuildInput) {
   return [
     '- [CSAT KOREAN LITERATURE] Treat every item as a real CSAT literature question, not a grammar or casual dialogue question.',
     '- [CSAT KOREAN LITERATURE] Default to set-based generation: up to 3 questions may share one passage, and those questions must use the same base passage with clearly different stems.',
-    '- [CSAT KOREAN LITERATURE] Keep the passage short, but never shallow: use 3-6 lines for verse-like text or 2-5 sentences for prose-like text.',
+    '- [CSAT KOREAN LITERATURE] Keep the passage substantial enough for a shared-passage set: use 10-18 lines for verse-like text or 8-14 sentences for prose-like text.',
     '- [CSAT KOREAN LITERATURE] The literary passage MUST go in "stimulus" only. Do not duplicate the passage in "stem".',
     '- [CSAT KOREAN LITERATURE] Do not output a summary-only <보기> as the entire stimulus. The stimulus must contain an actual literary passage first, and <보기> may appear only as a secondary interpretive aid.',
     '- [CSAT KOREAN LITERATURE] The stem MUST ask for literary interpretation such as speaker attitude, emotional movement, expressive feature, function of imagery, function of scene, or appreciation with <보기>.',
@@ -90,7 +90,8 @@ export function buildCsatKoreanLiteratureSetPrompt(input: PromptBuildInput) {
     'Each item must have exactly 5 choices.',
     'Each item must be solvable by internal evidence from the passage only.',
     'Each item in the set must have a different role and a different answer logic.',
-    'Keep the passage short but literary: 3-6 lines for verse-like text or 2-5 sentences for prose-like text.',
+    'Keep the passage substantial enough for a set: use 10-18 lines for verse-like text or 8-14 sentences for prose-like text.',
+    'The passage must not feel fragmentary. Even in a set, provide enough development, imagery, situation, contrast, or narrative progression to support multiple questions from one shared passage.',
     'Do not generate grammar-analysis questions.',
     'Do not include meta commentary, labels like [문제 1], or prose outside the JSON object.',
     ...buildCsatKoreanLiteratureRules(input),

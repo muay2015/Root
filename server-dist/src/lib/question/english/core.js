@@ -1,3 +1,4 @@
+import { SubjectKey } from '../subjectConfig';
 /**
  * 영어 과목 여부 판별
  */

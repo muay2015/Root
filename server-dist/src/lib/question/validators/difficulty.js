@@ -14,11 +14,8 @@ export function validateGenericDifficulty(question, index, input, reasons, warni
     const isEnglish = subjectLower.includes('english');
     const isMath = subjectLower.includes('math');
     const isKoreanLiterature = String(input.subject) === 'korean_literature';
-    const isKoreanReading = String(input.subject) === 'korean_reading';
     const hasCsatLiteratureReasoningStem = isKoreanLiterature &&
         /(?:화자|정서|태도|심경|감상|표현상\s*특징|표현의\s*효과|표현\s*방식|시어|심상|이미지|어조|분위기|갈등|장면|상황|기능|서사\s*전개)/u.test(String(question.stem ?? ''));
-    // 독서(비문학): 발문이 짧고 지문은 stimulus에 있는 구조가 정상이므로 stem 길이 검증 면제
-    const hasCsatReadingPassage = isKoreanReading && !!question.stimulus && question.stimulus.length >= 80;
     if (difficulty === 'easy' && stemWords > 24) {
         warnings.push(`Question ${index}: easy difficulty stem is longer than expected.`);
     }
@@ -26,7 +23,7 @@ export function validateGenericDifficulty(question, index, input, reasons, warni
         // [FIX] 영어 과목의 경우 표준 발문이 짧으므로 길이 검증을 완화하거나 건너뜁니다.
         // [FIX] 수학 과목은 stem이 짧고 stimulus에 수식 조건이 들어가는 구조가 정상이므로,
         //       stem + stimulus 합산으로 검증합니다.
-        if (!isEnglish && !hasCsatLiteratureReasoningStem && !hasCsatReadingPassage) {
+        if (!isEnglish && !hasCsatLiteratureReasoningStem) {
             let effectiveWords = stemWords;
             let effectiveKoreanChars = stemKoreanChars;
             if (isMath && question.stimulus) {

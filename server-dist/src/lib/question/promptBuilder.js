@@ -1,11 +1,11 @@
-import { getGenerationRules } from './generationRules.js';
-import { getSubjectQuestionTypeMixTargets, usesNoSelector } from './subjectConfig.js';
-import { buildFeedbackBlock, buildSourceMaterialBlock } from './prompts/core.js';
-import { isEnglishSubject, isEnglishQuestionType, isEnglishQuestionTypeSafe, buildEnglishTypePromptRules, buildEnglishOrderStrictPrompt, buildEnglishOrderStrictArrayPrompt, buildEnglishSummaryStrictPrompt, buildEnglishInsertionStrictPrompt, buildEnglishIrrelevantStrictPrompt, buildEnglishGrammarStrictPrompt } from './prompts/english.js';
-import { buildCsatKoreanLiteratureRules, buildKoreanPassageRules, buildCsatKoreanLiteratureSetPrompt, buildCsatKoreanReadingSetPrompt } from './prompts/korean.js';
-import { isScienceSubject, isMiddleScienceSubject, buildSciencePromptRules, buildMiddleSciencePromptRules } from './prompts/science.js';
-import { isMathSubject, isMiddleMathSubject, buildMathPromptRules, buildMiddleMathPromptRules, buildCsatMathPrompt } from './prompts/math.js';
-import { isSocialSubject } from './prompts/social.js';
+import { getGenerationRules } from './generationRules';
+import { getSubjectQuestionTypeMixTargets, usesNoSelector } from './subjectConfig';
+import { buildFeedbackBlock, buildSourceMaterialBlock } from './prompts/core';
+import { isEnglishSubject, isEnglishQuestionType, isEnglishQuestionTypeSafe, buildEnglishTypePromptRules, buildEnglishOrderStrictPrompt, buildEnglishOrderStrictArrayPrompt, buildEnglishSummaryStrictPrompt, buildEnglishInsertionStrictPrompt, buildEnglishIrrelevantStrictPrompt, buildEnglishGrammarStrictPrompt } from './prompts/english';
+import { buildCsatKoreanLiteratureRules, buildKoreanPassageRules, buildCsatKoreanLiteratureSetPrompt } from './prompts/korean';
+import { isScienceSubject, isMiddleScienceSubject, buildSciencePromptRules, buildMiddleSciencePromptRules } from './prompts/science';
+import { isMathSubject, isMiddleMathSubject, buildMathPromptRules, buildMiddleMathPromptRules, buildCsatMathPrompt } from './prompts/math';
+import { isSocialSubject } from './prompts/social';
 function buildGenericPrompt(input) {
     const selectionLabel = isSocialSubject(input.subject) ? '문제방식' : '문제유형';
     const selectionValue = isSocialSubject(input.subject)
@@ -296,9 +296,6 @@ export function buildQuestionPrompt(input, builderMode) {
     }
     if (builderMode === 'csat' && input.subject === 'korean_literature') {
         return buildCsatKoreanLiteratureSetPrompt(input);
-    }
-    if (builderMode === 'csat' && input.subject === 'korean_reading') {
-        return buildCsatKoreanReadingSetPrompt(input);
     }
     if (builderMode === 'csat' && isMathSubject(input.subject)) {
         return buildCsatMathPrompt(input);

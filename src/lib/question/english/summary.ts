@@ -65,6 +65,7 @@ export function isEnglishSummaryCompletionType(params: {
   topic?: string;
   stem?: string;
   prompt?: string;
+  stimulus?: string | null;
   choices?: (string | { value: string; display: string })[];
 }) {
   const questionType = String(params.questionType ?? '');
@@ -73,12 +74,7 @@ export function isEnglishSummaryCompletionType(params: {
     String(params.stem ?? '').replace(/<[^>]+>/g, '').toLowerCase(),
   );
   const promptText = normalizeSummaryBlankMarkers(String(params.prompt ?? '').toLowerCase());
-
-  const choiceSignals = (params.choices ?? []).some((choice) => {
-    const text = typeof choice === 'object' ? choice.display || choice.value : String(choice);
-    const words = text.trim().split(/\s+/).filter(Boolean);
-    return text.includes('/') || words.length === 2 || words.length === 4;
-  });
+  const stimulusText = normalizeSummaryBlankMarkers(String(params.stimulus ?? '').toLowerCase());
 
   const contentSignals =
     questionType.includes('요약문 완성') ||
@@ -87,10 +83,12 @@ export function isEnglishSummaryCompletionType(params: {
     topicText.includes('요약문') ||
     stemText.includes('(a)') ||
     promptText.includes('(a)') ||
+    stimulusText.includes('(a)') ||
     (/\(a\)/i.test(stemText) && /\(b\)/i.test(stemText)) ||
-    (/\(a\)/i.test(promptText) && /\(b\)/i.test(promptText));
+    (/\(a\)/i.test(promptText) && /\(b\)/i.test(promptText)) ||
+    (/\(a\)/i.test(stimulusText) && /\(b\)/i.test(stimulusText));
 
-  return isEnglishSubject(params.subject) && (contentSignals || choiceSignals);
+  return isEnglishSubject(params.subject) && contentSignals;
 }
 
 export function normalizeSummaryCompletionPairText(value: unknown) {

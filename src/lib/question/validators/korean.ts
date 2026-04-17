@@ -162,6 +162,12 @@ function stripViewLabel(text: string) {
   return text.replace(/<보기>|\[보기\]/gu, '').trim();
 }
 
+function extractBasePassage(stimulus: string) {
+  const normalized = String(stimulus ?? '').trim();
+  if (!normalized) return '';
+  return normalized.split(/(?:\n\s*\n)?(?:<蹂닿린>|\[蹂닿린\])[\s\S]*$/u)[0].trim();
+}
+
 function countDescriptionSignals(text: string) {
   return DESCRIPTION_SENTENCE_PATTERNS.filter((pattern) => pattern.test(text)).length;
 }
@@ -309,6 +315,7 @@ export function validateKoreanLiteratureQuality(
 
   const stem = String(question.stem ?? '').trim();
   const stimulus = String(question.stimulus ?? '').trim();
+  const basePassage = extractBasePassage(stimulus);
   const explanation = String(question.explanation ?? '').trim();
   const choices = Array.isArray(question.choices) ? question.choices : [];
   const combinedText = [stem, stimulus, explanation, ...choices].join('\n');
@@ -320,6 +327,22 @@ export function validateKoreanLiteratureQuality(
       issueCounts,
       'korean_literature_missing_stimulus',
       `Question ${index}: korean literature items must include a short but meaningful passage in stimulus.`,
+    );
+  }
+
+  const passageCharCount = countKoreanCharacters(basePassage);
+  const passageLines = basePassage.split('\n').map((line) => line.trim()).filter(Boolean).length;
+  const passageSentenceCount = basePassage
+    .split(/[.!?]\s*|[다요까]\s+/u)
+    .map((part) => part.trim())
+    .filter((part) => countKoreanCharacters(part) >= 8).length;
+
+  if (basePassage && passageCharCount < 130 && passageLines < 9 && passageSentenceCount < 7) {
+    pushReason(
+      reasons,
+      issueCounts,
+      'korean_literature_passage_too_short',
+      `Question ${index}: korean literature passage is too short to support a longer shared-passage literature item.`,
     );
   }
 
@@ -450,9 +473,9 @@ export function validateKoreanLiteratureQuality(
     }
   }
 
-  if (stimulus && countWords(stimulus) > 120) {
+  if (basePassage && countWords(basePassage) > 180) {
     warnings.push(
-      `Question ${index}: korean literature passage is longer than the intended short-passage budget.`,
+      `Question ${index}: korean literature passage is longer than the intended concise-passage budget.`,
     );
   }
 }

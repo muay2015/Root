@@ -40,7 +40,7 @@ export function QuestionStimulusBox({ content, renderMode = 'math', standalone =
   return (
     <div className={`w-full min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50 shadow-sm mt-2 mb-1 lg:rounded-xl lg:border-slate-200 lg:bg-slate-50/50 max-lg:rounded-2xl max-lg:border-blue-100 max-lg:bg-white max-lg:shadow-blue-900/5 ${standalone ? '' : 'max-lg:-ml-[1.875rem] max-lg:w-[calc(100%+1.875rem)]'}`}>
       <div className="px-3 py-3.5 sm:px-5 sm:py-5 max-lg:px-1.5 max-lg:py-5">
-        <div className="space-y-4 text-[16px] leading-[1.85] text-slate-800 sm:text-[17px] sm:leading-[1.9] max-lg:text-[15px] max-lg:leading-[1.85]">
+        <div className="space-y-4 text-[15px] leading-[1.8] text-slate-800 sm:text-[16px] sm:leading-[1.85] max-lg:text-[15px] max-lg:leading-[1.85]">
           {paragraphs.map((paragraph, index) => (
             <div key={`${index}-${paragraph}`} className="w-full min-w-0 whitespace-pre-wrap break-words overflow-wrap-anywhere text-justify">
               {renderMode === 'plain'

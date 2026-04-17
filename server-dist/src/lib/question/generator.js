@@ -589,55 +589,6 @@ function buildKoreanLiteratureVariationHint(slotIndex, totalCount) {
         'Do not reuse the same passage setup, emotional conclusion, stem pattern, or distractor logic used in other items of this batch.',
     ].join(' ');
 }
-function classifyReadingRoleFromStem(stem) {
-    const text = String(stem ?? '').replace(/\s+/g, ' ').trim();
-    if (/보기|적용|비판|평가/u.test(text))
-        return 'application';
-    if (/추론|함의|이끌어|가정|전제/u.test(text))
-        return 'inference';
-    if (/내용.*일치|세부.*정보/u.test(text))
-        return 'comprehension';
-    if (/주제|중심|핵심|요지/u.test(text))
-        return 'main-idea';
-    return 'other';
-}
-function findOverlappingReadingRoles(questions) {
-    // 3문항 세트일 때만 역할 중복을 체크. 2문항은 역할이 비슷해도 허용.
-    if (questions.length < 3)
-        return [];
-    const roleMap = new Map();
-    questions.forEach((question, idx) => {
-        const role = classifyReadingRoleFromStem(question.stem);
-        const seen = roleMap.get(role) ?? [];
-        seen.push(idx + 1);
-        roleMap.set(role, seen);
-    });
-    return [...roleMap.entries()].filter(([role, indexes]) => role !== 'other' && indexes.length >= 2);
-}
-function buildKoreanReadingSetHint(setIndex, groupSize, totalCount) {
-    const rolePlans = [
-        ['내용 이해 및 세부 정보 파악', '추론 및 함의 도출', '적용·비판 with <보기>'],
-        ['주제 및 중심 내용 파악', '논리적 구조 및 전개 방식', '사례 적용 with <보기>'],
-        ['핵심 개념 이해', '글쓴이의 관점 및 태도', '비판적 평가 및 추론'],
-    ];
-    const profilePlans = [
-        'an expository passage explaining a scientific or technological concept with cause-effect logic (e.g. physics, biology, computing)',
-        'an argumentative or social-science passage presenting a thesis with supporting evidence (e.g. economics, sociology, law)',
-        'a humanities or philosophy passage analyzing a concept from multiple perspectives (e.g. aesthetics, ethics, history of ideas)',
-    ];
-    const selectedPlan = rolePlans[setIndex % rolePlans.length];
-    const plannedRoles = selectedPlan.slice(0, groupSize);
-    const selectedProfile = profilePlans[setIndex % profilePlans.length];
-    return [
-        `Generate a korean reading (독서/비문학) set with exactly ${groupSize} questions for set ${setIndex + 1}.`,
-        `All ${groupSize} questions in this set MUST share the same expository passage in stimulus.`,
-        `Use one shared passage of at least 4 paragraphs (approx. 600+ characters) and write ${groupSize} different stems against that same passage.`,
-        `Use this set profile: ${selectedProfile}.`,
-        `Distribute the item roles in this set exactly as follows: ${plannedRoles.join('; ')}.`,
-        'Within the set, do not repeat the same stem pattern, answer logic, or distractor structure.',
-        `Across the full batch of ${totalCount} questions, this set must also differ from previously accepted sets in passage topic and question focus.`,
-    ].join(' ');
-}
 function buildKoreanLiteratureSetHint(setIndex, groupSize, totalCount) {
     const rolePlans = [
         ['speaker-attitude or emotional-movement', 'expression-feature or imagery-function', 'appreciation with <보기>'],
@@ -671,8 +622,7 @@ async function generateValidatedQuestionBatch(input) {
             const seenFingerprints = new Set();
             let collectedSummary;
             let generationFeedback = feedback;
-            const shouldGenerateLiteratureSets = (input.subject === 'korean_literature' || input.subject === 'korean_reading') && input.count > 1;
-            const isReadingSet = input.subject === 'korean_reading';
+            const shouldGenerateLiteratureSets = input.subject === 'korean_literature' && input.count > 1;
             if (shouldGenerateLiteratureSets) {
                 let setIndex = 0;
                 let literatureBatchFailed = false;
@@ -682,32 +632,26 @@ async function generateValidatedQuestionBatch(input) {
                     let accepted = false;
                     let lastSetFailureReason = '';
                     for (let subAttempt = 0; subAttempt < 3 && !accepted; subAttempt += 1) {
-                        const subjectLabel = isReadingSet ? 'korean reading (독서/비문학)' : 'korean literature';
-                        console.log(`  - Set ${setIndex + 1}, attempt ${subAttempt + 1}: Fetching ${groupSize} ${subjectLabel} questions sharing one passage...`);
-                        const setHint = isReadingSet
-                            ? buildKoreanReadingSetHint(setIndex, groupSize, input.count)
-                            : buildKoreanLiteratureSetHint(setIndex, groupSize, input.count);
-                        const alreadyAcceptedMsg = isReadingSet
-                            ? `Already accepted ${collectedQuestions.length} unique item(s) from previous reading sets. The new set must use a different passage topic.`
-                            : `Already accepted ${collectedQuestions.length} unique item(s) from previous literature sets. The new set must use a different passage situation.`;
+                        console.log(`  - Set ${setIndex + 1}, attempt ${subAttempt + 1}: Fetching ${groupSize} korean literature questions sharing one passage...`);
                         const partial = await requestQuestionsFromModel({
                             ...input,
                             count: groupSize,
                         }, [
                             ...generationFeedback,
-                            setHint,
-                            ...(collectedQuestions.length > 0 ? [alreadyAcceptedMsg] : []),
+                            buildKoreanLiteratureSetHint(setIndex, groupSize, input.count),
+                            ...(collectedQuestions.length > 0
+                                ? [`Already accepted ${collectedQuestions.length} unique item(s) from previous literature sets. The new set must use a different passage situation.`]
+                                : []),
                         ]);
                         if (!collectedSummary && partial.summary) {
                             collectedSummary = partial.summary;
                         }
-                        const setLabel = isReadingSet ? 'reading set' : 'literature set';
                         if (partial.questions.length !== groupSize) {
                             lastSetFailureReason = `The model did not return exactly ${groupSize} questions for one set.`;
                             generationFeedback = [
-                                `Return exactly ${groupSize} complete questions for one shared-passage ${setLabel}.`,
+                                `Return exactly ${groupSize} complete questions for one shared-passage literature set.`,
                                 `All questions in the set must share the same base passage.`,
-                                setHint,
+                                buildKoreanLiteratureSetHint(setIndex, groupSize, input.count),
                             ];
                             continue;
                         }
@@ -721,7 +665,7 @@ async function generateValidatedQuestionBatch(input) {
                             generationFeedback = [
                                 `The previous response did not keep one shared passage across the set.`,
                                 `Return exactly ${groupSize} questions that all use the same base passage text.`,
-                                setHint,
+                                buildKoreanLiteratureSetHint(setIndex, groupSize, input.count),
                             ];
                             continue;
                         }
@@ -741,54 +685,44 @@ async function generateValidatedQuestionBatch(input) {
                             generationFeedback = [
                                 `The previous response repeated an existing item or duplicated a question inside the set.`,
                                 `Return exactly ${groupSize} distinct questions sharing one passage.`,
-                                setHint,
+                                buildKoreanLiteratureSetHint(setIndex, groupSize, input.count),
                             ];
                             continue;
                         }
-                        const overlappingRoles = isReadingSet
-                            ? findOverlappingReadingRoles(uniqueQuestions)
-                            : findOverlappingLiteratureRoles(uniqueQuestions);
+                        const overlappingRoles = findOverlappingLiteratureRoles(uniqueQuestions);
                         if (overlappingRoles.length > 0) {
                             const overlapText = overlappingRoles
                                 .map(([role, indexes]) => `${role}(${indexes.join(', ')})`)
                                 .join(', ');
                             lastSetFailureReason = `The set repeated the same role inside the set: ${overlapText}.`;
-                            const roleExamples = isReadingSet
-                                ? 'Allowed role split examples: comprehension + inference; comprehension + application; inference + application; comprehension + inference + application.'
-                                : 'Allowed role split examples: speaker + expression; speaker + appreciation; expression + scene; speaker + expression + appreciation.';
                             generationFeedback = [
                                 `The previous shared-passage set repeated the same question role inside the set: ${overlapText}.`,
                                 `Return exactly ${groupSize} questions sharing one passage, but each stem must have a different role.`,
-                                roleExamples,
-                                setHint,
+                                `Allowed role split examples: speaker + expression; speaker + appreciation; expression + scene; speaker + expression + appreciation.`,
+                                buildKoreanLiteratureSetHint(setIndex, groupSize, input.count),
                             ];
                             continue;
                         }
                         collectedQuestions.push(...uniqueQuestions);
                         accepted = true;
                         setIndex += 1;
-                        console.log(`    + Accepted ${setLabel} of ${groupSize} questions. (Progress: ${collectedQuestions.length}/${input.count})`);
+                        console.log(`    + Accepted literature set of ${groupSize} questions. (Progress: ${collectedQuestions.length}/${input.count})`);
                     }
                     if (!accepted) {
-                        const setLabel = isReadingSet ? 'reading set' : 'literature set';
-                        const setHintForFeedback = isReadingSet
-                            ? buildKoreanReadingSetHint(setIndex, groupSize, input.count)
-                            : buildKoreanLiteratureSetHint(setIndex, groupSize, input.count);
                         feedback = [
-                            `Failed to build ${setLabel} ${setIndex + 1} after 3 tries.`,
+                            `Failed to build literature set ${setIndex + 1} after 3 tries.`,
                             lastSetFailureReason || `The model did not satisfy the shared-passage set requirements.`,
-                            setHintForFeedback,
+                            buildKoreanLiteratureSetHint(setIndex, groupSize, input.count),
                         ];
                         literatureBatchFailed = true;
                         break;
                     }
                 }
                 if (literatureBatchFailed || collectedQuestions.length < input.count) {
-                    const setLabel = isReadingSet ? 'reading' : 'literature';
-                    console.warn(`[Generator] WARNING: ${setLabel} set generation ended with ${collectedQuestions.length}/${input.count} questions. Retrying whole batch with focused feedback...`);
+                    console.warn(`[Generator] WARNING: Literature set generation ended with ${collectedQuestions.length}/${input.count} questions. Retrying whole batch with focused feedback...`);
                     feedback = [
                         ...feedback,
-                        `You must return exactly ${input.count} questions total, arranged as shared-passage ${setLabel} sets of up to 3 items.`,
+                        `You must return exactly ${input.count} questions total, arranged as shared-passage literature sets of up to 3 items.`,
                         `Do not return zero items. If one set fails, still continue producing the remaining required sets.`,
                     ];
                     continue;

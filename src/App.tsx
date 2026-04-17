@@ -84,6 +84,10 @@ export default function App() {
       generator.reset();
     }
 
+    if (next === 'saved') {
+      setSavedScreenSubject('전체');
+    }
+
     window.scrollTo(0, 0);
     if (replace) {
       window.history.replaceState({ screen: next }, '', '');

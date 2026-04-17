@@ -1,6 +1,6 @@
-import {} from '../subjectConfig.js';
-import { buildFeedbackBlock, buildSourceMaterialBlock } from './core.js';
-import { getGenerationRules } from '../generationRules.js';
+import {} from '../subjectConfig';
+import { buildFeedbackBlock, buildSourceMaterialBlock } from './core';
+import { getGenerationRules } from '../generationRules';
 export function isMathSubject(subject) {
     if (!subject)
         return false;

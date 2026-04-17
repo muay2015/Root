@@ -51,7 +51,7 @@ export function ExamQuestionSectionFrame({
             </div>
           }
           content={
-            <QuestionContent className="max-lg:font-bold">
+            <QuestionContent>
               {children}
             </QuestionContent>
           }

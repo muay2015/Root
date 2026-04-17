@@ -1,4 +1,5 @@
-import { isEnglishSubject } from './core.js';
+import { SubjectKey } from '../subjectConfig';
+import { isEnglishSubject } from './core';
 /**
  * 내용 일치 유형 판별
  */
