@@ -149,6 +149,16 @@ export function buildSciencePromptRules() {
     '  ✅ 예: 운동량 + 충격량 + 방향성 동시 판단, 질량 변화 + 속력 변화 + 에너지 비교',
     '  ❌ 금지: 단일 공식 하나만 적용하는 문항.',
 
+    // ========== 다이어그램 필수 생성 조건 (MANDATORY) ==========
+    '- [SCI DIAGRAM MANDATORY] 아래 유형에 해당하는 경우 diagram_svg를 반드시 생성하십시오. null을 출력하면 해당 문항은 폐기됩니다:',
+    '  ✅ [필수] 두 물체의 운동 방향·위치 관계가 문제 핵심인 운동학 문제 — 힘·가속도 벡터 포함',
+    '  ✅ [필수] 도르래·용수철·실로 연결된 물체 시스템 — 연결 구조 없이는 문제 이해 불가',
+    '  ✅ [필수] 경사면 또는 수평면 위 물체에 힘이 작용하는 문제',
+    '  ✅ [필수] 힘이나 속도가 시간에 따라 변하는 문제 (F-t 또는 v-t 그래프)',
+    '  ✅ [필수] 회로도 문제 (저항·전원·스위치 연결)',
+    '  ✅ [필수] 광선 경로·굴절·반사 문제',
+    '  ✅ [필수] 두 개 이상의 경로 또는 물체 간 비교가 있는 문제',
+    '- [SCI DIAGRAM MANDATORY] 위 유형인데 diagram_svg=null을 출력한 경우: 문항 전체를 즉시 폐기하고 diagram_svg를 포함한 버전으로 재작성하십시오.',
     // ========== 경로 비교 + 마찰 전용 다이어그램 ==========
     '- [SCI PATH-FRICTION] 아래 조건을 모두 만족하는 경우 반드시 경로 비교 도형을 생성하십시오:',
     '  ① 두 개 이상의 경로가 존재 (예: 경로 가, 경로 나)',
@@ -185,5 +195,23 @@ export function buildSciencePromptRules() {
     '- [SCI DIAGRAM] SVG 규격: viewBox="0 0 360 260" width="100%" style="max-width:360px;display:block". stroke="#222" stroke-width="1.5" fill="none". font-family="serif" font-size="14" fill="#222".',
     '- [SCI DIAGRAM] 힘·속도 벡터는 화살표 marker 사용. 물체는 rect 또는 점. 지면은 두꺼운 선.',
     '- [SCI DIAGRAM] 값 레이블은 실제 숫자로 표기. 물리량 기호(v₀, F 등)는 유니코드 첨자 사용.',
+    // ========== SVG 템플릿 (공통 과학 도형) ==========
+    '- [SCI SVG TEMPLATE] 아래 템플릿을 기반으로 문제에 맞게 수치·레이블만 교체하여 사용하십시오.',
+    '',
+    '[템플릿 A: 수평면 위 물체 + 힘 (힘·운동 문제)]',
+    'viewBox="0 0 360 200". 지면: <line x1="0" y1="160" x2="360" y2="160" stroke="#222" stroke-width="3"/>. 물체: <rect x="140" y="120" width="60" height="40" fill="#ddd" stroke="#222" stroke-width="1.5"/>. 레이블: <text x="165" y="145" font-size="14" text-anchor="middle">m</text>. 힘 화살표: <defs><marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#222"/></marker></defs><line x1="200" y1="140" x2="260" y2="140" stroke="#222" stroke-width="2" marker-end="url(#arr)"/>. 힘 레이블: <text x="270" y="137" font-size="13">F</text>.',
+    '',
+    '[템플릿 B: v-t 그래프]',
+    'viewBox="0 0 360 240". 축: x축(시간) <line x1="50" y1="190" x2="320" y2="190" stroke="#222" stroke-width="1.5" marker-end="url(#arr)"/>. y축(속도) <line x1="50" y1="190" x2="50" y2="20" stroke="#222" stroke-width="1.5" marker-end="url(#arr)"/>. 레이블: x축 <text x="330" y="194" font-size="13">t</text>, y축 <text x="40" y="16" font-size="13">v</text>. 물체 A (실선 파란색): <polyline points="50,150 150,90 250,90" fill="none" stroke="#2563eb" stroke-width="2"/>. 물체 B (점선 빨간색): <polyline points="50,150 250,50" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="6,3"/>. 범례: <text x="260" y="88" font-size="12" fill="#2563eb">A</text><text x="260" y="46" font-size="12" fill="#dc2626">B</text>.',
+    '',
+    '[템플릿 C: F-t 그래프 (막대형)]',
+    'viewBox="0 0 360 220". 축 구성은 템플릿 B와 동일, y축 레이블은 F로 변경. 물체별 구간을 rect 또는 polyline으로 표현. 각 구간에 레이블(F, 2F, t₁, t₂ 등) 부착.',
+    '',
+    '[템플릿 D: 도르래 시스템]',
+    'viewBox="0 0 360 280". 천장: <line x1="0" y1="30" x2="360" y2="30" stroke="#222" stroke-width="3"/>. 도르래: <circle cx="180" cy="60" r="20" fill="none" stroke="#222" stroke-width="2"/>. 실: 도르래에서 양쪽으로 수직선. 물체: rect 두 개, 각 실 끝에 연결. 질량 레이블(m₁, m₂) 표기.',
+    '',
+    '[템플릿 E: 회로도 (직렬/병렬)]',
+    'viewBox="0 0 360 220". 전원: 좌측 수직선 두 개(긴선/짧은선). 연결선: 사각형 경로. 저항: 지그재그 선 또는 rect. 레이블: R₁, R₂, V 표기.',
+    '- [SCI SVG TEMPLATE] 템플릿을 사용할 때 정답을 암시하는 수치(최종 속도, 최대 힘 값 등)는 절대 표시하지 마십시오. 구하는 값은 반드시 "?" 또는 기호로만 표기.',
   ];
 }

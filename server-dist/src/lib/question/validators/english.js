@@ -123,6 +123,12 @@ export function validateEnglishBlankInference(question, index, input, reasons, i
     if (/\b[A-E]\s+nutrition label can help|\.?\s*가장\s+적절한\s+것은\?\s*$/i.test(stem)) {
         pushReason(reasons, issueCounts, 'english_blank_inference_instruction_polluted_passage', `Question ${index}: blank inference passage contains instruction text mixed into the passage.`);
     }
+    // 선지(choices) 검증: (A), (B) 등 다중 빈칸/요약문 형식 차단
+    const choices = Array.isArray(question.choices) ? question.choices.map(c => String(c ?? '')) : [];
+    const hasInvalidChoiceFormat = choices.some(choice => /\([A-E]\)|\/|\\/.test(choice));
+    if (hasInvalidChoiceFormat) {
+        pushReason(reasons, issueCounts, 'english_blank_inference_invalid_choice_format', `Question ${index}: blank inference choices must not contain multi-blank formats like (A) or slashes (/).`);
+    }
 }
 /**
  * 관계없는 문장(Irrelevant Sentence) 유형을 검증합니다.

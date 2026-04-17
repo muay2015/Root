@@ -1,6 +1,5 @@
-import { SubjectKey } from '../subjectConfig';
-import { resolveAnswerFromChoices } from '../answerMatching';
-import { isEnglishSubject, normalizeEnglishPlainText, countEnglishWords } from './core';
+import { resolveAnswerFromChoices } from '../answerMatching.js';
+import { isEnglishSubject, normalizeEnglishPlainText, countEnglishWords } from './core.js';
 export const CANONICAL_ORDER_CHOICES = [
     'A-B-C',
     'A-C-B',

@@ -61,6 +61,12 @@ export function useQuestionRepair(question: ExamQuestion) {
     let prompt = rawPrompt;
     let stimulus = rawStimulus;
     let finalChoices: any[] = [...(question.choices ?? [])];
+
+    // ── 공통 정규화: 발문 앞의 번호 노이즈 제거 (예: "1. 다음 글을...") ──
+    if (/^\s*\d+\.\s+/.test(prompt)) {
+      prompt = prompt.replace(/^\s*\d+\.\s+/, '').trim();
+    }
+
     const shouldRecoverEnglishPassage =
       types.isEnglishSubject &&
       !question.stimulus &&

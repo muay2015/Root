@@ -59,7 +59,7 @@ export function GenerationSettings(props: GenerationSettingsProps) {
     <section className="grid gap-6 lg:grid-cols-2">
       {!hideSelector && questionTypeOptions.length > 0 && (
         <SelectorPanel
-          title={hasCurriculum ? "세부 영역 선택" : "문항 유형 설계"}
+          title={hasCurriculum ? "세부 영역 선택" : "유형 선택"}
           options={questionTypeOptions}
           value={questionType}
           onSelect={(val) => {
@@ -117,7 +117,7 @@ export function GenerationSettings(props: GenerationSettingsProps) {
                 return areasToDisplay.map(areaData => (
                   <div key={areaData.areaName} className="space-y-3 p-4 rounded-2xl bg-slate-50/50 ring-1 ring-slate-100">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                      <h3 className="text-[13px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
                         <span className="w-1 h-3 bg-blue-400 rounded-full"></span>
                         {areaData.areaName} 세부 단원
                       </h3>
@@ -160,7 +160,7 @@ export function GenerationSettings(props: GenerationSettingsProps) {
                                   setGenerationTopic(nextTopics.join(', '));
                                 }
                               }}
-                              className={`px-4 py-2 rounded-xl text-[12px] font-bold transition-all active:scale-95 shadow-sm ring-1 ${
+                              className={`px-4 py-2 rounded-xl text-[13px] font-bold transition-all active:scale-95 shadow-sm ring-1 ${
                                 isSelected 
                                   ? 'bg-blue-600 text-white ring-blue-600 shadow-md scale-105' 
                                   : 'bg-white text-slate-600 ring-slate-200 hover:bg-blue-50 hover:text-blue-600 hover:ring-blue-100'
@@ -218,7 +218,7 @@ export function GenerationSettings(props: GenerationSettingsProps) {
       />
 
       <section className="premium-card p-6">
-        <h2 className="text-sm font-black uppercase tracking-wider text-slate-400">평가 문항 구성</h2>
+        <h2 className="text-[13px] font-bold uppercase tracking-widest text-slate-500">평가 문항 구성</h2>
         <div className="mt-6 flex flex-col gap-6">
           <input
             type="range"

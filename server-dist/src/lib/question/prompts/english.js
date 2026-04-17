@@ -1,6 +1,6 @@
-import { buildFeedbackBlock, buildSourceMaterialBlock, isMaterialMeta, sanitizeMaterialText } from './core';
-import { getGenerationRules } from '../generationRules';
-import {} from '../subjectConfig';
+import { buildFeedbackBlock, buildSourceMaterialBlock, isMaterialMeta, sanitizeMaterialText } from './core.js';
+import { getGenerationRules } from '../generationRules.js';
+import {} from '../subjectConfig.js';
 export function isEnglishSubject(subject) {
     return String(subject).toLowerCase().includes('english');
 }

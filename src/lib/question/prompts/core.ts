@@ -102,6 +102,15 @@ export function buildFeedbackBlock(validationFeedback?: string[]) {
       '✅ 올바른 예: "\\(a_4\\)의 값은?", "\\(a_n\\)" — 반드시 \\(a_4\\) 형태. 하이픈(-) 이나 여러 언더스코어(___) 사용 불가',
     );
   }
+  if (feedbackText.includes('math_missing_diagram') || feedbackText.includes('geometry question')) {
+    lines.push(
+      '',
+      '[MATH FIX] 기하 문항에서 diagram_svg가 null로 실패했습니다. 반드시 SVG 도형을 생성하십시오.',
+      '원 문제 예시: <svg viewBox="0 0 360 320" width="100%" style="max-width:360px;display:block"><circle cx="180" cy="160" r="110" fill="none" stroke="#222" stroke-width="1.5"/><circle cx="290" cy="160" r="3" fill="#222"/><text x="298" y="164" font-size="13">B</text><circle cx="70" cy="160" r="3" fill="#222"/><text x="55" y="164" font-size="13">E</text></svg>',
+      '삼각형 예시: <svg viewBox="0 0 360 300" width="100%" style="max-width:360px;display:block"><polygon points="180,30 60,260 300,260" fill="none" stroke="#222" stroke-width="1.5"/><text x="175" y="20" font-size="13">A</text><text x="45" y="275" font-size="13">B</text><text x="305" y="275" font-size="13">C</text></svg>',
+      '- stem에서 "주어진 조건에서" → "그림과 같이"로 변경하고, 도형 배치 설명은 SVG에만 표현하십시오.',
+    );
+  }
 
   return lines.join('\n');
 }

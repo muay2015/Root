@@ -1,5 +1,5 @@
-import {} from '../generationRules';
-import {} from '../subjectConfig';
+import {} from '../generationRules.js';
+import {} from '../subjectConfig.js';
 export const META_INSTRUCTION_PATTERNS = [
     /사용자가 입력한 주제/u,
     /기초로 하여 생성/u,
@@ -53,6 +53,15 @@ export function buildFeedbackBlock(validationFeedback) {
     }
     if (feedbackText.includes('hard_too_short') || feedbackText.includes('too short')) {
         lines.push('', '[MATH FIX] stem이 너무 짧습니다. 수학 문항에서는 반드시 stimulus 필드에 수식 조건을 넣으십시오. stimulus가 null이면 안 됩니다.', '예: stem="다항함수 \\(f(x)\\)가 다음 조건을 만족시킬 때, \\(f(2)\\)의 값은?", stimulus="\\[f\'(x) = 3x^2 - 4x + 1,\\quad f(0) = 2\\]"');
+    }
+    if (feedbackText.includes('math_bare_latex_brace') || feedbackText.includes('bare_latex_brace')) {
+        lines.push('', '[MATH FIX] stem에 \\{...\\}가 LaTeX 구분자 밖에 있어 실패했습니다.', '❌ 잘못된 예: "수열 \\{an\\}에 대하여" — \\{..\\}가 \\(...\\) 밖에 있음', '✅ 올바른 예: "수열 \\(\\{a_n\\}\\)에 대하여" — 반드시 \\(\\{a_n\\}\\) 형태로 감싸야 함');
+    }
+    if (feedbackText.includes('math_bare_subscript') || feedbackText.includes('bare_subscript')) {
+        lines.push('', '[MATH FIX] stem에 첨자가 LaTeX 없이 잘못 표기되어 실패했습니다.', '❌ 잘못된 예: "a4의 값은?", "a---n", "a_____5" — 어떤 방식이든 LaTeX 밖의 첨자 표기는 금지', '✅ 올바른 예: "\\(a_4\\)의 값은?", "\\(a_n\\)" — 반드시 \\(a_4\\) 형태. 하이픈(-) 이나 여러 언더스코어(___) 사용 불가');
+    }
+    if (feedbackText.includes('math_missing_diagram') || feedbackText.includes('geometry question')) {
+        lines.push('', '[MATH FIX] 기하 문항에서 diagram_svg가 null로 실패했습니다. 반드시 SVG 도형을 생성하십시오.', '원 문제 예시: <svg viewBox="0 0 360 320" width="100%" style="max-width:360px;display:block"><circle cx="180" cy="160" r="110" fill="none" stroke="#222" stroke-width="1.5"/><circle cx="290" cy="160" r="3" fill="#222"/><text x="298" y="164" font-size="13">B</text><circle cx="70" cy="160" r="3" fill="#222"/><text x="55" y="164" font-size="13">E</text></svg>', '삼각형 예시: <svg viewBox="0 0 360 300" width="100%" style="max-width:360px;display:block"><polygon points="180,30 60,260 300,260" fill="none" stroke="#222" stroke-width="1.5"/><text x="175" y="20" font-size="13">A</text><text x="45" y="275" font-size="13">B</text><text x="305" y="275" font-size="13">C</text></svg>', '- stem에서 "주어진 조건에서" → "그림과 같이"로 변경하고, 도형 배치 설명은 SVG에만 표현하십시오.');
     }
     return lines.join('\n');
 }

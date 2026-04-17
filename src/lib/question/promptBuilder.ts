@@ -264,6 +264,7 @@ function buildCsatPrompt(input: PromptBuildInput) {
     ...buildEnglishTypePromptRules(input, true),
     ...buildKoreanPassageRules(input.subject),
     ...(isMathSubject(input.subject) ? buildMathPromptRules() : []),
+    ...(isScienceSubject(input.subject) ? buildSciencePromptRules() : []),
   ];
 
   return [

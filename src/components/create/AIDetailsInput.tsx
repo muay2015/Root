@@ -68,18 +68,29 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
   const [extractingIndices, setExtractingIndices] = React.useState<number[]>([]);
   const [completedIndices, setCompletedIndices] = React.useState<number[]>([]);
   const [activePageIndex, setActivePageIndex] = React.useState<number>(0);
+  const [showRequirementToast, setShowRequirementToast] = React.useState(false);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawFiles = e.target.files ? Array.from(e.target.files) as File[] : [];
-    if (rawFiles.length === 0) return;
+  // 내신 대비 모드 + 지문 필수 과목 선택 시 토스트 표시
+  React.useEffect(() => {
+    const isRequired = getUploadRecommendation(subject) === 'REQUIRED';
+    if (mode === 'school' && isRequired) {
+      setShowRequirementToast(true);
+      const timer = setTimeout(() => setShowRequirementToast(false), 4000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowRequirementToast(false);
+    }
+  }, [subject, mode]);
+
+  const processImages = async (files: File[]) => {
+    if (files.length === 0) return;
 
     setIsExtracting(true);
     let currentBatchIndex = 0;
 
-    for (const file of rawFiles) {
-      const currentFile = file as File;
+    for (const file of files) {
       try {
-        const optimized = await optimizeImage(currentFile);
+        const optimized = await optimizeImage(file);
         const base64 = await fileToBase64(optimized);
         
         // 업로드 시작 전 현재 인덱스 확정
@@ -91,7 +102,7 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
         
         // 파일별 개별 상태 추적을 위해 유일한 ID 생성
         const pageId = `img-${Date.now()}-${currentBatchIndex}`;
-        setOcrPages(prev => [...prev, { id: pageId, text: `[분석 중: ${currentFile.name}]` }]);
+        setOcrPages(prev => [...prev, { id: pageId, text: `[분석 중: ${file.name}]` }]);
         
         // 추출 시작 인덱스 기록
         setExtractingIndices(prev => [...prev, newIndex]);
@@ -99,7 +110,7 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
         const result = await ocrService.extractText(base64);
         
         if (result.text) {
-          const pageHeader = `---------- [사진 추출 내용: ${currentFile.name}] ----------\n`;
+          const pageHeader = `---------- [사진 추출 내용: ${file.name}] ----------\n`;
           setOcrPages(prev => {
             const next = [...prev];
             // 정확한 인덱스에 매핑 (상태 업데이트 시점 고려)
@@ -122,6 +133,39 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
     }
 
     setIsExtracting(false);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawFiles = e.target.files ? Array.from(e.target.files) as File[] : [];
+    await processImages(rawFiles);
+    e.target.value = '';
+  };
+
+  const handleUnifiedUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawFiles = e.target.files ? Array.from(e.target.files) as File[] : [];
+    if (rawFiles.length === 0) return;
+
+    const images = rawFiles.filter(f => f.type.startsWith('image/'));
+    const nonImages = rawFiles.filter(f => !f.type.startsWith('image/'));
+
+    // 이미지 파일은 OCR 처리 프로세스로 전달
+    if (images.length > 0) {
+      await processImages(images);
+    }
+
+    // 비이미지 파일(PDF 등)은 기존 파일 변경 핸들러로 전달
+    if (nonImages.length > 0) {
+      // Create a mock event to reuse onFileChange
+      const mockEvent = {
+        ...e,
+        target: {
+          ...e.target,
+          files: nonImages as any
+        }
+      } as React.ChangeEvent<HTMLInputElement>;
+      onFileChange(mockEvent);
+    }
+    
     e.target.value = '';
   };
 
@@ -133,7 +177,7 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
     <section className="space-y-6">
       <section className="premium-card p-6 shadow-sm border border-slate-100">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-black uppercase tracking-wider text-slate-400">
+          <h2 className="text-[13px] font-bold uppercase tracking-widest text-slate-500">
             학습 집중 영역 (단원/주제)
           </h2>
         </div>
@@ -147,11 +191,11 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
                 ? MATH_AREA_GUIDE[questionType]
                 : SUBJECT_CONFIG[subject].exampleTopic
           }
-          className="mt-4 w-full rounded-2xl bg-slate-50 border-none px-5 py-4 text-[15px] font-medium text-slate-900 outline-none ring-1 ring-slate-100 focus:ring-2 focus:ring-accent transition-all placeholder:text-slate-300"
+          className="mt-4 w-full rounded-2xl bg-slate-50 border-none px-5 py-4 text-[13px] font-bold text-slate-900 outline-none ring-1 ring-slate-100 focus:ring-2 focus:ring-accent transition-all placeholder:text-slate-300 placeholder:font-medium"
         />
         <p className="mt-2.5 text-[11px] font-bold text-blue-500/80 pl-1 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1 duration-500">
           <Sparkles className="h-3 w-3" />
-          <span>입력하신 단원과 세부 주제에 집중된 문항이 생성됩니다.</span>
+          <span>단원과 세부 주제에 집중된 문항이 생성됩니다.</span>
         </p>
       </section>
 
@@ -160,7 +204,7 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
         <section className="premium-card p-6">
           <div className="flex flex-col gap-4 mb-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-black uppercase tracking-wider text-slate-400">학습 내용 추가</h2>
+              <h2 className="text-[13px] font-bold uppercase tracking-widest text-slate-500">학습 내용 추가</h2>
               
               {(() => {
                 const rawRec = getUploadRecommendation(subject);
@@ -191,30 +235,18 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
               })()}
             </div>
             
-            <div className="pl-1">
-              {(() => {
-                const rawRec = getUploadRecommendation(subject);
-                const rec = (mode === 'csat' && rawRec === 'REQUIRED') ? 'RECOMMENDED' : rawRec;
-                
-                if (rec === 'REQUIRED') {
-                  return <p className="text-[11px] font-bold text-red-500">문학/독서/어학 과목은 지문 사진이 반드시 필요합니다.</p>;
-                }
-                if (rec === 'RECOMMENDED') {
-                  return <p className="text-[11px] font-bold text-amber-500">
-                    {mode === 'csat' ? '특정 지문을 바탕으로 출제하고 싶다면 사진을 올려주세요.' : '도표나 그래프가 포함된 자료를 올리면 더 정확합니다.'}
-                  </p>;
-                }
-                return <p className="text-[11px] font-bold text-blue-500">교과서 내용이 있다면 올려주세요. 더 풍부한 문제가 나옵니다.</p>;
-              })()}
+            <div className="pl-1 h-3">
+              {/* 기존 문구 제거됨 (토스트로 대체) */}
             </div>
             <div className="flex items-center gap-2">
               <label className="flex cursor-pointer items-center gap-2 rounded-xl bg-violet-50 px-4 py-2 text-xs font-bold text-violet-600 ring-1 ring-violet-100 hover:bg-violet-100 transition-all active:scale-95 shadow-sm">
                 <Camera className="h-4 w-4" />
-                <span>사진 촬영/업로드</span>
+                <span>사진 촬영</span>
                 <input 
                   type="file" 
                   className="hidden" 
                   accept="image/*"
+                  capture="environment"
                   multiple
                   onChange={handleImageUpload}
                 />
@@ -225,12 +257,12 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
                 <input 
                   type="file" 
                   className="hidden" 
-                  accept=".txt,.md,.json,.csv,.pdf,.docx,.hwp,.hwpx"
+                  accept="image/*,.pdf"
                   multiple
                   onClick={(e) => {
                     (e.target as HTMLInputElement).value = '';
                   }}
-                  onChange={onFileChange}
+                  onChange={handleUnifiedUpload}
                 />
               </label>
             </div>
@@ -256,7 +288,7 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
               </div>
             )}
 
-            <div className="min-h-[44px] flex flex-col gap-2 mb-3">
+            <div className="flex flex-col gap-2 mb-3">
               {showSuccess && (
                 <div className="flex items-center justify-between rounded-xl bg-emerald-500 px-5 py-3.5 text-[13px] font-black text-white shadow-lg shadow-emerald-900/10 animate-in zoom-in-95 slide-in-from-top-2 duration-300">
                   <div className="flex items-center gap-2">
@@ -271,7 +303,7 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
                 </div>
               )}
               
-              {parsedFiles.length > 0 ? (
+              {(parsedFiles.length > 0 || imageData.length > 0) && (
                 <div className="flex flex-wrap gap-2 py-1">
                   {parsedFiles.map((name, i) => (
                     <div key={`file-${i}`} className="group relative inline-flex items-center gap-1.5 rounded-xl bg-white pl-3.5 pr-1.5 py-1.5 text-[12px] font-black text-slate-700 ring-1 ring-slate-200 shadow-sm hover:ring-blue-400 hover:text-blue-600 transition-all cursor-default overflow-hidden">
@@ -336,22 +368,20 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
                     );
                   })}
                 </div>
-              ) : (
-                <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed ${isParsing ? 'border-blue-200 bg-blue-50/30' : parseError ? 'border-red-100 bg-red-50/30' : 'border-slate-100 bg-slate-50/30'} text-[12px] font-bold`}>
+              )}
+
+              {/* 분석 중이거나 오류 발생 시에만 상태 박스 표시 */}
+              {(isParsing || parseError) && (
+                <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed ${isParsing ? 'border-blue-200 bg-blue-50/30' : 'border-red-100 bg-red-50/30'} text-[12px] font-bold`}>
                   {isParsing ? (
                     <>
                       <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
                       <span className="text-blue-600">{parsingProgress || '자료 분석 중...'}</span>
                     </>
-                  ) : parseError ? (
+                  ) : (
                     <>
                       <div className="h-2 w-2 rounded-full bg-red-500" />
                       <span className="text-red-500">분석 실패: {parseError}</span>
-                    </>
-                  ) : (
-                    <>
-                      <div className="h-2 w-2 rounded-full bg-slate-200" />
-                      <span className="text-slate-400">업로드된 학습 자료가 여기에 표시됩니다.</span>
                     </>
                   )}
                 </div>
@@ -397,6 +427,28 @@ export function AIDetailsInput(props: AIDetailsInputProps) {
             </div>
           </div>
         </section>
+      )}
+      {/* 지문 필수 안내 토스트 */}
+      {showRequirementToast && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="bg-slate-900/95 backdrop-blur-md text-white px-6 py-4 rounded-3xl shadow-2xl ring-1 ring-white/10 flex items-center gap-3 border border-white/5">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+              <AlertCircle className="h-5 w-5 text-red-400" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[13px] font-bold text-white">지문 자료가 꼭 필요해요!</span>
+              <p className="text-[11px] font-medium text-slate-300 leading-tight">
+                {SUBJECT_CONFIG[subject].label} 과목은 지문 사진이나 파일을 필수로 첨부해야 합니다.
+              </p>
+            </div>
+            <button 
+              onClick={() => setShowRequirementToast(false)}
+              className="ml-auto p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+            >
+              <X className="h-4 w-4 text-slate-400" />
+            </button>
+          </div>
+        </div>
       )}
     </section>
   );

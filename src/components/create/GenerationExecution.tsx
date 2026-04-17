@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, Sparkles } from 'lucide-react';
+import { CheckCircle2, Sparkles, AlertCircle, X } from 'lucide-react';
 import { ConfigTag } from '../ui/ConfigTag';
 import { SUBJECT_CONFIG, type SubjectKey } from '../../lib/question/subjectConfig';
 import { getSchoolLevelLabel, getDifficultyLabel } from '../../lib/examUtils';
@@ -45,6 +45,18 @@ export function GenerationExecution(props: GenerationExecutionProps) {
     return getDifficultyLabel(difficulty);
   };
 
+  const [showErrorToast, setShowErrorToast] = React.useState(false);
+
+  const handleGenerateClick = () => {
+    if (isGenerating) return;
+    if (!ready) {
+      setShowErrorToast(true);
+      setTimeout(() => setShowErrorToast(false), 3000);
+      return;
+    }
+    onGenerate();
+  };
+
   return (
     <section className={`premium-card p-6 border-none transition-all duration-500 overflow-hidden ${ready ? 'ring-2 ring-accent shadow-xl shadow-blue-900/10' : 'opacity-80'}`}>
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -57,18 +69,26 @@ export function GenerationExecution(props: GenerationExecutionProps) {
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
               <ConfigTag label={SUBJECT_CONFIG[subject].label} />
               {selectionLabel && <ConfigTag label={selectionLabel} />}
-              <ConfigTag label={getSchoolLevelLabel(schoolLevel)} />
+              {!SUBJECT_CONFIG[subject].label.includes(getSchoolLevelLabel(schoolLevel)) && (
+                <ConfigTag label={getSchoolLevelLabel(schoolLevel)} />
+              )}
               <ConfigTag label={getExecutionDifficultyLabel()} />
               <ConfigTag label={`${count}문항`} />
             </div>
-            <p className={`mt-2 text-xs font-bold ${ready ? 'text-blue-500' : 'text-slate-400'}`}>{readyHint}</p>
+            {ready && (
+              <p className="mt-2 text-xs font-bold text-blue-500 animate-in fade-in duration-500">{readyHint}</p>
+            )}
           </div>
         </div>
         
         <button
-          onClick={onGenerate}
-          disabled={!ready || isGenerating}
-          className="relative flex h-14 items-center justify-center gap-3 rounded-2xl premium-gradient px-10 text-base font-black text-white shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02] active:scale-95 disabled:scale-100 disabled:bg-slate-200 disabled:shadow-none disabled:cursor-not-allowed group overflow-hidden"
+          onClick={handleGenerateClick}
+          disabled={isGenerating}
+          className={`relative flex h-14 items-center justify-center gap-3 rounded-2xl px-10 text-base font-black text-white shadow-lg transition-all active:scale-95 disabled:scale-100 disabled:bg-slate-200 disabled:shadow-none disabled:cursor-not-allowed group overflow-hidden ${
+            ready 
+              ? 'premium-gradient shadow-blue-900/20 hover:scale-[1.02]' 
+              : 'bg-slate-400 shadow-none grayscale-[0.5] opacity-90'
+          }`}
         >
           {isGenerating ? (
             <div className="flex items-center gap-2">
@@ -89,6 +109,18 @@ export function GenerationExecution(props: GenerationExecutionProps) {
            {generationError}
          </div>
       )}
+      {/* 필수 입력 누락 알림 토스트 (전역 Overlay z-index 고려) */}
+      <div className="pointer-events-none fixed inset-0 z-[100] flex items-end justify-center px-4 pb-24">
+        {showErrorToast && (
+          <div className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-slate-900/90 px-6 py-3.5 text-white shadow-2xl backdrop-blur-md ring-1 ring-white/10 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <AlertCircle className="h-5 w-5 text-red-400" />
+            <span className="text-sm font-bold">상세 주제를 입력하거나 지문 자료를 추가해 주세요!</span>
+            <button onClick={() => setShowErrorToast(false)} className="ml-2 hover:opacity-70">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </div>
     </section>
   );
 }

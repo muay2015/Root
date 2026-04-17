@@ -139,7 +139,7 @@ export function DashboardScreen({ exams, onOpenExam }: DashboardScreenProps) {
                 <p className="py-10 text-center text-sm font-medium text-slate-400">데이터를 수집 중입니다.</p>
               ) : (
                 <div className="space-y-6">
-                  {Object.entries(subjectStats).map(([key, stat]) => {
+                  {(Object.entries(subjectStats) as [string, { total: number; scoreSum: number }][]).map(([key, stat]) => {
                     const label = isSubjectKey(key) ? SUBJECT_CONFIG[key].label : '기타';
                     const avg = Math.round(stat.scoreSum / stat.total);
                     return (

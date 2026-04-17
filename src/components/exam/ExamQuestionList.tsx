@@ -63,11 +63,11 @@ function groupQuestionsByStimulusSet(questions: ExamQuestion[]): QuestionGroup[]
   return groups;
 }
 
-/** stimulus에서 <보기> 블록을 제외한 기본 지문(passage) 부분만 추출 */
+/** stimulus에서 <보기>/[보기]/<자료>/<조건> 블록을 제외한 기본 지문(passage) 부분만 추출 */
+const BASE_PASSAGE_MARKER_RE = /(?:<보기>|\[보기\]|<자료>|\[자료\]|<조건>|\[조건\])/;
 function extractBasePassage(stimulus: string): string {
-  const bogiIndex = stimulus.indexOf('<보기>');
-  const base = bogiIndex >= 0 ? stimulus.slice(0, bogiIndex) : stimulus;
-  return base.trim();
+  const match = BASE_PASSAGE_MARKER_RE.exec(stimulus);
+  return match ? stimulus.slice(0, match.index).trim() : stimulus.trim();
 }
 
 export function ExamQuestionList(props: ExamQuestionListProps) {

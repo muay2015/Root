@@ -20,7 +20,7 @@ export function GradeSelector({ mode, value, onChange, detailedGrade, onDetailed
   return (
     <section className="premium-card p-6 flex flex-col gap-6">
       <div>
-        <h2 className="text-sm font-black uppercase tracking-wider text-slate-400 mb-4">대상 학년/과정</h2>
+        <h2 className="text-[13px] font-bold uppercase tracking-widest text-slate-500 mb-4">대상 학년/과정</h2>
         <div className="flex flex-wrap gap-2.5">
           {levels.map((level) => {
             const isDisabled = mode === 'csat' && level === 'middle';
@@ -29,7 +29,7 @@ export function GradeSelector({ mode, value, onChange, detailedGrade, onDetailed
                 key={level}
                 onClick={() => !isDisabled && onChange(level)}
                 disabled={isDisabled}
-                className={`rounded-2xl px-6 py-3.5 text-sm font-bold transition-all duration-300 ${
+                className={`rounded-2xl px-6 py-3.5 text-[13px] sm:text-sm font-bold transition-all duration-300 ${
                   value === level 
                     ? 'premium-gradient text-white shadow-md' 
                     : isDisabled
@@ -46,15 +46,15 @@ export function GradeSelector({ mode, value, onChange, detailedGrade, onDetailed
 
       {mode !== 'csat' && (
         <div className="animate-in slide-in-from-top-2 duration-300 pt-2">
-          <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 ml-1">상세 학년 선택</h2>
-          <div className="flex gap-2">
+          <h2 className="text-[13px] font-bold uppercase tracking-widest text-slate-500 mb-3 ml-1">상세 학년 선택</h2>
+          <div className="flex gap-2 items-stretch">
             {detailedGrades.map((g) => (
               <button
                 key={g}
                 onClick={() => onDetailedGradeChange(g)}
-                className={`px-6 py-2 rounded-xl text-sm font-black transition-all ${
+                className={`flex-1 min-w-0 py-3.5 rounded-2xl text-[13px] sm:text-sm font-black transition-all whitespace-nowrap ${
                   detailedGrade === g 
-                    ? 'bg-slate-900 text-white shadow-lg scale-105' 
+                    ? 'bg-slate-900 text-white shadow-lg scale-105 z-10' 
                     : 'bg-white text-slate-400 ring-1 ring-slate-200 hover:ring-slate-300'
                 }`}
               >

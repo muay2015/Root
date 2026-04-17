@@ -151,20 +151,17 @@ export function PromptRenderer({
       .replace(/\s+/g, ' ')          // 모든 연속 공백(탭, 줄바꿈 등) -> 단일 공백
       .replace(/\s*(\n\n)\s*/g, '$1') // 이중 줄바꿈 주변 공백 정리
       .trim();
+  } else if (isEnglishSentenceInsertion) {
+    // 문장 삽입 유형: 삽입 위치 마커를 수능 표준 인라인 원형 번호로 치환 (줄바꿈 없이 흐름 유지)
+    // (1) → ①, ( ① ) → ① 형태로 괄호를 제거하고 원형 번호만 표시
+    processedText = processedText
+      .replace(/\(\s*([1-5])\s*\)/g, (_, n) => (['①', '②', '③', '④', '⑤'] as const)[parseInt(n, 10) - 1])
+      .replace(/\(\s*(①|②|③|④|⑤)\s*\)/g, '$1');
   } else {
     processedText = processedText
       .replace(/([^\n<])\s*(\([1-5]\))/g, '$1\n$2')
       .replace(/([^\n<])\s*(①|②|③|④|⑤)/g, '$1\n$2')
       .replace(/([^\n<])\s+(①|②|③|④|⑤)(?=\s)/g, '$1\n$2');
-  }
-
-  if (isEnglishSentenceInsertion) {
-    processedText = processedText
-      .replace(/\(?\s*1\s*\)/g, '( ①)')
-      .replace(/\(?\s*2\s*\)/g, '( ②)')
-      .replace(/\(?\s*3\s*\)/g, '( ③)')
-      .replace(/\(?\s*4\s*\)/g, '( ④)')
-      .replace(/\(?\s*5\s*\)/g, '( ⑤)');
   }
 
   const lines = processedText.split('\n').map((line) => line.trim());
@@ -251,7 +248,7 @@ export function PromptRenderer({
                 </span>
               </div>
               <div className="px-4 py-3.5 sm:px-5 sm:py-4 bg-slate-50/50 max-lg:bg-white max-lg:px-1.5 max-lg:py-5">
-                <div className="whitespace-pre-wrap break-words text-[15px] leading-[1.7] text-slate-800 sm:text-[16px] sm:leading-[1.8] max-lg:text-justify max-lg:break-all max-lg:leading-[1.8] sm:max-lg:leading-[1.9]">
+                <div className={`whitespace-pre-wrap break-words text-[15px] leading-[1.7] text-slate-800 sm:text-[16px] sm:leading-[1.8] max-lg:leading-[1.8] sm:max-lg:leading-[1.9]${isEnglishSentenceInsertion ? ' text-justify' : ''}`}>
                   <PromptText text={el.text} isEnglishReading={isEnglishSentenceInsertion} />
                 </div>
               </div>
@@ -262,7 +259,7 @@ export function PromptRenderer({
         return (
           <div
             key={index}
-            className="w-full min-w-0 whitespace-pre-wrap break-words text-[15px] leading-[1.75] text-slate-900 sm:text-[16px] sm:leading-[1.8] max-lg:text-justify max-lg:break-all max-lg:leading-[1.8] sm:max-lg:leading-[1.9]"
+            className="w-full min-w-0 whitespace-pre-wrap break-words text-[15px] leading-[1.75] text-slate-900 sm:text-[16px] sm:leading-[1.8] max-lg:leading-[1.8] sm:max-lg:leading-[1.9]"
           >
             <PromptText text={el.text} isEnglishReading={isEnglishSentenceInsertion} />
           </div>

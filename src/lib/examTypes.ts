@@ -1,7 +1,7 @@
 // 앱 전역에서 사용되는 타입 정의
 import type { SubjectKey } from './question/subjectConfig';
 
-export type Screen = 'landing' | 'create' | 'create-selection' | 'taking' | 'result' | 'wrong' | 'saved' | 'account' | 'dashboard' | 'image-scan';
+export type Screen = 'landing' | 'create' | 'create-selection' | 'taking' | 'result' | 'wrong' | 'saved' | 'account' | 'dashboard' | 'image-scan' | 'pdf-import';
 export type BuilderMode = 'school' | 'csat';
 export type DifficultyLevel = 'easy' | 'medium' | 'hard';
 export type SchoolLevel = 'middle' | 'high';

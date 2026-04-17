@@ -147,7 +147,7 @@ export function extractEnglishIntroFromMaterial(materialText: string) {
 /**
  * (A), (B), (C) 단락 중 첫 문장을 도입부로 승격 (Heuristic)
  */
-function promoteIntroFromSections(sections: Array<{ label: string; content: string }>) {
+function promoteIntroFromSections<T extends { label: string; content: string }>(sections: T[]) {
   const nextSections = sections.map((section) => ({ ...section }));
 
   for (const label of ['A', 'B', 'C']) {
@@ -164,10 +164,10 @@ function promoteIntroFromSections(sections: Array<{ label: string; content: stri
     }
 
     target.content = remaining;
-    return { stimulus: intro, sections: nextSections };
+    return { stimulus: intro, sections: nextSections as T[] };
   }
 
-  return { stimulus: null, sections: nextSections };
+  return { stimulus: null, sections: nextSections as T[] };
 }
 
 /**

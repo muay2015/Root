@@ -1,6 +1,5 @@
-import { SubjectKey } from '../subjectConfig';
-import { resolveAnswerFromChoices } from '../answerMatching';
-import { isEnglishSubject, normalizeEnglishPlainText, escapeRegex } from './core';
+import { resolveAnswerFromChoices } from '../answerMatching.js';
+import { isEnglishSubject, normalizeEnglishPlainText, escapeRegex } from './core.js';
 export const CANONICAL_IRRELEVANT_SENTENCE_CHOICES = ['(1)', '(2)', '(3)', '(4)', '(5)'];
 export const CANONICAL_IRRELEVANT_SENTENCE_INSTRUCTION = '다음 글에서 전체 흐름과 관계 없는 문장은?';
 /**

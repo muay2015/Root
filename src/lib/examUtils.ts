@@ -334,10 +334,6 @@ export function inferSubjectFromTitle(title: string, schoolLevelHint?: string): 
   if (t.includes('도덕') || t.includes('인성') || t.includes('시민') || t.includes('가치')) return 'middle_ethics';
   if (t.includes('체육') || t.includes('미술') || t.includes('음악')) return null; // 기타로 분류
   
-  // 8. 제2외국어/한문
-  if (t.includes('일본어')) return 'japanese';
-  if (t.includes('중국어')) return 'chinese';
-  if (t.includes('한자') || t.includes('한문')) return 'classical_chinese';
   
   return null;
 }

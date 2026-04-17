@@ -10,6 +10,7 @@ import {
   standardizeEnglishIrrelevantSentence,
   standardizeEnglishOrderArrangement,
   extractOrderArrangementSections,
+  standardizeEnglishSentenceInsertion,
 } from '../../lib/question/englishStandardizer';
 import {
   ExamQuestionSectionFrame,
@@ -156,17 +157,22 @@ export function EnglishQuestionItem(props: ExamQuestionItemProps) {
     }
 
     if (isEnglishSentenceInsertion) {
+      const insertionData = standardizeEnglishSentenceInsertion({ instruction, passage, stimulus });
+      const insertInstruction = insertionData.instruction || instruction;
+      const insertStimulus = insertionData.stimulus || stimulus || '';
+      const insertPassage = insertionData.passage || passage;
+
       return (
         <>
           <div className="mb-4">
-            <EnglishReadingLayout instruction={instruction} passage="" isEnglishReading={isEnglishReading} />
+            <EnglishReadingLayout instruction={insertInstruction} passage="" isEnglishReading={isEnglishReading} />
           </div>
-          {stimulus && (
+          {insertStimulus && (
             <div className="my-5">
-              <QuestionStimulusBox content={stimulus} renderMode="plain" />
+              <QuestionStimulusBox content={insertStimulus} renderMode="plain" />
             </div>
           )}
-          <EnglishReadingLayout instruction="" passage={passage} isEnglishReading={isEnglishReading} />
+          <EnglishReadingLayout instruction="" passage={insertPassage} isEnglishReading={isEnglishReading} />
         </>
       );
     }

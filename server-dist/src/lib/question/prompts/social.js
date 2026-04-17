@@ -1,4 +1,4 @@
-import {} from '../subjectConfig';
+import {} from '../subjectConfig.js';
 export function isSocialSubject(subject) {
     if (!subject)
         return false;

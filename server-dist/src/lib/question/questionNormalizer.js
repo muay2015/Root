@@ -560,23 +560,81 @@ function standardizeEnglishSentenceInsertionItem(stem, stimulus, choices) {
     };
 }
 /**
+ * 수학 stem/stimulus에서 LaTeX 구분자 누락 및 첨자 표기 오류를 자동 교정합니다.
+ * - \{...\} outside \(...\) → \(\{...\}\)
+ * - a_n without \(...\) → \(a_n\)
+ * - a5, b3 (subscript without _) → \(a_{5}\), \(b_{3}\)
+ */
+/**
+ * 기존 LaTeX 블록(\(...\), \[...\])을 플레이스홀더로 보호한 뒤 패턴을 적용합니다.
+ * normalizeMathLatex 내부 각 단계에서 새로 생성된 LaTeX 블록이 재처리되는 것을 방지합니다.
+ */
+function replaceOutsideLatexInNorm(text, pattern, replacer) {
+    const LATEX_BLOCK = /(\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\])/g;
+    const blocks = [];
+    const safe = text.replace(LATEX_BLOCK, (match) => {
+        blocks.push(match);
+        return `\x00${blocks.length - 1}\x00`;
+    });
+    const replaced = safe.replace(pattern, replacer);
+    return replaced.replace(/\x00(\d+)\x00/g, (_, i) => blocks[Number(i)]);
+}
+function normalizeMathLatex(text) {
+    if (!text)
+        return text;
+    // 기존 LaTeX 블록을 보호하며 plain text 부분만 변환
+    const latexBlockRe = /(\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\])/g;
+    const parts = text.split(latexBlockRe);
+    return parts.map((part, i) => {
+        if (i % 2 === 1) {
+            // LaTeX 블록 내부: 다중 하이픈/언더스코어만 교정 (예: a_________n → a_n)
+            return part.replace(/([a-zA-Z])[-_]{2,}([0-9a-zA-Z])/g, '$1_$2');
+        }
+        let s = part;
+        // 0. 하이픈/언더스코어 여러 개를 구분자로 쓴 첨자 패턴 교정
+        s = s.replace(/\b([a-zA-Z])[-_]{2,}([0-9a-zA-Z])\b/g, '$1_$2');
+        // 1. \{...\} 또는 {..} → \(\{...\}\)
+        //    (?<!_) lookbehind: _뒤의 {10}은 첨자이므로 변환하지 않음 (a_{10} 보호)
+        s = replaceOutsideLatexInNorm(s, /(?<!_)\\?\\\{([^{}]*?)\\?\\\}|(?<!_)\\?\{([^{}]*?)\\?\}/g, (_, inner1, inner2) => {
+            const inner = (inner1 ?? inner2 ?? '').trim();
+            const fixed = inner
+                .replace(/\b([a-zA-Z])[-_]{2,}([0-9a-zA-Z])\b/g, '$1_$2')
+                .replace(/\b([a-zA-Z])([0-9])\b/g, '$1_$2')
+                .replace(/\b([a-zA-Z])n\b/g, '$1_n');
+            return `\\(\\{${fixed}\\}\\)`;
+        });
+        // 2. a_{10}, a_n, a_{n+1} 등 — dangling } 없이, 복합 첨자 표현도 처리
+        s = replaceOutsideLatexInNorm(s, /\b([a-zA-Z])_(?:\\?\{([^{}]+)\\?\}|(\w+))/g, (_, a, b1, b2) => `\\(${a}_{${b1 ?? b2}}\\)`);
+        // 3. a5, b3, S10 등 단일 문자 + 숫자
+        s = replaceOutsideLatexInNorm(s, /\b([a-zA-Z])(\d+)\b/g, '\\($1_{$2}\\)');
+        return s;
+    }).join('');
+}
+/**
  * 수학 선지에서 단순 숫자값의 불필요한 LaTeX 래핑을 제거하여 포맷을 통일합니다.
  * 예: "\(7\)" → "7", "\(-3\)" → "-3"
  * 복잡한 수식("\(\frac{3}{2}\)" 등)은 그대로 유지합니다.
  */
 function normalizeMathChoices(choices) {
-    return choices.map((choice) => {
-        const trimmed = choice.trim();
-        // \(단순값\) 패턴에서 내부가 정수/음수이면 언래핑
-        const match = trimmed.match(/^\\\((.+)\\\)$/);
-        if (match) {
-            const inner = match[1].trim();
-            if (/^-?\d+$/.test(inner)) {
-                return inner;
-            }
+    // 단순 수치(정수/소수)를 언래핑하는 함수
+    function tryUnwrap(trimmed) {
+        // \(값\) 또는 \[값\] 래핑 처리
+        const inlineMatch = trimmed.match(/^\\\((.+)\\\)$/);
+        const displayMatch = trimmed.match(/^\\\[(.+)\\\]$/);
+        const inner = (inlineMatch?.[1] ?? displayMatch?.[1])?.trim();
+        if (inner && /^-?\d+(\.\d+)?$/.test(inner)) {
+            return inner;
         }
-        return trimmed;
-    });
+        return null;
+    }
+    const unwrapped = choices.map((c) => tryUnwrap(c.trim()));
+    // 모든 선지가 단순 수치이면 언래핑한 버전으로 통일
+    const allSimple = unwrapped.every((v) => v !== null);
+    if (allSimple) {
+        return unwrapped;
+    }
+    // 일부만 단순 수치인 경우: 해당 선지만 언래핑하여 평문과 혼재하지 않도록 통일
+    return choices.map((choice, i) => unwrapped[i] ?? choice.trim());
 }
 export function normalizePhysicsExpression(text) {
     if (!text)
@@ -609,6 +667,99 @@ export function normalizePhysicsExpression(text) {
     // 8. 수식 근처 이상한 긴 밑줄 제거 (남은 것들)
     result = result.replace(/_{5,}/g, '______');
     return result;
+}
+// 과학/물리 문항에서 변수 이중 출력 제거
+// AI가 "물체 A \(A\)" 또는 "\(A\) A" 형태로 동일 기호를 두 번 출력하는 버그 수정
+function removeScienceVariableDoubleOutput(text) {
+    if (!text)
+        return text;
+    let s = text;
+    // Pattern 1: 일반 텍스트 변수 + LaTeX 같은 변수 (앞에 일반 텍스트)
+    // "A \(A\)" → "\(A\)", "F \(F\)" → "\(F\)", "t \(t\)" → "\(t\)"
+    s = s.replace(/\b([A-Za-z])\s*\\\(\1\\\)/g, '\\($1\\)');
+    // Pattern 2: LaTeX 변수 + 일반 텍스트 같은 변수 (앞에 LaTeX)
+    // "\(A\) A" → "\(A\)", "\(F\) F" → "\(F\)"
+    s = s.replace(/\\\(([A-Za-z])\\\)\s+\b\1\b(?=[^a-zA-Z_]|$)/g, '\\($1\\)');
+    return s;
+}
+// 중등 수학 문항에서 LaTeX 잔재를 유니코드/일반 텍스트로 변환
+function convertLatexToPlainText(text) {
+    let s = text;
+    // 1. 자주 쓰이는 LaTeX 명령어 → 유니코드
+    s = s.replace(/\\angle\s*/g, '∠');
+    s = s.replace(/\\circ\s*/g, '°');
+    s = s.replace(/\\pi\s*/g, 'π');
+    s = s.replace(/\\alpha\s*/g, 'α');
+    s = s.replace(/\\beta\s*/g, 'β');
+    s = s.replace(/\\gamma\s*/g, 'γ');
+    s = s.replace(/\\theta\s*/g, 'θ');
+    s = s.replace(/\\ge\b/g, '≥');
+    s = s.replace(/\\geq\b/g, '≥');
+    s = s.replace(/\\le\b/g, '≤');
+    s = s.replace(/\\leq\b/g, '≤');
+    s = s.replace(/\\neq\b/g, '≠');
+    s = s.replace(/\\times\s*/g, '×');
+    s = s.replace(/\\div\s*/g, '÷');
+    s = s.replace(/\\cdot\s*/g, '·');
+    s = s.replace(/\\infty\s*/g, '∞');
+    s = s.replace(/\\triangle\s*/g, '△');
+    s = s.replace(/\\cong\s*/g, '≅');
+    s = s.replace(/\\sim\s*/g, '∼');
+    // 2. \sqrt{...} → √(...)
+    s = s.replace(/\\sqrt\{([^}]+)\}/g, '√($1)');
+    s = s.replace(/\\sqrt\s*(\w)/g, '√$1');
+    // 3. \frac{A}{B} → (A)/(B)  (단순 숫자는 a/b)
+    s = s.replace(/\\frac\{(\d+)\}\{(\d+)\}/g, '$1/$2');
+    s = s.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)');
+    // 4. \text{...} → 내용만 추출
+    s = s.replace(/\\text\{([^}]*)\}/g, '$1');
+    // 5. 지수 표기: ^2, ^3, ^{2}, ^{3} → ²³
+    s = s.replace(/\^\{2\}/g, '²');
+    s = s.replace(/\^\{3\}/g, '³');
+    s = s.replace(/\^2\b/g, '²');
+    s = s.replace(/\^3\b/g, '³');
+    // 6. LaTeX 구분자 제거: \( \) \[ \]
+    s = s.replace(/\\\[/g, '').replace(/\\\]/g, '');
+    s = s.replace(/\\\(/g, '').replace(/\\\)/g, '');
+    // 7. 남은 \command → 제거
+    s = s.replace(/\\[a-zA-Z]+/g, '');
+    // 8. 빈 중괄호쌍 {}, 또는 잔류 중괄호 제거
+    s = s.replace(/\{([^{}]*)\}/g, '$1');
+    s = s.replace(/[{}]/g, '');
+    return s;
+}
+export function sanitizeDiagramSvg(svg) {
+    return svg
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/\s+on\w+="[^"]*"/gi, '')
+        .replace(/\s+on\w+='[^']*'/gi, '')
+        .replace(/href="javascript:[^"]*"/gi, '')
+        .replace(/href='javascript:[^']*'/gi, '')
+        .replace(/\s+(?:xlink:href|href|src)="(?!data:)[^"]*:\/\/[^"]*"/gi, '')
+        .trim();
+}
+// diagram_svg=null인데 stem/stimulus에 "그림에서" 등의 표현이 남아 있으면 자연스러운 표현으로 교체
+function fixFigureReferenceConsistency(stem, stimulus, diagramSvg) {
+    if (diagramSvg) {
+        return { stem, stimulus };
+    }
+    const patterns = [
+        [/(?:위|아래|오른쪽|왼쪽|다음|아래의|위의)?\s*그림에서/g, '주어진 조건에서'],
+        [/다음\s*그림을\s*보고/g, '다음 조건을 이용하여'],
+        [/(?:위|아래|오른쪽|왼쪽|다음|아래의|위의)?\s*그림과\s*같이/g, '다음과 같이'],
+        [/그림에서/g, '주어진 조건에서'],
+        [/그림을\s*보고/g, '조건을 이용하여'],
+        [/그림과\s*같이/g, '다음과 같이'],
+    ];
+    let newStem = stem;
+    let newStimulus = stimulus;
+    for (const [pattern, replacement] of patterns) {
+        newStem = newStem.replace(pattern, replacement);
+        if (newStimulus) {
+            newStimulus = newStimulus.replace(pattern, replacement);
+        }
+    }
+    return { stem: newStem, stimulus: newStimulus };
 }
 export function normalizeQuestion(raw, index, context) {
     let stimulus = typeof raw.stimulus === 'string' && raw.stimulus.trim().length > 0
@@ -777,13 +928,43 @@ export function normalizeQuestion(raw, index, context) {
         if (stimulus) {
             stimulus = normalizePhysicsExpression(stimulus);
         }
+        // 변수 이중 출력 제거: "A \(A\)" / "\(A\) A" → "\(A\)"
+        stem = removeScienceVariableDoubleOutput(stem);
+        if (stimulus) {
+            stimulus = removeScienceVariableDoubleOutput(stimulus);
+        }
+        choices = choices.map(removeScienceVariableDoubleOutput);
     }
-    // 수학 과목 전용: 선지 LaTeX 포맷 통일 (중복 매칭 방지)
-    // AI가 일부 선지만 \(...\)로 감싸는 경우 normalizeText 후 동일 값이 2개로 인식되는 문제 해결
+    // 수학 과목 전용: LaTeX 표기 교정 및 선지 포맷 통일
+    let explanation = raw.explanation || '';
     if (subjectKey.includes('math')) {
+        stem = normalizeMathLatex(stem);
+        if (stimulus) {
+            stimulus = normalizeMathLatex(stimulus);
+        }
+        if (explanation) {
+            explanation = normalizeMathLatex(explanation);
+        }
         choices = normalizeMathChoices(choices);
         answerStr = resolveAnswerFromChoicesLoose(raw.answer, choices) || answerStr;
     }
+    // 중등 수학: LaTeX 잔재를 유니코드/일반 텍스트로 변환
+    if (context.subject === 'middle_math') {
+        stem = convertLatexToPlainText(stem);
+        if (stimulus)
+            stimulus = convertLatexToPlainText(stimulus);
+        choices = choices.map(convertLatexToPlainText);
+        answerStr = convertLatexToPlainText(answerStr);
+    }
+    // SVG 다이어그램 필드 추출 및 sanitize
+    let diagram_svg = null;
+    if (typeof raw.diagram_svg === 'string' && raw.diagram_svg.trim().length > 0) {
+        diagram_svg = sanitizeDiagramSvg(raw.diagram_svg);
+    }
+    // diagram_svg=null인데 "그림에서" 등의 표현이 남아 있으면 자연스러운 표현으로 교체
+    const figureFixed = fixFigureReferenceConsistency(stem, stimulus, diagram_svg);
+    stem = figureFixed.stem;
+    stimulus = figureFixed.stimulus;
     return {
         id: index + 1,
         topic: raw.topic || '\ubb38\ud56d',
@@ -791,7 +972,8 @@ export function normalizeQuestion(raw, index, context) {
         stem,
         choices,
         answer: answerStr,
-        explanation: raw.explanation || '',
+        explanation,
         stimulus,
+        diagram_svg,
     };
 }

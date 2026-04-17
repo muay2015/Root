@@ -112,4 +112,29 @@ export function validateMathQuality(
       `Question ${index}: math stem asks for vague "analysis/description" instead of a concrete mathematical value.`,
     );
   }
+
+  // 6. 기하 문항에서 diagram_svg 누락 체크
+  const topic = String(question.topic ?? '');
+  const stimulusText = String(question.stimulus ?? '');
+  const combinedText = `${topic} ${stem} ${stimulusText}`;
+  const isCircleAngleQuestion =
+    /원\s*위의\s*점|원\s*위에|원주각|내접각|외접각|할선|현\s*[A-Z]{2}|원에\s*내접|원에\s*외접/.test(combinedText);
+  const isTriangleQuestion =
+    /삼각형\s*[A-Z]{3}|△[A-Z]{3}|직각삼각형|이등변삼각형/.test(combinedText);
+  const isAngleWithMultiplePoints =
+    /∠[A-Z]{2,3}/.test(combinedText) &&
+    (/[A-Z],\s*[A-Z],\s*[A-Z]/.test(combinedText) || /점\s*[A-Z]/.test(combinedText));
+  const isGeometryQuestion = isCircleAngleQuestion || isTriangleQuestion || isAngleWithMultiplePoints;
+  if (isGeometryQuestion && !question.diagram_svg) {
+    pushReason(
+      reasons,
+      issueCounts,
+      'math_missing_diagram',
+      `Question ${index}: This is a geometry question (circle/triangle/angle) but diagram_svg is null. ` +
+        `You MUST generate an SVG diagram showing the geometric layout. ` +
+        `For circle problems: draw the circle, mark all named points (A,B,C,D,E,F) on/outside it, draw the chords/secants. ` +
+        `For triangle problems: draw the triangle with vertices labeled. ` +
+        `Use viewBox="0 0 360 320", mark the unknown angle as "x" or "?".`,
+    );
+  }
 }

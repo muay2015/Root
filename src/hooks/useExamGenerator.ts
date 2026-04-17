@@ -270,7 +270,7 @@ export function useExamGenerator(
       }
 
       let nextQuestions = normalizeGeneratedQuestions('multiple', data.questions) as ExamQuestion[];
-      if (hasPlaceholderChoices(nextQuestions)) {
+      if (nextQuestions.some(q => hasPlaceholderChoices(q.choices))) {
         nextQuestions = buildQuestions(subject, uploadMode, count);
       }
 

@@ -10,5 +10,6 @@ export * from './english/order';
 export * from './english/irrelevant';
 export * from './english/matching';
 export * from './english/emotion';
+export * from './english/insertion';
 
 // Backward compatibility or shared logic mapping can be added here if needed.

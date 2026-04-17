@@ -15,20 +15,31 @@ type ExamQuestionSetItemProps = {
   onChangeText: (questionId: number, value: string) => void;
 };
 
-/** stimulus에서 <보기> 블록을 제외한 기본 지문(passage) 부분만 추출 */
-function extractBasePassage(stimulus: string): string {
-  const bogiIndex = stimulus.indexOf('<보기>');
-  return bogiIndex >= 0 ? stimulus.slice(0, bogiIndex).trim() : stimulus.trim();
+/** <보기>, [보기], <자료>, [자료], <조건>, [조건] 등 수능 박스 마커 정규식 */
+const BOX_MARKER_RE = /(?:<보기>|\[보기\]|<자료>|\[자료\]|<조건>|\[조건\])/;
+
+/** 세트 헤더에 이미 표시된 "다음 글을 읽고 물음에 답하시오." 류의 도입 지시문을 개별 문항 발문에서 제거 */
+const SET_INTRO_RE = /^(?:다음\s+(?:글|자료|시|소설|글의\s+일부)[을를]?\s+읽고\s+(?:아래\s+)?물음에\s+답하시오|다음[을를]?\s+읽고\s+물음에\s+답하시오|\[\s*\d+\s*[~∼]\s*\d+\s*\][^\n]*\n?)\s*\.?\s*\n+/u;
+
+function stripSetIntroFromPrompt(prompt: string): string {
+  return prompt.replace(SET_INTRO_RE, '').trim();
 }
 
-/** stimulus에서 <보기> 블록만 추출 (있는 경우) */
+/** stimulus에서 박스 마커 이전의 기본 지문(passage) 부분만 추출 */
+function extractBasePassage(stimulus: string): string {
+  const match = BOX_MARKER_RE.exec(stimulus);
+  return match ? stimulus.slice(0, match.index).trim() : stimulus.trim();
+}
+
+/** stimulus에서 박스 마커(<보기> 등) 이후 블록만 추출 (있는 경우) */
 function extractBogi(stimulus: string): string | null {
-  const bogiIndex = stimulus.indexOf('<보기>');
-  if (bogiIndex < 0) return null;
-  return stimulus.slice(bogiIndex).trim();
+  const match = BOX_MARKER_RE.exec(stimulus);
+  if (!match) return null;
+  return stimulus.slice(match.index).trim();
 }
 
 type SetQuestionRowProps = {
+  key?: string | number;
   question: ExamQuestion;
   questionNumber: number;
   active: boolean;
@@ -40,6 +51,9 @@ type SetQuestionRowProps = {
 function SetQuestionRow(props: SetQuestionRowProps) {
   const { question, questionNumber, active, response, onSelectChoice, onChangeText } = props;
   const { prompt, stimulus, finalChoices, isOXQuestion } = useQuestionRepair(question);
+
+  // 세트 헤더에 이미 나오는 도입 지시문("다음 글을 읽고 물음에 답하시오." 등)을 개별 발문에서 제거
+  const cleanedPrompt = useMemo(() => stripSetIntroFromPrompt(prompt), [prompt]);
 
   // 세트 내 개별 문항에서 <보기>가 있으면 이 문항에만 표시
   const bogi = useMemo(() => {
@@ -66,7 +80,7 @@ function SetQuestionRow(props: SetQuestionRowProps) {
         content={
           <QuestionContent>
             <div className="mb-2">
-              <PromptRenderer text={prompt} />
+              <PromptRenderer text={cleanedPrompt} />
             </div>
 
             {bogi && (
@@ -111,7 +125,7 @@ export function ExamQuestionSetItem({
   return (
     <section
       data-exam-layout="paper-template"
-      className={`w-full rounded-2xl border p-5 shadow-sm transition-all duration-300 sm:p-7 ${
+      className={`w-full rounded-2xl border px-2 py-5 shadow-sm transition-all duration-300 sm:p-7 ${
         isAnyActive
           ? 'translate-y-[-0.125rem] border-blue-300 bg-white shadow-md ring-2 ring-blue-50/50'
           : 'border-slate-200/80 bg-white hover:border-blue-200'
@@ -119,7 +133,7 @@ export function ExamQuestionSetItem({
     >
       <div className="flex w-full flex-col gap-5 sm:gap-6">
         {/* 세트 헤더 */}
-        <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+        <div className="flex items-center gap-2 border-b border-slate-100 pb-3 max-lg:px-2">
           <span className="rounded-md bg-slate-800 px-2.5 py-1 text-[12px] font-bold tracking-wider text-white">
             {globalStartIndex + 1}–{globalStartIndex + questions.length}
           </span>
@@ -128,11 +142,11 @@ export function ExamQuestionSetItem({
           </span>
         </div>
 
-        {/* 공유 지문 */}
-        <QuestionStimulusBox content={sharedPassage} />
+        {/* 공유 지문 — 세트 레이아웃에서는 네거티브 마진 확장 없이 full-width */}
+        <QuestionStimulusBox content={sharedPassage} standalone />
 
         {/* 개별 문항들 */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 max-lg:px-1">
           {questions.map((question, i) => (
             <SetQuestionRow
               key={question.id}

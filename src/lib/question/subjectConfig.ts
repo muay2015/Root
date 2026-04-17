@@ -1,6 +1,6 @@
 import type { SchoolLevel, DetailedGrade } from '../examTypes';
 
-export type SubjectCategory = 'korean' | 'math' | 'english' | 'history' | 'social' | 'science' | 'language' | 'tech_ethics';
+export type SubjectCategory = 'korean' | 'math' | 'english' | 'history' | 'social' | 'science' | 'tech_home' | 'ethics';
 
 export type SubjectKey =
   // 중등 내신 과목 (이미지 기준 8개)
@@ -12,8 +12,7 @@ export type SubjectKey =
   | 'math_1' | 'math_2' | 'math_calculus' | 'math_stats' | 'math_geometry'
   | 'social_culture' | 'living_ethics' | 'korean_geography' | 'world_geography' | 'east_asian_history' | 'world_history' | 'economics' | 'politics_law' | 'ethics_thought'
   | 'physics_1' | 'chemistry_1' | 'biology_1' | 'earth_science_1'
-  | 'physics_2' | 'chemistry_2' | 'biology_2' | 'earth_science_2'
-  | 'japanese' | 'chinese' | 'spanish' | 'french' | 'german' | 'russian' | 'arabic' | 'vietnamese' | 'classical_chinese';
+  | 'physics_2' | 'chemistry_2' | 'biology_2' | 'earth_science_2';
 
 export type SelectionFormat = '객관식' | 'OX' | '단답형';
 export type SubjectSelectorMode = 'questionType' | 'format' | 'none';
@@ -26,8 +25,8 @@ export const CATEGORY_CONFIG: Record<SubjectCategory, { label: string; icon: str
   history: { label: '역사', icon: '🇰🇷' },
   social: { label: '사회', icon: '🌍' },
   science: { label: '과학', icon: '🧪' },
-  language: { label: '제2외국어/한문', icon: '🌐' },
-  tech_ethics: { label: '기술·가정/도덕', icon: '🛠️' },
+  tech_home: { label: '기술·가정', icon: '🛠️' },
+  ethics: { label: '도덕', icon: '⚖️' },
 };
 
 type BaseSubjectConfig = {
@@ -69,8 +68,8 @@ export const SUBJECT_CONFIG: Record<SubjectKey, SubjectConfig> = {
   middle_social: { label: '중등사회', category: 'social', selectorMode: 'questionType', questionTypes: ['전체', '지리', '사회', '역사/사회', '지리/사회'], defaultQuestionType: '전체', exampleTopic: '예: 내가 사는 지역, 인권 보호와 헌법', csatExampleTopic: '예: 중등 사회 주요 개념 및 용어 정리', supportedLevels: ['middle'], supportedGrades: ['1학년', '2학년', '3학년'], uploadRecommendation: 'RECOMMENDED' },
   middle_history: { label: '중등역사', category: 'history', selectorMode: 'questionType', questionTypes: ['전체', '전근대사', '중세/근세', '근현대사'], defaultQuestionType: '전체', exampleTopic: '예: 선사 시대와 국가의 형성, 조선의 사회와 문화', csatExampleTopic: '예: 중학 역사 흐름 잡기 전 범위', supportedLevels: ['middle'], supportedGrades: ['1학년', '2학년', '3학년'], uploadRecommendation: 'OPTIONAL' },
   middle_science: { label: '중등과학', category: 'science', selectorMode: 'questionType', questionTypes: ['전체', '물리', '화학', '생명과학', '지구과학'], defaultQuestionType: '전체', exampleTopic: '예: 식물의 광합성, 물질의 상태 변화, 빛과 조명', csatExampleTopic: '예: 중학 과학 핵심 실험 및 원리 기초', supportedLevels: ['middle'], supportedGrades: ['1학년', '2학년', '3학년'], uploadRecommendation: 'RECOMMENDED' },
-  middle_tech_home: { label: '기술·가정', category: 'tech_ethics', selectorMode: 'format', formats: ['객관식', 'OX', '단답형'], defaultFormat: '객관식', exampleTopic: '예: 청소년의 발달, 기술의 발달과 미래 환경', csatExampleTopic: '예: 중학 기술·가정 성취도 평가 대비', supportedLevels: ['middle'], supportedGrades: ['1학년', '2학년', '3학년'], uploadRecommendation: 'OPTIONAL' },
-  middle_ethics: { label: '도덕', category: 'tech_ethics', selectorMode: 'format', formats: ['객관식', 'OX', '단답형'], defaultFormat: '객관식', exampleTopic: '예: 도덕적 주체로서의 나, 사회 공동체의 윤리', csatExampleTopic: '예: 중학 도덕 핵심 가치와 윤리적 판단', supportedLevels: ['middle'], supportedGrades: ['1학년', '2학년', '3학년'], uploadRecommendation: 'OPTIONAL' },
+  middle_tech_home: { label: '기술·가정', category: 'tech_home', selectorMode: 'format', formats: ['객관식', 'OX', '단답형'], defaultFormat: '객관식', exampleTopic: '예: 청소년의 발달, 기술의 발달과 미래 환경', csatExampleTopic: '예: 중학 기술·가정 성취도 평가 대비', supportedLevels: ['middle'], supportedGrades: ['1학년', '2학년', '3학년'], uploadRecommendation: 'OPTIONAL' },
+  middle_ethics: { label: '도덕', category: 'ethics', selectorMode: 'format', formats: ['객관식', 'OX', '단답형'], defaultFormat: '객관식', exampleTopic: '예: 도덕적 주체로서의 나, 사회 공동체의 윤리', csatExampleTopic: '예: 중학 도덕 핵심 가치와 윤리적 판단', supportedLevels: ['middle'], supportedGrades: ['1학년', '2학년', '3학년'], uploadRecommendation: 'OPTIONAL' },
 
   // --- 고등 내신 영역 ---
   high_korean: { label: '고등국어', category: 'korean', selectorMode: 'format', formats: ['객관식', '단답형'], defaultFormat: '객관식', exampleTopic: '예: 국어의 로마자 표기법, 현대 소설의 서사 구조', csatExampleTopic: '예: 고1 국어 연합학력평가 및 내신 전 범위', supportedLevels: ['high'], supportedGrades: ['1학년'], uploadRecommendation: 'REQUIRED' },
@@ -110,16 +109,6 @@ export const SUBJECT_CONFIG: Record<SubjectKey, SubjectConfig> = {
   chemistry_2: { label: '화학II', category: 'science', selectorMode: 'questionType', questionTypes: ['전체', '물질의 상태', '화학 반응', '반응 속도와 촉매'], defaultQuestionType: '전체', exampleTopic: '예: 반응 속도와 화학 평형, 전지와 전기 분해', csatExampleTopic: '예: 반응 엔탈피와 화학 평형 상수 계산 문항', supportedLevels: ['high'], supportedGrades: ['2학년', '3학년'], uploadRecommendation: 'RECOMMENDED' },
   biology_2: { label: '생명과학II', category: 'science', selectorMode: 'questionType', questionTypes: ['전체', '세포의 특성', '세포 호흡과 광합성', '유전자 발현'], defaultQuestionType: '전체', exampleTopic: '예: 세포의 특성, 유전자의 발현과 조절', csatExampleTopic: '예: 하디-와인버그 법칙과 제한 효소 분석 킬러 문항', supportedLevels: ['high'], supportedGrades: ['2학년', '3학년'], uploadRecommendation: 'RECOMMENDED' },
   earth_science_2: { label: '지구과학II', category: 'science', selectorMode: 'questionType', questionTypes: ['전체', '지구의 구조와 지표', '대기와 해양의 운동', '우주론'], defaultQuestionType: '전체', exampleTopic: '예: 한반도의 지질, 해수의 순환과 조석', csatExampleTopic: '예: 지균풍/지형류 계산 및 천체 관측 데이터 해석', supportedLevels: ['high'], supportedGrades: ['2학년', '3학년'], uploadRecommendation: 'RECOMMENDED' },
-
-  japanese: { label: '일본어', category: 'language', selectorMode: 'none', exampleTopic: '예: 기초 일상 표현, 일본 문화의 이해', csatExampleTopic: '예: 수능 일본어 1~30번 전 범위 실전 유형', supportedLevels: ['high'], supportedGrades: ['2학년', '3학년'], uploadRecommendation: 'REQUIRED' },
-  chinese: { label: '중국어', category: 'language', selectorMode: 'none', exampleTopic: '예: 성조와 기본 회화, 중국의 사회상', csatExampleTopic: '예: 수능 중국어 핵심 문법 및 일상 대화 전문항', supportedLevels: ['high'], supportedGrades: ['2학년', '3학년'], uploadRecommendation: 'REQUIRED' },
-  spanish: { label: '스페인어', category: 'language', selectorMode: 'none', exampleTopic: '예: 스페인어 기본 문법과 표현', csatExampleTopic: '예: 스페인어 독해 및 문화권 특징 관련 문항', supportedLevels: ['high'], supportedGrades: ['2학년', '3학년'], uploadRecommendation: 'REQUIRED' },
-  french: { label: '프랑스어', category: 'language', selectorMode: 'none', exampleTopic: '예: 프랑스어 기본 회화와 독해', csatExampleTopic: '예: 프랑스어 의사소통 전략 및 문화 정보 문항', supportedLevels: ['high'], supportedGrades: ['2학년', '3학년'], uploadRecommendation: 'REQUIRED' },
-  german: { label: '독일어', category: 'language', selectorMode: 'none', exampleTopic: '예: 독일어의 기초 구문과 표현', csatExampleTopic: '예: 독일어 텍스트 이해 및 언어 형식 확인 문항', supportedLevels: ['high'], supportedGrades: ['2학년', '3학년'], uploadRecommendation: 'REQUIRED' },
-  russian: { label: '러시아어', category: 'language', selectorMode: 'none', exampleTopic: '예: 러시아어 알파벳과 기본 문장', csatExampleTopic: '예: 러시아어 기초 회화 및 러시아 문화 개관', supportedLevels: ['high'], supportedGrades: ['2학년', '3학년'], uploadRecommendation: 'REQUIRED' },
-  arabic: { label: '아랍어', category: 'language', selectorMode: 'none', exampleTopic: '예: 아랍어 문자 기초 및 상용 표현', csatExampleTopic: '예: 아랍어 문자 결합 및 기본 인사말/문화 문항', supportedLevels: ['high'], supportedGrades: ['2학년', '3학년'], uploadRecommendation: 'REQUIRED' },
-  vietnamese: { label: '베트남어', category: 'language', selectorMode: 'none', exampleTopic: '예: 베트남어 성조와 일상 대화', csatExampleTopic: '예: 베트남어 성조 체계 및 기초 생활 회화', supportedLevels: ['high'], supportedGrades: ['2학년', '3학년'], uploadRecommendation: 'REQUIRED' },
-  classical_chinese: { label: '한문', category: 'language', selectorMode: 'none', exampleTopic: '예: 한자 성어와 문장의 이해', csatExampleTopic: '예: 고사성어와 한문 단락 해석 능력 평가', supportedLevels: ['high'], supportedGrades: ['2학년', '3학년'], uploadRecommendation: 'REQUIRED' },
 };
 
 export function usesQuestionType(subject: SubjectKey) {

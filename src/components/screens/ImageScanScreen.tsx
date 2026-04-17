@@ -13,7 +13,6 @@ const SCAN_SUBJECT_KEYS: SubjectKey[] = [
   'east_asian_history', 'world_history', 'economics', 'politics_law', 'ethics_thought',
   'physics_1', 'chemistry_1', 'biology_1', 'earth_science_1',
   'physics_2', 'chemistry_2', 'biology_2', 'earth_science_2',
-  'japanese', 'chinese', 'spanish', 'french', 'german', 'russian', 'arabic', 'vietnamese', 'classical_chinese',
   'middle_korean', 'middle_math', 'middle_english', 'middle_history', 'middle_social', 'middle_science',
 ];
 

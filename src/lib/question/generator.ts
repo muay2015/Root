@@ -2,6 +2,7 @@ import { type DifficultyLevel, type SchoolLevel } from './generationRules.ts';
 import { extractJson } from './generatorParsing.ts';
 import { buildQuestionPrompt } from './promptBuilder.ts';
 import { normalizeQuestion, type GeneratedQuestion } from './questionNormalizer.ts';
+export type { GeneratedQuestion };
 import { type SubjectKey } from './subjectConfig.ts';
 import { validateGeneratedQuestions, type ValidationResult } from './validator.ts';
 

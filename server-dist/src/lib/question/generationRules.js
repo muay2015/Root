@@ -1,4 +1,4 @@
-import { SUBJECT_CONFIG } from './subjectConfig';
+import { SUBJECT_CONFIG } from './subjectConfig.js';
 export const difficultyRules = {
     easy: {
         label: 'Easy',

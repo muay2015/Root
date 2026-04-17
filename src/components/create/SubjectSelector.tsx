@@ -69,22 +69,21 @@ export function SubjectSelector({ mode, schoolLevel, detailedGrade, subject, onS
     <section className="premium-card p-6 space-y-6">
       {/* 1단계: 영역(Category) 선택 */}
       <div>
-        <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+        <h2 className="text-[13px] font-bold uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
           <span className="w-1 h-3 bg-indigo-500 rounded-full"></span>
           영역 선택
         </h2>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
           {availableCategories.map((cat) => (
             <button
               key={cat}
               onClick={() => handleCategoryClick(cat)}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-300 ${
+              className={`flex items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-[13px] sm:text-sm font-bold transition-all duration-300 w-full sm:w-auto ${
                 activeCategory === cat
                   ? 'bg-slate-900 text-white shadow-lg scale-105'
                   : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:ring-slate-300 hover:bg-slate-50'
               }`}
             >
-              <span>{CATEGORY_CONFIG[cat].icon}</span>
               <span>{CATEGORY_CONFIG[cat].label}</span>
             </button>
           ))}
@@ -92,27 +91,30 @@ export function SubjectSelector({ mode, schoolLevel, detailedGrade, subject, onS
       </div>
 
       {/* 2단계: 세부 과목 선택 */}
-      <div className="pt-4 border-t border-slate-100">
-        <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-          <span className="w-1 h-3 bg-emerald-500 rounded-full"></span>
-          세부 과목 선택
-        </h2>
-        <div className="flex flex-wrap gap-2.5">
-          {availableSubjects.map((key) => (
-            <button
-              key={key}
-              onClick={() => onSelectSubject(key)}
-              className={`rounded-2xl px-6 py-3.5 text-sm font-bold transition-all duration-300 ${
-                subject === key 
-                  ? 'premium-gradient text-white shadow-md scale-105 active:scale-95' 
-                  : 'bg-slate-50 text-slate-600 ring-1 ring-outline hover:bg-white hover:ring-slate-300 hover:shadow-sm'
-              }`}
-            >
-              {SUBJECT_CONFIG[key].label}
-            </button>
-          ))}
+      {(schoolLevel !== 'middle' || availableSubjects.length > 1) && (
+        <div className="pt-4 border-t border-slate-100">
+          <h2 className="text-[13px] font-bold uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
+            <span className="w-1 h-3 bg-emerald-500 rounded-full"></span>
+            세부 과목 선택
+          </h2>
+          <div className="mt-4 flex flex-wrap gap-2.5">
+            {availableSubjects.map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => onSelectSubject(key)}
+                className={`rounded-xl px-5 py-3 text-[13px] sm:text-sm font-bold transition-all duration-300 ${
+                  subject === key 
+                    ? 'premium-gradient text-white shadow-md' 
+                    : 'bg-slate-50 text-slate-600 ring-1 ring-outline hover:bg-white hover:shadow-sm'
+                }`}
+              >
+                {SUBJECT_CONFIG[key].label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }

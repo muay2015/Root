@@ -77,9 +77,7 @@ export function CreateScreen(props: CreateScreenProps) {
 
   const readyHint = ready
     ? '설정이 완료되었습니다. 문제 생성을 시작할 수 있습니다.'
-    : SUBJECT_CONFIG[subject].uploadRecommendation === 'REQUIRED'
-      ? '학습할 지문 자료를 업로드하거나 텍스트를 입력해 주세요.'
-      : '주제 또는 핵심 단원명을 입력해 주세요.';
+    : '주제 또는 핵심 단원명을 입력해 주세요.';
 
   const handleSelectSubject = (key: SubjectKey) => {
     onSelectSubject(key);

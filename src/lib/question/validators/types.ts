@@ -11,6 +11,7 @@ export type GeneratedQuestionDraft = {
   answer: string;
   explanation: string;
   stimulus?: string | null;
+  diagram_svg?: string | null;
 };
 
 export type ValidationResult = {

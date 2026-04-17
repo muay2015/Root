@@ -1,4 +1,4 @@
-import { isEnglishSubject, normalizeEnglishPlainText } from './core';
+import { isEnglishSubject, normalizeEnglishPlainText } from './core.js';
 const EMOTION_TYPE = '\uc2ec\uacbd/\ubd84\uc704\uae30';
 const EMOTION_WORD = '\uc2ec\uacbd';
 const CHANGE_WORD = '\ubcc0\ud654';

@@ -21,14 +21,14 @@ export function ModeSelector({ mode, setMode }: ModeSelectorProps) {
           onClick={() => setMode('school')} 
           icon={<BookOpen className="h-5 w-5" />}
           label="내신 대비" 
-          sub="교과서 기반 맞춤형 출제"
+          sub={<>교과서 기반<br />맞춤형 출제</>}
         />
         <ModeButton 
           active={mode === 'csat'} 
           onClick={() => setMode('csat')} 
           icon={<GraduationCap className="h-5 w-5" />}
-          label="수능/모의고사" 
-          sub="최신 평가원 경향성 반영"
+          label="수능 대비" 
+          sub={<>최신 평가원<br />경향성 반영</>}
         />
       </div>
     </section>

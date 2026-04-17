@@ -1,11 +1,11 @@
-import { getGenerationRules } from './generationRules';
-import { getSubjectQuestionTypeMixTargets, usesNoSelector } from './subjectConfig';
-import { buildFeedbackBlock, buildSourceMaterialBlock } from './prompts/core';
-import { isEnglishSubject, isEnglishQuestionType, isEnglishQuestionTypeSafe, buildEnglishTypePromptRules, buildEnglishOrderStrictPrompt, buildEnglishOrderStrictArrayPrompt, buildEnglishSummaryStrictPrompt, buildEnglishInsertionStrictPrompt, buildEnglishIrrelevantStrictPrompt, buildEnglishGrammarStrictPrompt } from './prompts/english';
-import { buildCsatKoreanLiteratureRules, buildKoreanPassageRules, buildCsatKoreanLiteratureSetPrompt } from './prompts/korean';
-import { isScienceSubject, buildSciencePromptRules } from './prompts/science';
-import { isMathSubject, buildMathPromptRules } from './prompts/math';
-import { isSocialSubject } from './prompts/social';
+import { getGenerationRules } from './generationRules.js';
+import { getSubjectQuestionTypeMixTargets, usesNoSelector } from './subjectConfig.js';
+import { buildFeedbackBlock, buildSourceMaterialBlock } from './prompts/core.js';
+import { isEnglishSubject, isEnglishQuestionType, isEnglishQuestionTypeSafe, buildEnglishTypePromptRules, buildEnglishOrderStrictPrompt, buildEnglishOrderStrictArrayPrompt, buildEnglishSummaryStrictPrompt, buildEnglishInsertionStrictPrompt, buildEnglishIrrelevantStrictPrompt, buildEnglishGrammarStrictPrompt } from './prompts/english.js';
+import { buildCsatKoreanLiteratureRules, buildKoreanPassageRules, buildCsatKoreanLiteratureSetPrompt, buildCsatKoreanReadingSetPrompt } from './prompts/korean.js';
+import { isScienceSubject, isMiddleScienceSubject, buildSciencePromptRules, buildMiddleSciencePromptRules } from './prompts/science.js';
+import { isMathSubject, isMiddleMathSubject, buildMathPromptRules, buildMiddleMathPromptRules, buildCsatMathPrompt } from './prompts/math.js';
+import { isSocialSubject } from './prompts/social.js';
 function buildGenericPrompt(input) {
     const selectionLabel = isSocialSubject(input.subject) ? '문제방식' : '문제유형';
     const selectionValue = isSocialSubject(input.subject)
@@ -25,14 +25,23 @@ function buildGenericPrompt(input) {
             'If the count is not divisible evenly, distribute the remainder from the front of the subtype list.',
         ]
         : [];
+    const needsDiagramSpec = isMathSubject(input.subject) || isScienceSubject(input.subject);
+    const diagramRule = needsDiagramSpec
+        ? '- "diagram_svg": null by default. Generate inline SVG only when spatial layout is ESSENTIAL (positions, directions, connections). viewBox="0 0 360 260" width="100%" style="max-width:360px;display:block"; stroke="#222" stroke-width="1.5" fill="none"; no answer-revealing elements; do not highlight intersection or tangent points.'
+        : '- "diagram_svg": Set to null.';
+    const explanationRule = input.difficulty === 'hard'
+        ? '- "explanation": 정답 근거와 주요 오답 이유를 3문장 이내로 작성하십시오.'
+        : '- "explanation": 정답 이유를 1~2문장(40자 이내)으로 간결하게 작성하십시오.';
     const basePrompt = [
         'You are generating school exam questions.',
         'Return only a JSON array.',
         'Each item must contain exactly these keys:',
-        '["topic", "type", "stem", "choices", "answer", "explanation", "stimulus"]',
+        '["topic", "type", "stem", "choices", "answer", "explanation", "stimulus", "diagram_svg"]',
         'Use "type" = "multiple".',
         'choices must contain exactly 5 strings.',
-        '- "stimulus": Use this field to provide additional material (e.g., a "Given Sentence" box for English sentence insertion, a diagram description, or a <보기> block). If not needed, set to null.',
+        '- "stimulus": Use this field to provide additional material (e.g., a "Given Sentence" box for English sentence insertion, a <보기> block, or complex math/science conditions). If not needed, set to null.',
+        diagramRule,
+        explanationRule,
         '- [CRITICAL] "answer" must be a string that matches EXACTLY one of the values in the "choices" array. Copy the choice text exactly (including all characters and spaces) into the answer field.',
         '',
         `Subject: ${rules.subjectLabel}`,
@@ -52,7 +61,6 @@ function buildGenericPrompt(input) {
                 ? '- [CRITICAL] For "hard" difficulty in English, use standard and natural CSAT-style stems (e.g., "다음 글의 주제로 가장 적절한 것은?") but ensure the passage, vocabulary, and distractor quality are highly challenging.'
                 : '- [CRITICAL] Since the difficulty is "hard", you MUST write a longer, descriptive, and analytic stem. In Korean, use either at least 8 words or at least about 18 Korean characters of reasoning-rich text.'
             : '',
-        input.difficulty === 'hard' ? '- [CRITICAL] For "hard" difficulty, provide a deep explanation (at least 10+ words) including the reasoning for the correct answer AND a brief explanation of why the major distractors are incorrect.' : '',
         '- Reflect the provided title and topic directly when they exist.',
         '- Use the source material as the factual basis.',
         '- Do not output duplicate stems or near-duplicate choices.',
@@ -61,15 +69,30 @@ function buildGenericPrompt(input) {
         ...buildEnglishTypePromptRules(input, false),
         ...buildKoreanPassageRules(input.subject),
         ...buildCsatKoreanLiteratureRules(input),
-        ...(isScienceSubject(input.subject) ? buildSciencePromptRules() : []),
-        ...(isMathSubject(input.subject) ? buildMathPromptRules() : []),
+        ...(isMiddleScienceSubject(input.subject)
+            ? buildMiddleSciencePromptRules()
+            : isScienceSubject(input.subject)
+                ? buildSciencePromptRules()
+                : []),
+        ...(isMiddleMathSubject(input.subject)
+            ? buildMiddleMathPromptRules()
+            : isMathSubject(input.subject)
+                ? buildMathPromptRules()
+                : []),
     ];
+    const mathFormatRules = isMiddleMathSubject(input.subject)
+        ? [
+            '- [CRITICAL] 이 문제는 중등 수학입니다. LaTeX를 절대 사용하지 마십시오. 백슬래시(\\)와 중괄호({})가 포함된 표현은 화면에 깨져 표시됩니다. 모든 수식은 유니코드 기호(∠, °, √, π, ², ³ 등)와 일반 텍스트로만 표현하십시오.',
+        ]
+        : [
+            '- [CRITICAL] 모든 수학 기호와 수식은 반드시 LaTeX 형식을 사용하십시오. 수식은 반드시 \\( 와 \\) 기호로 감싸야 합니다.',
+            '- [CRITICAL] JSON 결과물 내의 모든 LaTeX 명령어와 구분자는 반드시 이중 역슬래시(\\ )를 사용해야 합니다.',
+        ];
     return [
         ...basePrompt,
         ...typeRules,
         '',
-        '- [CRITICAL] 모든 수학 기호와 수식은 반드시 LaTeX 형식을 사용하십시오. 수식은 반드시 \\( 와 \\) 기호로 감싸야 합니다.',
-        '- [CRITICAL] JSON 결과물 내의 모든 LaTeX 명령어와 구분자는 반드시 이중 역슬래시(\\ )를 사용해야 합니다.',
+        ...mathFormatRules,
         '- [CRITICAL] "Choice 1", "Placeholder" 등의 임시 텍스트를 절대 사용하지 마십시오.',
         '- [CRITICAL] 지문이나 발문 내에 불필요한 슬래시(/)를 사용하여 문장을 구분하지 마십시오.',
         '- [CRITICAL] 밑줄 표시가 필요한 경우, 반드시 <u>와 </u> 태그를 사용하십시오.',
@@ -202,7 +225,7 @@ function buildCsatPrompt(input) {
         '당신은 대한민국 수능 및 평가원 모의고사를 출제하는 전문 위원입니다.',
         '지엽적인 지식 암기가 아닌, 대학 교육에 필요한 "사고력"과 "문제 해결 능력"을 측정하는 고품질 문항을 생성하십시오.',
         '반드시 JSON 배열 형식으로만 반환하세요.',
-        'JSON의 각 항목은 다음 키를 반드시 포함해야 합니다: ["topic", "type", "stem", "choices", "answer", "explanation", "stimulus"]',
+        'JSON의 각 항목은 다음 키를 반드시 포함해야 합니다: ["topic", "type", "stem", "choices", "answer", "explanation", "stimulus", "diagram_svg"]',
         `반드시 정확히 ${input.count}문항만 생성하십시오.`,
         `요청된 문제 유형은 "${selectionValue}"입니다. 다른 유형의 형식을 섞지 마십시오.`,
         '- [CRITICAL] "stimulus" 필드는 수능 영어의 "주어진 문장", 국어의 "<보기>", 수학의 복잡한 조건 등을 담는 용도로 사용하십시오. 필요 없는 경우 null로 설정하십시오.',
@@ -213,6 +236,7 @@ function buildCsatPrompt(input) {
         ...buildEnglishTypePromptRules(input, true),
         ...buildKoreanPassageRules(input.subject),
         ...(isMathSubject(input.subject) ? buildMathPromptRules() : []),
+        ...(isScienceSubject(input.subject) ? buildSciencePromptRules() : []),
     ];
     return [
         ...basePrompt,
@@ -227,7 +251,7 @@ function buildCsatPrompt(input) {
         '- [발문] "가장 적절한 것은?", "적절하지 않은 것은?"과 같은 평가원 표준 발문을 사용하십시오.',
         '- [수식] 모든 수학적 표현은 반드시 LaTeX를 사용하며, \\( 와 \\) 로 감싸십시오.',
         '- [밑줄] 밑줄이 필요한 경우 <u>와 </u> 태그를 사용하십시오.',
-        '- [해설] 정답의 논리적 도출 과정과 오답 매력도 분석을 포함하십시오.',
+        '- [해설] 정답 근거와 주요 오답 이유를 3문장 이내로 작성하십시오.',
         '',
         buildFeedbackBlock(input.validationFeedback),
         '',
@@ -272,6 +296,12 @@ export function buildQuestionPrompt(input, builderMode) {
     }
     if (builderMode === 'csat' && input.subject === 'korean_literature') {
         return buildCsatKoreanLiteratureSetPrompt(input);
+    }
+    if (builderMode === 'csat' && input.subject === 'korean_reading') {
+        return buildCsatKoreanReadingSetPrompt(input);
+    }
+    if (builderMode === 'csat' && isMathSubject(input.subject)) {
+        return buildCsatMathPrompt(input);
     }
     if (builderMode === 'csat') {
         return buildCsatPrompt(input);

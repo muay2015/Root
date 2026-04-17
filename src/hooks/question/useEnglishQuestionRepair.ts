@@ -15,9 +15,15 @@ export function repairEnglishQuestion(params: {
   stimulus: string | null;
   finalChoices: any[];
   types: {
+    isEnglishSubject: boolean;
+    isEnglishSentenceInsertion?: boolean;
+    isEnglishOrderArrangement?: boolean;
+    isEnglishIrrelevantSentence?: boolean;
+    isEnglishContentMatching?: boolean;
     isEnglishSummaryCompletion: boolean;
     isEnglishGrammar: boolean;
     isEnglishReading: boolean;
+    isOXQuestion?: boolean;
   };
 }) {
   const { question, types } = params;

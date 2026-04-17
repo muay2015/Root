@@ -1,3 +1,4 @@
+import React from 'react';
 import { PenLine } from 'lucide-react';
 import { ChoiceList } from './ChoiceList';
 import { OXChoiceList } from './OXChoiceList';
@@ -5,6 +6,16 @@ import { QuestionStimulusBox } from './QuestionStimulusBox';
 import { PromptRenderer } from './question/PromptRenderer';
 import { QuestionRow, QuestionContent } from './question/QuestionLayout';
 import type { ExamQuestion } from './types';
+
+const SHARED_BOX_MARKER_RE = /(?:<보기>|\[보기\]|<자료>|\[자료\]|<조건>|\[조건\])/u;
+function extractBasePassage(s: string) {
+  const m = SHARED_BOX_MARKER_RE.exec(s);
+  return m ? s.slice(0, m.index).trim() : s.trim();
+}
+function extractStimulusBogi(s: string): string | null {
+  const m = SHARED_BOX_MARKER_RE.exec(s);
+  return m ? s.slice(m.index).trim() : null;
+}
 
 export function ExamQuestionSectionFrame({
   question,
@@ -40,7 +51,7 @@ export function ExamQuestionSectionFrame({
             </div>
           }
           content={
-            <QuestionContent className="max-lg:text-justify max-lg:font-bold">
+            <QuestionContent className="max-lg:font-bold">
               {children}
             </QuestionContent>
           }
@@ -194,12 +205,19 @@ export function CommonPromptBlock({
   const passage = lines.slice(1).join('\n').trim();
 
   if (shouldInterleaveStimulus) {
+    const basePassage = extractBasePassage(stimulus ?? '');
+    const stimulusBogi = extractStimulusBogi(stimulus ?? '');
     return (
       <div className="mb-4">
         <PromptRenderer text={instruction} isEnglishSentenceInsertion={isEnglishReading} />
         <div className="my-5">
-          <QuestionStimulusBox content={stimulus} />
+          <QuestionStimulusBox content={basePassage} />
         </div>
+        {stimulusBogi && (
+          <div className="mb-3">
+            <PromptRenderer text={stimulusBogi} />
+          </div>
+        )}
         {passage.length > 0 && (
           <PromptRenderer text={passage} isEnglishSentenceInsertion={isEnglishReading} />
         )}

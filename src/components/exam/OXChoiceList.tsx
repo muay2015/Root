@@ -33,7 +33,7 @@ export function OXChoiceList({ selectedChoice, onSelect }: OXChoiceListProps) {
   ];
 
   return (
-    <div className="flex w-full gap-3 sm:gap-4 mt-4 max-w-[32rem]">
+    <div className="flex w-full gap-3 sm:gap-4 mt-4 max-w-[32rem] max-lg:-ml-[1.875rem] max-lg:w-[calc(100%+1.875rem)]">
       {choices.map((choice) => {
         const isSelected = selectedChoice === choice.value;
         const Icon = choice.icon;

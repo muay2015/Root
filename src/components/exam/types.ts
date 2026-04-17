@@ -203,11 +203,53 @@ function extractInlineStimulus(stem: string): ExamQuestionParts | null {
   };
 }
 
+/**
+ * stem에서 stimulus와 겹치는 단락을 제거하고 발문/질문 줄만 남깁니다.
+ * - 단락 앞 50자를 기준으로 stimulus에 포함 여부를 확인합니다.
+ * - 40자 이하의 짧은 단락(발문·질문 줄)은 항상 유지합니다.
+ * - 앞에 붙은 번호 노이즈(예: "1. ")를 제거합니다.
+ */
+const STEM_BOX_MARKER_RE = /^(?:<보기>|\[보기\]|<자료>|\[자료\]|<조건>|\[조건\])$/u;
+const STIMULUS_HAS_BOGI_RE = /(?:<보기>|\[보기\]|<자료>|\[자료\]|<조건>|\[조건\])/u;
+
+function deduplicateStemFromStimulus(stem: string, stimulus: string): string {
+  if (!stimulus || !stem) return stem;
+
+  const normalizedStimulus = stimulus.replace(/\s+/g, ' ').trim();
+  // stimulus에 <보기> 등이 있으면 stem에서도 마커 줄을 제거 (중복 방지)
+  const stimulusHasBogi = STIMULUS_HAS_BOGI_RE.test(stimulus);
+
+  const paragraphs = stem
+    .replace(/\r\n/g, '\n')
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  const kept = paragraphs.filter((para) => {
+    if (para.length <= 40) {
+      // stimulus에 보기가 있으면 stem의 <보기> 마커도 제거
+      if (stimulusHasBogi && STEM_BOX_MARKER_RE.test(para)) return false;
+      return true;
+    }
+    const normalizedPara = para.replace(/\s+/g, ' ').trim();
+    const prefix = normalizedPara.slice(0, Math.min(50, normalizedPara.length));
+    return !normalizedStimulus.includes(prefix);
+  });
+
+  const cleaned = kept
+    .map((p) => p.replace(/^\s*\d+\.\s+/, '').trim())
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+
+  return cleaned || stem;
+}
+
 export function parseExamQuestionParts(question: ExamQuestion): ExamQuestionParts {
-  // 1. AI가 이미 stimulus 필드를 제공한 경우 이를 최우선으로 사용
+  // 1. AI가 이미 stimulus 필드를 제공한 경우: stem에서 겹치는 지문 단락 제거
   if (question.stimulus) {
     return {
-      prompt: question.stem,
+      prompt: deduplicateStemFromStimulus(question.stem, question.stimulus),
       stimulus: question.stimulus,
     };
   }

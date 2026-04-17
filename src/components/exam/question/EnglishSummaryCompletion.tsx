@@ -42,9 +42,9 @@ export const EnglishSummaryCompletion: React.FC<EnglishSummaryCompletionProps> =
         }
 
         return (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50 shadow-sm">
-            <div className="px-5 py-5 sm:px-6 sm:py-6">
-              <div className="whitespace-pre-wrap break-words text-[16px] leading-[1.85] text-slate-900 sm:text-[17px] sm:leading-[1.9]">
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/50 shadow-sm lg:rounded-xl lg:border-slate-200 lg:bg-slate-50/50 max-lg:rounded-2xl max-lg:border-blue-100 max-lg:bg-white max-lg:shadow-blue-900/5 max-lg:-ml-[1.875rem] max-lg:w-[calc(100%+1.875rem)]">
+            <div className="px-5 py-5 sm:px-6 sm:py-6 max-lg:px-1.5 max-lg:py-5">
+              <div className="whitespace-pre-wrap break-words text-[16px] leading-[1.85] text-slate-900 sm:text-[17px] sm:leading-[1.9] max-lg:leading-[1.85] sm:max-lg:leading-[1.95]">
                 <PromptRenderer text={passage} isEnglishSentenceInsertion={isEnglishReading} />
               </div>
             </div>
@@ -106,9 +106,9 @@ const SummaryStatementBox: React.FC<{ text: string }> = ({ text }) => {
   const parts = normalizedText.split(BLANK_RE);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100/50">
-      <div className="px-5 py-6 sm:px-7 sm:py-7">
-        <div className="text-[16px] leading-[2] text-slate-900 sm:text-[17px] sm:leading-[2.1]">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100/50 lg:rounded-xl lg:border-slate-200 max-lg:rounded-2xl max-lg:border-blue-100 max-lg:shadow-blue-900/5 max-lg:-ml-[1.875rem] max-lg:w-[calc(100%+1.875rem)]">
+      <div className="px-5 py-6 sm:px-7 sm:py-7 max-lg:px-2.5 max-lg:py-6">
+        <div className="text-[16px] leading-[2] text-slate-900 sm:text-[17px] sm:leading-[2.1] max-lg:leading-[1.95]">
           {parts.map((part, i) => {
             const blankMatch = part.match(/^(?:\(|\[)([AB])(?:\)|\])/i);
             if (blankMatch) {
@@ -154,7 +154,7 @@ const SummaryChoiceTable: React.FC<{
   });
 
   return (
-    <div className="mt-4 flex flex-col gap-3">
+    <div className="mt-4 flex flex-col gap-3 max-lg:-ml-[1.875rem] max-lg:w-[calc(100%+1.875rem)]">
       {/* 헤더 - ChoiceItem 내부 그리드와 정확히 정렬을 맞춤 */}
       <div className="grid grid-cols-[3.5rem_1fr_1.5rem_1fr] items-center px-[3px] mb-1">
         <div />
@@ -171,10 +171,10 @@ const SummaryChoiceTable: React.FC<{
               key={`${index}-${pair.value}`}
               type="button"
               onClick={() => onSelect(pair.value)}
-              className={`group relative flex w-full items-start gap-2.5 rounded-xl border px-3 py-3 text-left transition-all duration-200 sm:gap-3 sm:px-3.5 sm:py-3.5 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 shadow-sm ${
+              className={`group relative flex w-full items-start gap-2.5 rounded-xl border px-3 py-3 text-left transition-all duration-200 sm:gap-3 sm:px-3.5 sm:py-3.5 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 shadow-sm max-lg:rounded-2xl max-lg:px-2.5 ${
                 isSelected
                   ? 'border-blue-600 bg-blue-50/80 ring-1 ring-blue-600 z-10'
-                  : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50/80'
+                  : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50/80 max-lg:border-blue-100'
               }`}
             >
               {/* 번호 및 아이콘 - 표준 ChoiceItem과 동일 */}
@@ -190,7 +190,7 @@ const SummaryChoiceTable: React.FC<{
 
               {/* (A)/(B) 그리드 영역 - 헤더와 컬럼 위치 동기화 */}
               <div className="flex-1 grid grid-cols-[1fr_1.5rem_1fr] items-center pt-[2px] sm:pt-[4px]">
-                <div className={`text-center text-[15px] sm:text-[16px] break-keep ${
+                <div className={`text-center text-[15px] sm:text-[16px] ${
                   isSelected ? 'text-blue-900 font-semibold' : 'text-slate-700 font-medium'
                 }`}>
                   {pair.a}
@@ -198,7 +198,7 @@ const SummaryChoiceTable: React.FC<{
                 
                 <div className="text-center text-slate-300 font-light select-none">/</div>
                 
-                <div className={`text-center text-[15px] sm:text-[16px] break-keep ${
+                <div className={`text-center text-[15px] sm:text-[16px] ${
                   isSelected ? 'text-blue-900 font-semibold' : 'text-slate-700 font-medium'
                 }`}>
                   {pair.b}

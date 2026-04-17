@@ -3,10 +3,11 @@
  *
  * [Refactored v17] Splitted into sub-modules for better maintainability.
  */
-export * from './english/core';
-export * from './english/summary';
-export * from './english/order';
-export * from './english/irrelevant';
-export * from './english/matching';
-export * from './english/emotion';
+export * from './english/core.js';
+export * from './english/summary.js';
+export * from './english/order.js';
+export * from './english/irrelevant.js';
+export * from './english/matching.js';
+export * from './english/emotion.js';
+export * from './english/insertion.js';
 // Backward compatibility or shared logic mapping can be added here if needed.

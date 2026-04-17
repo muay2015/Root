@@ -6,7 +6,7 @@ interface ModeButtonProps {
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
-  sub: string;
+  sub: React.ReactNode;
 }
 
 export function ModeButton({ active, onClick, icon, label, sub }: ModeButtonProps) {
@@ -23,7 +23,7 @@ export function ModeButton({ active, onClick, icon, label, sub }: ModeButtonProp
         {icon}
       </div>
       <div className="text-center">
-        <p className={`text-sm font-black ${active ? 'text-primary' : 'text-slate-600'}`}>{label}</p>
+        <p className={`text-[13px] sm:text-sm font-black ${active ? 'text-primary' : 'text-slate-600'}`}>{label}</p>
         <p className="text-[11px] font-bold text-slate-400 mt-0.5">{sub}</p>
       </div>
       {active && (

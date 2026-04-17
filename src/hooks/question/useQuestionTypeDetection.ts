@@ -26,11 +26,24 @@ export function useQuestionTypeDetection(question: ExamQuestion, rawPrompt: stri
     })();
     
     // 1. 문장 삽입 (Sentence Insertion)
+    // - 발문 키워드 감지 (수능 표준 및 AI 생성 변형 모두 커버)
+    // - 지문 내 삽입 위치 마커(①~⑤) 3개 이상이면 보조 감지 (어법/어휘 제외)
+    const insertionMarkerCount = (question.stem.match(/[①②③④⑤]/g) ?? []).length;
+    const isGrammarVocabStem =
+      question.stem.includes('어법상 틀린 것은') ||
+      question.stem.includes('밑줄 친 부분 중') ||
+      question.stem.includes('문맥상 낱말의 쓰임') ||
+      question.topic.includes('어법') ||
+      question.topic.includes('어휘') ||
+      question.topic.includes('문법');
     const isInsertionType =
       (question.topic.includes('문장 삽입') ||
       topicLower.includes('insertion') ||
-      question.stem.includes('주어진 문장')) &&
-      !question.topic.includes('빈칸') && 
+      question.stem.includes('주어진 문장') ||
+      question.stem.includes('가장 적절한 곳은') ||
+      question.stem.includes('가장 적절한 곳에') ||
+      (isEnglishSubject && insertionMarkerCount >= 3 && !isGrammarVocabStem)) &&
+      !question.topic.includes('빈칸') &&
       !question.topic.includes('추론');
 
     // 2. 순서 배열 (Order Arrangement)

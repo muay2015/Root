@@ -33,7 +33,7 @@ export function ChoiceList({ choices, selectedChoice, onSelect, hideText, number
   const normalizedSelectedChoice = normalizeChoiceText(selectedChoice);
 
   return (
-    <div className={`w-full min-w-0 ${hideText ? 'grid grid-cols-5 gap-2 sm:gap-4' : 'flex flex-col gap-2.5 sm:gap-3'}`}>
+    <div className={`w-full min-w-0 max-lg:-ml-[1.875rem] max-lg:w-[calc(100%+1.875rem)] ${hideText ? 'grid grid-cols-5 gap-2 sm:gap-4 px-2' : 'flex flex-col gap-2.5 sm:gap-3'}`}>
       {normalizedChoices.map((choice, index) => (
         <div key={`${index + 1}-${choice.normalizedValue}`} className="w-full min-w-0">
           <ChoiceItem

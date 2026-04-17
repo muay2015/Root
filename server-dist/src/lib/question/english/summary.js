@@ -1,5 +1,4 @@
-import { SubjectKey } from '../subjectConfig';
-import { isEnglishSubject, normalizeEnglishPlainText } from './core';
+import { isEnglishSubject, normalizeEnglishPlainText } from './core.js';
 function normalizeSummaryBlankMarkers(value) {
     return value
         .replace(/[\[\uFF3B]\s*a\s*[\]\uFF3D]/gi, '(A)')

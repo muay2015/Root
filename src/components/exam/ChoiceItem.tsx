@@ -2,7 +2,7 @@ import { Check } from 'lucide-react';
 import { MathRenderer } from '../ui/MathRenderer';
 
 type ChoiceItemProps = {
-  number: number;
+  number: number | string;
   text: string;
   selected: boolean;
   onSelect: () => void;
@@ -15,11 +15,11 @@ export function ChoiceItem({ number, text, selected, onSelect, hideText }: Choic
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      className={`group relative flex w-full items-start gap-2.5 rounded-xl border px-3 py-3 text-left transition-all duration-200 sm:gap-3 sm:px-3.5 sm:py-3.5 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
+      className={`group relative flex w-full items-start gap-2.5 rounded-xl border px-3 py-3 text-left transition-all duration-200 sm:gap-3 sm:px-3.5 sm:py-3.5 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 max-lg:rounded-2xl ${
         selected
           ? 'border-blue-600 bg-blue-50/80 shadow-[0_0_0_1px_rgba(37,99,235,1)] z-10'
-          : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50/80 hover:shadow-sm'
-      } ${hideText ? 'items-center justify-center py-2.5 px-0' : 'items-start'}`}
+          : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50/80 hover:shadow-sm max-lg:border-blue-100'
+      } ${hideText ? 'items-center justify-center py-2.5 px-0' : 'items-start max-lg:px-2.5'}`}
     >
       <div
         className={`flex h-6.5 w-6.5 shrink-0 items-center justify-center rounded-full text-[13px] font-bold transition-colors duration-200 sm:h-7 sm:w-7 sm:text-[14px] ${

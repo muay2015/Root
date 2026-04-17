@@ -35,8 +35,8 @@ const CATEGORY_THEME: Record<SubjectCategory | 'default', { bg: string; text: st
   history: { bg: 'bg-orange-500', text: 'text-orange-600', ring: 'ring-orange-100', light: 'bg-orange-50' },
   social: { bg: 'bg-indigo-500', text: 'text-indigo-600', ring: 'ring-indigo-100', light: 'bg-indigo-50' },
   science: { bg: 'bg-cyan-500', text: 'text-cyan-600', ring: 'ring-cyan-100', light: 'bg-cyan-50' },
-  language: { bg: 'bg-rose-500', text: 'text-rose-600', ring: 'ring-rose-100', light: 'bg-rose-50' },
-  tech_ethics: { bg: 'bg-slate-500', text: 'text-slate-600', ring: 'ring-slate-100', light: 'bg-slate-50' },
+  tech_home: { bg: 'bg-slate-500', text: 'text-slate-600', ring: 'ring-slate-100', light: 'bg-slate-50' },
+  ethics: { bg: 'bg-slate-500', text: 'text-slate-600', ring: 'ring-slate-100', light: 'bg-slate-50' },
   default: { bg: 'bg-rose-500', text: 'text-rose-600', ring: 'ring-rose-100', light: 'bg-rose-50' }
 };
 
