@@ -12,8 +12,30 @@ interface DashboardScreenProps {
 
 export function DashboardScreen({ exams, onOpenExam }: DashboardScreenProps) {
   const dashboardData = useMemo(() => {
-    const submittedExams = exams.filter((exam) => exam.score !== null && exam.score !== undefined);
-// ... (omitting lines 16-51 for clarity in logic, but tools will handle correctly) ...
+    const totalExams = submittedExams.length;
+    const averageScore = totalExams > 0 
+      ? Math.round(submittedExams.reduce((sum, e) => sum + (e.score || 0), 0) / totalExams) 
+      : 0;
+    const highestScore = totalExams > 0 
+      ? Math.max(...submittedExams.map(e => e.score || 0)) 
+      : 0;
+    
+    const recentExams = [...exams]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 5)
+      .map(exam => ({
+        exam,
+        subjectMeta: getExamSubjectMeta(exam)
+      }));
+
+    const subjectStats = submittedExams.reduce((acc, exam) => {
+      const subject = exam.subject || 'unknown';
+      if (!acc[subject]) acc[subject] = { total: 0, scoreSum: 0 };
+      acc[subject].total += 1;
+      acc[subject].scoreSum += (exam.score || 0);
+      return acc;
+    }, {} as Record<string, { total: number; scoreSum: number }>);
+
     return {
       totalExams,
       averageScore,
