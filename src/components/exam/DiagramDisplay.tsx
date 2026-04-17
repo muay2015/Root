@@ -28,7 +28,7 @@ export function DiagramDisplay({ svg }: { svg: string | null | undefined }) {
 
   return (
     <div
-      className="my-2 flex w-full items-center justify-center overflow-x-auto rounded-xl border border-slate-200 bg-white p-3 sm:p-4"
+      className="my-2 flex w-full items-center justify-center overflow-x-auto rounded-xl border border-slate-200 bg-white p-3 sm:p-4 max-lg:-ml-[1.875rem] max-lg:w-[calc(100%+1.875rem)]"
       dangerouslySetInnerHTML={{ __html: clean }}
     />
   );

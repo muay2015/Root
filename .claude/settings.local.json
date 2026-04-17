@@ -24,7 +24,19 @@
       "Bash(taskkill //F //PID 26100)",
       "Bash(node server-dist/src/server.js)",
       "Bash(curl -s http://localhost:8787/health)",
-      "Bash(xargs -I{} taskkill //F //PID {})"
+      "Bash(xargs -I{} taskkill //F //PID {})",
+      "Bash(ls *.cjs *.js *.log *.diff *.txt)",
+      "Bash(ls .tmp-check/)",
+      "Bash(ls scratch/)",
+      "Bash(ls functions/)",
+      "Bash(grep -r \"lib/api\" src/ --include=\"*.ts\" --include=\"*.tsx\" -l)",
+      "Bash(grep -r \"from.*\\\\/api'\" src/ --include=\"*.ts\" --include=\"*.tsx\")",
+      "Bash(ls src/lib/*.ts)",
+      "Bash(ls src/hooks/*.ts src/hooks/**/*.ts)",
+      "Bash(ls src/services/*.ts)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(k,':',v\\) for k,v in d.get\\('scripts',{}\\).items\\(\\)]\")",
+      "Bash(wc -l src/lib/question/validators/*.ts)",
+      "Bash(echo \"EXIT:$?\")"
     ]
   }
 }

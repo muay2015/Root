@@ -102,12 +102,24 @@ export function buildFeedbackBlock(validationFeedback?: string[]) {
       '✅ 올바른 예: "\\(a_4\\)의 값은?", "\\(a_n\\)" — 반드시 \\(a_4\\) 형태. 하이픈(-) 이나 여러 언더스코어(___) 사용 불가',
     );
   }
+  if (feedbackText.includes('원과 직선') || feedbackText.includes('circle-line') || feedbackText.includes('접선 d=r')) {
+    lines.push(
+      '',
+      '[MIDDLE CIRCLE-LINE FIX] 「원과 직선」 diagram_svg가 누락되었습니다.',
+      '반드시 아래 중 조건에 맞는 템플릿을 선택해 diagram_svg를 채우십시오.',
+      '접선(d=r): <svg viewBox="0 0 360 300" width="100%" style="max-width:360px;display:block"><circle cx="150" cy="150" r="90" fill="none" stroke="#222" stroke-width="1.8"/><line x1="240" y1="18" x2="240" y2="282" stroke="#222" stroke-width="1.8"/><line x1="150" y1="150" x2="240" y2="150" stroke="#555" stroke-width="1.3" stroke-dasharray="5,3"/><circle cx="150" cy="150" r="3.5" fill="#222"/><circle cx="240" cy="150" r="3" fill="#222"/><path d="M240,140 L230,140 L230,150" fill="none" stroke="#222" stroke-width="1.3"/><text x="134" y="143" font-size="15" font-family="serif">O</text><text x="246" y="30" font-size="15" font-family="serif" font-style="italic">l</text><text x="192" y="143" font-size="12" text-anchor="middle">d cm</text></svg>',
+      '할선(d<r): <svg viewBox="0 0 360 300" width="100%" style="max-width:360px;display:block"><circle cx="150" cy="150" r="90" fill="none" stroke="#222" stroke-width="1.8"/><line x1="210" y1="18" x2="210" y2="282" stroke="#222" stroke-width="1.8"/><line x1="150" y1="150" x2="210" y2="150" stroke="#555" stroke-width="1.3" stroke-dasharray="5,3"/><circle cx="150" cy="150" r="3.5" fill="#222"/><path d="M210,140 L200,140 L200,150" fill="none" stroke="#222" stroke-width="1.3"/><text x="134" y="143" font-size="15" font-family="serif">O</text><text x="216" y="30" font-size="15" font-family="serif" font-style="italic">l</text><text x="177" y="143" font-size="12" text-anchor="middle">d cm</text></svg>',
+      '외부(d>r): <svg viewBox="0 0 360 300" width="100%" style="max-width:360px;display:block"><circle cx="140" cy="150" r="80" fill="none" stroke="#222" stroke-width="1.8"/><line x1="270" y1="18" x2="270" y2="282" stroke="#222" stroke-width="1.8"/><line x1="140" y1="150" x2="270" y2="150" stroke="#555" stroke-width="1.3" stroke-dasharray="5,3"/><circle cx="140" cy="150" r="3.5" fill="#222"/><path d="M270,140 L260,140 L260,150" fill="none" stroke="#222" stroke-width="1.3"/><text x="124" y="143" font-size="15" font-family="serif">O</text><text x="276" y="30" font-size="15" font-family="serif" font-style="italic">l</text><text x="202" y="143" font-size="12" text-anchor="middle">d cm</text></svg>',
+      '→ "d cm"을 실제 거리 수치로 반드시 교체하십시오. 수치 없으면 수정 실패.',
+    );
+  }
   if (feedbackText.includes('math_missing_diagram') || feedbackText.includes('geometry question')) {
     lines.push(
       '',
       '[MATH FIX] 기하 문항에서 diagram_svg가 null로 실패했습니다. 반드시 SVG 도형을 생성하십시오.',
       '원 문제 예시: <svg viewBox="0 0 360 320" width="100%" style="max-width:360px;display:block"><circle cx="180" cy="160" r="110" fill="none" stroke="#222" stroke-width="1.5"/><circle cx="290" cy="160" r="3" fill="#222"/><text x="298" y="164" font-size="13">B</text><circle cx="70" cy="160" r="3" fill="#222"/><text x="55" y="164" font-size="13">E</text></svg>',
       '삼각형 예시: <svg viewBox="0 0 360 300" width="100%" style="max-width:360px;display:block"><polygon points="180,30 60,260 300,260" fill="none" stroke="#222" stroke-width="1.5"/><text x="175" y="20" font-size="13">A</text><text x="45" y="275" font-size="13">B</text><text x="305" y="275" font-size="13">C</text></svg>',
+      '좌표평면 원+직선 예시: <svg viewBox="0 0 360 320" width="100%" style="max-width:360px;display:block"><line x1="20" y1="160" x2="340" y2="160" stroke="#aaa" stroke-width="1"/><line x1="180" y1="20" x2="180" y2="300" stroke="#aaa" stroke-width="1"/><circle cx="180" cy="160" r="90" fill="none" stroke="#222" stroke-width="1.5"/><line x1="60" y1="260" x2="300" y2="60" stroke="#222" stroke-width="1.5"/><circle cx="126" cy="214" r="3" fill="#222"/><text x="108" y="228" font-size="13">A</text><circle cx="270" cy="70" r="3" fill="#222"/><text x="276" y="68" font-size="13">B</text></svg>',
       '- stem에서 "주어진 조건에서" → "그림과 같이"로 변경하고, 도형 배치 설명은 SVG에만 표현하십시오.',
     );
   }

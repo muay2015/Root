@@ -373,34 +373,6 @@ export function getExamSubjectMeta(
   };
 }
 
-export function getWrongNoteSubjectMeta(
-  note: WrongNote,
-  examByTitle?: Map<string, PersistedExamRecord>,
-): ExamSubjectMeta {
-  const examMatch = examByTitle?.get(note.examTitle);
-  const subjectKey = normalizeToSubjectKey(
-    note.subject || (note.id.includes('___') ? note.id.split('___')[0] : null),
-    note.examTitle,
-    examMatch?.questions?.[0]?.topic,
-    examMatch?.questions,
-    examMatch?.exam_format,
-  );
-
-  if (!subjectKey) {
-    return {
-      subjectKey: null,
-      label: '기타 과목',
-      category: 'default',
-    };
-  }
-
-  return {
-    subjectKey,
-    label: SUBJECT_CONFIG[subjectKey].label,
-    category: SUBJECT_CONFIG[subjectKey].category,
-  };
-}
-
 export function toResponseMap(value: PersistedExamRecord['responses']) {
   if (!value) {
     return {} as Record<number, string>;

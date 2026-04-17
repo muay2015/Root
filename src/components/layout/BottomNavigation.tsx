@@ -30,8 +30,8 @@ export function BottomNavigation({
     <nav className={`glass-nav pointer-events-auto z-[120] shadow-[0_-4px_20px_rgba(0,0,0,0.03)] ${className}`}>
       <div className="mx-auto flex max-w-xl justify-around px-2 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
         {items.map((item) => {
-          const active = current === item.id || 
-            (item.id === 'create-selection' && (current === 'create' || current === 'pdf-import'));
+          const active = current === item.id ||
+            (item.id === 'create-selection' && current === 'create');
           return (
             <button
               key={item.id}

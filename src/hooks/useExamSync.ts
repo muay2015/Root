@@ -124,22 +124,16 @@ export function useExamSync(sessionUserId: string | null, isAnonymous: boolean) 
 
     if (sessionUserId && !isAnonymous && serverIdsToDelete.length > 0) {
       try {
-        console.log(`[useExamSync] Starting server deletion for ${serverIdsToDelete.length} records...`);
-
         // 병렬 삭제 처리 및 개별 에러 확인
-        const results = await Promise.all(serverIdsToDelete.map(async (id) => {
+        await Promise.all(serverIdsToDelete.map(async (id) => {
           const record = deletedRecords.find(r => r.id === id);
           if (record) {
             // 제약 조건 충돌 방지를 위해 오답 데이터 우선 삭제
             await deleteWrongNotesByTitle(sessionUserId, record.title);
             const { error } = await deleteExamRecordFromServer(sessionUserId, id);
             if (error) throw new Error(error);
-            return id;
           }
-          return null;
         }));
-
-        console.log('[useExamSync] Successfully deleted records from server:', results.filter(Boolean));
 
       } catch (error) {
         console.error('[useExamSync] Failed to delete exams from server:', error);

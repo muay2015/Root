@@ -53,7 +53,7 @@ export function TopBar({
             {[
               { id: 'landing', label: '홈' },
               { id: 'dashboard', label: '대시보드' },
-              { id: 'create-selection', label: '문제 생성', synonyms: ['create', 'pdf-import'] },
+              { id: 'create-selection', label: '문제 생성', synonyms: ['create'] },
               { id: 'saved', label: '나의 보관함' },
               { id: 'wrong', label: '오답노트' },
             ].map((item) => (

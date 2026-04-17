@@ -6,3 +6,18 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Temporary debug / dev artifacts
+.tmp-check/
+scratch/
+tmp_*.cjs
+*.bak
+
+# One-off scripts
+test-gemini.js
+test_gemini_summary.cjs
+test_regex.cjs
+list-models.js
+account_patch.cjs
+recovered_diff_fixed.diff
+tmp_check.txt

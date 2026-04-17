@@ -214,8 +214,6 @@ export const examService = {
 
         const result = await response.json();
 
-        console.log('[examService] segment-exam 응답:', JSON.stringify(result).slice(0, 300));
-
         if (!result.questions || result.questions.length === 0) {
           const details = result.details || result.error || '빈 응답';
           return { data: null, error: `GPT-4o 응답에 문항 없음: ${details}` };
