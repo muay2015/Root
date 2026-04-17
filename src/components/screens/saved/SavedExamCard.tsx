@@ -35,7 +35,7 @@ export function SavedExamCard({
   return (
     <article
       onClick={() => isSelectionMode && onToggleSelection(exam.id)}
-      className={`premium-card group relative p-5 transition-all hover:ring-2 hover:ring-accent/20 ${
+      className={`premium-card group relative w-full min-w-0 p-5 transition-all hover:ring-2 hover:ring-accent/20 ${
         isSelectionMode ? 'cursor-pointer active:scale-[0.98]' : ''
       } ${isSelected ? 'ring-2 ring-accent bg-accent/[0.02]' : ''}`}
     >

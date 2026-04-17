@@ -20,7 +20,7 @@ export function TopBar({
   onSignOut: () => void;
 }) {
   return (
-    <header className="glass-header sticky top-0 z-50 shadow-sm transition-all duration-300">
+    <header className="glass-header sticky top-0 z-[120] shadow-sm transition-all duration-300">
       <div className="mx-auto flex max-w-[1280px] items-center justify-between px-4 py-2.5 sm:px-6 sm:py-3.5">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
@@ -55,7 +55,7 @@ export function TopBar({
               { id: 'dashboard', label: '대시보드' },
               { id: 'create-selection', label: '문제 생성', synonyms: ['create', 'pdf-import'] },
               { id: 'saved', label: '나의 보관함' },
-              { id: 'wrong', label: '오답 집중' },
+              { id: 'wrong', label: '오답노트' },
             ].map((item) => (
               <button
                 key={item.id}

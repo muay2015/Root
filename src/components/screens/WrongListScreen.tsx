@@ -125,31 +125,26 @@ export function WrongListScreen({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-black tracking-tight text-slate-900">심화 학습 저장소</h1>
+                  <h1 className="text-2xl font-black tracking-tight text-slate-900">오답노트</h1>
                   <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-[10px] font-black text-rose-600 uppercase tracking-wider">AI Analysis</span>
                 </div>
                 <p className="mt-0.5 text-[13px] font-bold text-slate-400">틀린 문제와 개념을 다시 확인하여 지식의 빈틈을 채웁니다.</p>
               </div>
             </div>
-            {syncMessage && (
-              <div className="flex items-center gap-2 rounded-2xl bg-slate-50 px-4 py-2 w-fit border border-slate-100">
-                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[12px] font-bold text-slate-500">{syncMessage}</span>
-              </div>
-            )}
+
           </div>
         </div>
       </div>
 
       <div className="mx-auto max-w-5xl px-6 -mt-5">
         {/* Compact Filters */}
-        <section className="sticky top-6 z-30 mb-8 overflow-hidden rounded-2xl bg-white/80 p-1.5 shadow-xl shadow-slate-200/50 ring-1 ring-slate-200/50 backdrop-blur-xl">
-          <div className="flex gap-1 overflow-x-auto hide-scrollbar px-1">
+        <section className="sticky top-6 z-30 mb-8 rounded-[1.5rem] bg-white/80 p-2.5 shadow-xl shadow-slate-200/50 ring-1 ring-slate-200/50 backdrop-blur-xl">
+          <div className="flex flex-wrap gap-2 px-1">
             {allSubjects.map((subj) => (
               <button
                 key={subj}
                 onClick={() => setSelectedSubject(subj)}
-                className={`whitespace-nowrap rounded-xl px-5 py-2.5 text-[13px] font-black transition-all duration-300 ${
+                className={`whitespace-nowrap rounded-xl px-4 py-2 text-[13px] font-black transition-all duration-300 ${
                   selectedSubject === subj
                     ? 'bg-slate-900 text-white shadow-md'
                     : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'

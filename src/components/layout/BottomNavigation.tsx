@@ -23,11 +23,11 @@ export function BottomNavigation({
     { id: 'dashboard' as const, label: '대시보드', icon: <BarChart className="h-5 w-5" strokeWidth={2.5} /> },
     { id: 'create-selection' as const, label: '문제 생성', icon: <PlusCircle className="h-5 w-5" strokeWidth={2.5} /> },
     { id: 'saved' as const, label: '나의 보관함', icon: <FileText className="h-5 w-5" strokeWidth={2.5} /> },
-    { id: 'wrong' as const, label: '오답 집중', icon: <NotebookPen className="h-5 w-5" strokeWidth={2.5} /> },
+    { id: 'wrong' as const, label: '오답노트', icon: <NotebookPen className="h-5 w-5" strokeWidth={2.5} /> },
   ];
 
   return (
-    <nav className={`glass-nav shadow-[0_-4px_20px_rgba(0,0,0,0.03)] ${className}`}>
+    <nav className={`glass-nav pointer-events-auto z-[120] shadow-[0_-4px_20px_rgba(0,0,0,0.03)] ${className}`}>
       <div className="mx-auto flex max-w-xl justify-around px-2 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
         {items.map((item) => {
           const active = current === item.id || 

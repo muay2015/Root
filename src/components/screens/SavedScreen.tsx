@@ -39,7 +39,7 @@ export function SavedScreen({
   });
 
   return (
-    <div className="px-4 pb-28 pt-0 sm:px-6 sm:pt-6">
+    <div className="px-4 pb-28 pt-4 sm:px-6 sm:pt-6">
       <div className="mx-auto max-w-5xl space-y-8">
         {state.openMenuId && (
           <div
@@ -49,6 +49,41 @@ export function SavedScreen({
         )}
 
         <header className="flex flex-col gap-4">
+          <div className="sm:hidden flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-black tracking-tight text-slate-900">
+                문제 보관함
+              </h1>
+              <p className="mt-1 text-[13px] font-bold text-slate-500">
+                저장한 문제와 시험지를 여기서 이어서 확인합니다.
+              </p>
+            </div>
+
+            <button
+              onClick={actions.handleToggleSelectionMode}
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-all ${
+                state.isSelectionMode
+                  ? 'bg-slate-900 text-white'
+                  : 'bg-white text-slate-600 ring-1 ring-outline hover:bg-slate-50'
+              }`}
+              title={state.isSelectionMode ? '선택 취소' : '선택'}
+            >
+              {state.isSelectionMode ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <ListChecks className="h-5 w-5" />
+              )}
+            </button>
+          </div>
+
+          <div className="sm:hidden inline-flex w-fit items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-outline">
+            <span className="text-slate-400">총 생성 문항</span>
+            <span className="text-lg font-black text-slate-900">
+              {state.totalGeneratedQuestionCount.toLocaleString()}
+            </span>
+            <span className="text-slate-500">문항</span>
+          </div>
+
           <div className="hidden sm:flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-outline text-primary">
@@ -118,12 +153,12 @@ export function SavedScreen({
           )}
         </header>
 
-        <section className="sticky top-[72px] z-10 -mx-4 bg-surface/80 px-4 py-4 backdrop-blur-md sm:mx-0 sm:px-0">
-          <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
+        <section className="bg-surface py-4 sm:sticky sm:top-[72px] sm:z-10 sm:bg-surface/80 sm:py-6 sm:backdrop-blur-md">
+          <div className="flex flex-wrap gap-2">
             {state.isSelectionMode && (
               <button
                 onClick={actions.selectAll}
-                className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-[13px] font-black transition-all ${
+                className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2 text-[13px] font-black transition-all ${
                   state.selectedIds.size === state.filteredExams.length &&
                   state.filteredExams.length > 0
                     ? 'bg-slate-900 text-white shadow-md'
@@ -143,7 +178,7 @@ export function SavedScreen({
               <button
                 key={subj}
                 onClick={() => onSelectSubject(subj)}
-                className={`whitespace-nowrap rounded-xl px-5 py-2.5 text-[13px] font-black transition-all ${
+                className={`whitespace-nowrap rounded-xl px-4 py-2 text-[13px] font-black transition-all ${
                   selectedSubject === subj
                     ? 'premium-gradient text-white shadow-md'
                     : 'bg-white text-slate-500 ring-1 ring-outline hover:bg-slate-50'
@@ -173,8 +208,8 @@ export function SavedScreen({
         ) : (
           <div className="space-y-10">
             {state.groupedBySubject.map(([subjectLabel, examList]) => (
-              <section key={subjectLabel} className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
+              <section key={subjectLabel} className="w-full space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {examList.map((exam) => (
                     <SavedExamCard
                       key={exam.id}
