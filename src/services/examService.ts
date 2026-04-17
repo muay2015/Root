@@ -1,11 +1,10 @@
 import { supabase } from '../lib/supabase';
 import { PersistedExamRecord, SaveExamDraftInput, CompleteExamInput, Result } from '../types/persistence';
+import { buildApiUrl } from './api';
 import { normalizeSupabaseErrorMessage } from './serviceUtils';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isValidUuid = (id: string) => UUID_REGEX.test(id);
-const API_BASE_URL = 'http://127.0.0.1:8787';
-
 export const examService = {
   async fetchRecords(userId: string): Promise<Result<PersistedExamRecord[]>> {
     if (!supabase) return { data: null, error: 'Supabase is not configured.' };
@@ -165,7 +164,7 @@ export const examService = {
 
   async generateAIExam(payload: any): Promise<Result<any>> {
     try {
-      const response = await fetch('/api/ai/generate-exam', {
+      const response = await fetch(buildApiUrl('/api/ai/generate-exam'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -195,7 +194,7 @@ export const examService = {
       const mimeMatch = imageData.match(/^data:(image\/[\w+]+);base64,/);
       const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
       try {
-        const response = await fetch(`${API_BASE_URL}/api/ai/segment-exam`, {
+        const response = await fetch(buildApiUrl('/api/ai/segment-exam'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

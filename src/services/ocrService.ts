@@ -3,10 +3,12 @@
  * 이미지에서 텍스트를 추출하는 기능을 제공합니다.
  */
 
+import { buildApiUrl } from './api';
+
 export const ocrService = {
   async extractText(image: { mimeType: string; data: string }): Promise<{ text: string; error: string | null }> {
     try {
-      const response = await fetch('/api/ai/ocr', {
+      const response = await fetch(buildApiUrl('/api/ai/ocr'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image }),

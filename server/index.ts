@@ -4,6 +4,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { generateExamApiResponse } from '../src/lib/server/generateExamApi.ts';
+import { ocrApiResponse } from '../src/lib/server/generateExamApi.ts';
 import { segmentExamWithOpenAI } from '../src/lib/server/openaiVisionService.ts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -68,6 +69,25 @@ app.post('/api/ai/generate-exam', async (req, res) => {
     console.error('SERVER FATAL ERROR:', err);
     res.status(500).json({ 
       error: 'Server internal error', 
+      details: err.message,
+      stack: err.stack
+    });
+  }
+});
+
+app.post('/api/ai/ocr', async (req, res) => {
+  console.log('--- Incoming Request: /api/ai/ocr ---');
+  try {
+    const result = await ocrApiResponse({
+      payload: req.body,
+      openAiApiKey,
+      openAiModel,
+    });
+    res.status(result.status).json(result.body);
+  } catch (err: any) {
+    console.error('OCR FATAL ERROR:', err);
+    res.status(500).json({
+      error: 'Server internal error',
       details: err.message,
       stack: err.stack
     });
