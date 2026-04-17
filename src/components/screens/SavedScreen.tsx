@@ -39,7 +39,7 @@ export function SavedScreen({
   });
 
   return (
-    <div className="px-4 pb-28 pt-4 sm:px-6 sm:pt-6">
+    <div className="px-4 pb-28 pt-0 sm:px-6 sm:pt-6">
       <div className="mx-auto max-w-5xl space-y-8">
         {state.openMenuId && (
           <div
@@ -49,7 +49,7 @@ export function SavedScreen({
         )}
 
         <header className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
+          <div className="hidden sm:flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-outline text-primary">
                 <FileText className="h-6 w-6" />
@@ -86,7 +86,7 @@ export function SavedScreen({
             </div>
           </div>
 
-          <div className="inline-flex w-fit items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-outline">
+          <div className="hidden sm:inline-flex w-fit items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-outline">
             <span className="text-slate-400">총 생성 문항</span>
             <span className="text-lg font-black text-slate-900">
               {state.totalGeneratedQuestionCount.toLocaleString()}
@@ -94,12 +94,6 @@ export function SavedScreen({
             <span className="text-slate-500">문항</span>
           </div>
 
-          {syncMessage && (
-            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-1.5 text-[11px] font-bold text-accent ring-1 ring-blue-100">
-              <RefreshCw className="h-3 w-3 animate-spin" />
-              {syncMessage}
-            </div>
-          )}
 
           {isAnonymous && (
             <div className="premium-card bg-accent/5 border-accent/10 p-5 flex items-start gap-4">
