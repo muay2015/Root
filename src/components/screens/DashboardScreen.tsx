@@ -12,6 +12,7 @@ interface DashboardScreenProps {
 
 export function DashboardScreen({ exams, onOpenExam }: DashboardScreenProps) {
   const dashboardData = useMemo(() => {
+    const submittedExams = exams.filter((exam) => exam.score !== null && exam.score !== undefined);
     const totalExams = submittedExams.length;
     const averageScore = totalExams > 0 
       ? Math.round(submittedExams.reduce((sum, e) => sum + (e.score || 0), 0) / totalExams) 
