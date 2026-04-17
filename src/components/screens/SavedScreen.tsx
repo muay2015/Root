@@ -229,6 +229,6 @@ export function SavedScreen({
           onDelete={actions.handleDeleteSelected}
         />
       </div>
-    </main>
+    </div>
   );
 }

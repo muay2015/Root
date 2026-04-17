@@ -222,6 +222,6 @@ export function CreateScreen(props: CreateScreenProps) {
           imageCount={imageData.length}
         />
       </div>
-    </main>
+    </div>
   );
 }

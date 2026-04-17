@@ -201,7 +201,7 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }
 

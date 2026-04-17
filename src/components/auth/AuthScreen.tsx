@@ -317,7 +317,7 @@ export function AuthScreen({ onSuccess = () => window.location.reload() }: { onS
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
 

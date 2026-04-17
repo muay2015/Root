@@ -124,6 +124,6 @@ export function ResultScreen({
           </div>
         </section>
       </div>
-    </main>
+    </div>
   );
 }

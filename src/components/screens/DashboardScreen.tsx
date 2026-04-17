@@ -151,6 +151,6 @@ export function DashboardScreen({ exams, onOpenExam }: DashboardScreenProps) {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

@@ -345,6 +345,6 @@ export function WrongListScreen({
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }
