@@ -148,17 +148,17 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
           <PricingCard 
             title="인기·베스트"
             price="10,000"
-            description="보너스 700개"
-            badge="문제집 2/3 값으로 850문제"
+            description="보너스 850개"
+            badge="문제집 2/3 값으로 1000문제"
             isPopular
             features={[
-              '매달 총 850문제 이용',
-              '무료 150 + 보너스 700개',
+              '매달 총 1000문제 이용',
+              '무료 150 + 보너스 850개',
               '매일 무료 5개 우선 소진',
               '난이도·문항 수 자유 설정',
               '문제집 구매 완전히 대체'
             ]}
-            footerText="문제당 약 11원, 문제집보다 99% 저렴"
+            footerText="문제당 10원, 문제집보다 99% 저렴"
             onAction={() => onNavigate(isAnonymous ? 'account' : 'create-selection')}
             actionText="선택하기"
           />
