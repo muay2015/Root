@@ -1,5 +1,5 @@
-import React from 'react';
-import { RefreshCw, FileText, Search, Plus, LogIn, CheckCircle2, Trash2, ListChecks, X } from 'lucide-react';
+import { RefreshCw, FileText, Search, Plus, LogIn, CheckCircle2, Trash2, ListChecks, X, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import type { PersistedExamRecord } from '../../lib/rootPersistence';
 import { useSavedScreenLogic } from '../../hooks/screens/useSavedScreenLogic';
 import { SavedExamCard } from './saved/SavedExamCard';
@@ -153,15 +153,72 @@ export function SavedScreen({
           )}
         </header>
 
-        <section className="bg-surface py-4 sm:sticky sm:top-[72px] sm:z-10 sm:bg-surface/80 sm:py-6 sm:backdrop-blur-md">
-          <div className="flex flex-wrap gap-2">
-            {state.isSelectionMode && (
+        <section className="sticky top-[72px] z-[11] -mx-4 space-y-3 bg-surface/90 px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6 sm:py-6">
+          <div className="no-scrollbar flex items-center gap-2 overflow-x-auto pb-1">
+            {state.availableCategories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => {
+                  actions.setSelectedCategory(cat.id);
+                  if (cat.id === 'all') {
+                    onSelectSubject('전체');
+                  }
+                }}
+                className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-2xl px-4 py-2.5 text-[14px] font-black transition-all ${
+                  state.selectedCategory === cat.id
+                    ? 'premium-gradient text-white shadow-lg shadow-blue-900/10'
+                    : 'bg-white text-slate-500 ring-1 ring-outline hover:bg-slate-50'
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+
+          <AnimatePresence mode="wait">
+            {state.selectedCategory !== 'all' && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="no-scrollbar flex items-center gap-2 overflow-x-auto py-1"
+              >
+                <button
+                  onClick={() => onSelectSubject('전체')}
+                  className={`shrink-0 whitespace-nowrap rounded-xl px-4 py-2 text-[13px] font-black transition-all ${
+                    selectedSubject === '전체'
+                      ? 'bg-slate-900 text-white shadow-md'
+                      : 'bg-white text-slate-500 ring-1 ring-outline hover:bg-slate-50'
+                  }`}
+                >
+                  카테고리 전체
+                </button>
+                {state.availableSubjectsInCategory.map((subj) => (
+                  <button
+                    key={subj}
+                    onClick={() => onSelectSubject(subj)}
+                    className={`shrink-0 whitespace-nowrap rounded-xl px-4 py-2 text-[13px] font-black transition-all ${
+                      selectedSubject === subj
+                        ? 'bg-slate-900 text-white shadow-md'
+                        : 'bg-white text-slate-500 ring-1 ring-outline hover:bg-slate-50'
+                    }`}
+                  >
+                    {subj}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {state.isSelectionMode && (
+            <div className="flex items-center gap-2 pt-1">
               <button
                 onClick={actions.selectAll}
                 className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2 text-[13px] font-black transition-all ${
                   state.selectedIds.size === state.filteredExams.length &&
                   state.filteredExams.length > 0
-                    ? 'bg-slate-900 text-white shadow-md'
+                    ? 'bg-indigo-600 text-white shadow-md'
                     : 'bg-white text-slate-500 ring-1 ring-outline hover:bg-slate-50'
                 }`}
               >
@@ -173,21 +230,11 @@ export function SavedScreen({
                 )}
                 전체 선택
               </button>
-            )}
-            {state.allSubjects.map((subj) => (
-              <button
-                key={subj}
-                onClick={() => onSelectSubject(subj)}
-                className={`whitespace-nowrap rounded-xl px-4 py-2 text-[13px] font-black transition-all ${
-                  selectedSubject === subj
-                    ? 'premium-gradient text-white shadow-md'
-                    : 'bg-white text-slate-500 ring-1 ring-outline hover:bg-slate-50'
-                }`}
-              >
-                {subj}
-              </button>
-            ))}
-          </div>
+              <div className="text-[12px] font-bold text-slate-400">
+                {state.selectedIds.size}개 선택됨
+              </div>
+            </div>
+          )}
         </section>
 
         {state.filteredExams.length === 0 ? (

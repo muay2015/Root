@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { PersistedExamRecord } from '../../lib/rootPersistence';
 import { normalizeToSubjectKey } from '../../lib/examUtils';
-import { SUBJECT_CONFIG } from '../../lib/question/subjectConfig';
+import { SUBJECT_CONFIG, CATEGORY_CONFIG, type SubjectCategory } from '../../lib/question/subjectConfig';
 
 export interface UseSavedScreenLogicProps {
   exams: PersistedExamRecord[];
@@ -20,10 +20,79 @@ export function useSavedScreenLogic({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
   const totalGeneratedQuestionCount = useMemo(
     () => exams.reduce((sum, exam) => sum + Number(exam.question_count || 0), 0),
     [exams]
   );
+
+  // 현재 보관함에 있는 시험지들의 모든 대분류(Category) 추출
+  const availableCategories = useMemo(() => {
+    const categories = new Set<string>(['all']);
+    for (const exam of exams) {
+      const subjectKey = normalizeToSubjectKey(
+        exam.subject,
+        exam.title,
+        exam.questions[0]?.topic,
+        exam.questions,
+        exam.exam_format
+      );
+      if (subjectKey) {
+        categories.add(SUBJECT_CONFIG[subjectKey].category);
+      } else {
+        categories.add('etc');
+      }
+    }
+    
+    // CATEGORY_CONFIG 순서대로 정렬하되 'all'은 맨 앞으로
+    const sorted = Array.from(categories).sort((a, b) => {
+      if (a === 'all') return -1;
+      if (b === 'all') return 1;
+      
+      const order = Object.keys(CATEGORY_CONFIG);
+      const aIdx = order.indexOf(a);
+      const bIdx = order.indexOf(b);
+      
+      if (aIdx === -1) return 1;
+      if (bIdx === -1) return -1;
+      return aIdx - bIdx;
+    });
+
+    return sorted.map(cat => {
+      if (cat === 'all') return { id: 'all', label: '전체', icon: '✨' };
+      if (cat === 'etc') return { id: 'etc', label: '기타', icon: '📁' };
+      return { 
+        id: cat, 
+        label: CATEGORY_CONFIG[cat as SubjectCategory].label,
+        icon: CATEGORY_CONFIG[cat as SubjectCategory].icon 
+      };
+    });
+  }, [exams]);
+
+  // 선택된 대분류에 속하는 소분류(Subject) 목록 추출
+  const availableSubjectsInCategory = useMemo(() => {
+    if (selectedCategory === 'all') return [];
+
+    const subjects = new Set<string>();
+    for (const exam of exams) {
+      const subjectKey = normalizeToSubjectKey(
+        exam.subject,
+        exam.title,
+        exam.questions[0]?.topic,
+        exam.questions,
+        exam.exam_format
+      );
+      
+      const cat = subjectKey ? SUBJECT_CONFIG[subjectKey].category : 'etc';
+      if (cat === selectedCategory) {
+        const label = subjectKey ? SUBJECT_CONFIG[subjectKey].label : '기타 과목';
+        subjects.add(label);
+      }
+    }
+    
+    return Array.from(subjects).sort();
+  }, [exams, selectedCategory]);
 
   const allSubjects = useMemo(() => {
     const list = new Set<string>(['전체']);
@@ -138,6 +207,9 @@ export function useSavedScreenLogic({
       isDeleting,
       totalGeneratedQuestionCount,
       allSubjects,
+      availableCategories,
+      availableSubjectsInCategory,
+      selectedCategory,
       filteredExams,
       groupedBySubject,
     },
@@ -149,6 +221,7 @@ export function useSavedScreenLogic({
       handleDeleteSelected,
       handleToggleSelectionMode,
       handleCancelSelection,
+      setSelectedCategory,
     },
   };
 }

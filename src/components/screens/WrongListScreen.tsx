@@ -1,22 +1,20 @@
 import React, { useMemo, useState } from 'react';
 import { 
   EllipsisVertical, 
-  NotebookPen, 
   Search, 
   ChevronDown, 
   CheckCircle2, 
   XCircle, 
-  Info, 
-  Flame, 
+  FileText, 
   GraduationCap,
-  Calendar,
   Sparkles,
   ArrowRight
 } from 'lucide-react';
-import { SUBJECT_CONFIG, type SubjectCategory } from '../../lib/question/subjectConfig';
-import { isSubjectKey, normalizeToSubjectKey } from '../../lib/examUtils';
+import { motion, AnimatePresence } from 'motion/react';
+import { type SubjectCategory } from '../../lib/question/subjectConfig';
 import type { WrongNote } from '../../lib/examTypes';
 import type { PersistedExamRecord } from '../../lib/rootPersistence';
+import { useWrongListScreenLogic } from '../../hooks/screens/useWrongListScreenLogic';
 
 interface WrongListScreenProps {
   wrongNotes: WrongNote[];
@@ -37,7 +35,7 @@ const CATEGORY_THEME: Record<SubjectCategory | 'default', { bg: string; text: st
   science: { bg: 'bg-cyan-500', text: 'text-cyan-600', ring: 'ring-cyan-100', light: 'bg-cyan-50' },
   tech_home: { bg: 'bg-slate-500', text: 'text-slate-600', ring: 'ring-slate-100', light: 'bg-slate-50' },
   ethics: { bg: 'bg-slate-500', text: 'text-slate-600', ring: 'ring-slate-100', light: 'bg-slate-50' },
-  default: { bg: 'bg-rose-500', text: 'text-rose-600', ring: 'ring-rose-100', light: 'bg-rose-50' }
+  default: { bg: 'bg-blue-500', text: 'text-blue-600', ring: 'ring-blue-100', light: 'bg-blue-50' }
 };
 
 export function WrongListScreen({
@@ -48,87 +46,29 @@ export function WrongListScreen({
   onRetry,
   onDelete,
 }: WrongListScreenProps) {
+  const { state, actions } = useWrongListScreenLogic(wrongNotes, savedExams);
   const [openExamTitle, setOpenExamTitle] = useState<string | null>(null);
   const [openMenuTitle, setOpenMenuTitle] = useState<string | null>(null);
-  const [selectedSubject, setSelectedSubject] = useState<string>('전체');
-
-  const getSubjectKey = (note: WrongNote) => {
-    const examMatch = savedExams.find(e => e.title === note.examTitle);
-    return normalizeToSubjectKey(
-      note.subject || (note.id.includes('___') ? note.id.split('___')[0] : null), 
-      note.examTitle,
-      examMatch?.questions[0]?.topic,
-      examMatch?.questions,
-      examMatch?.exam_format
-    );
-  };
-
-  const allSubjects = useMemo(() => {
-    const list = new Set<string>(['전체']);
-    for (const note of wrongNotes) {
-      const sKey = getSubjectKey(note);
-      const label = isSubjectKey(sKey) ? SUBJECT_CONFIG[sKey].label : '기타 과목';
-      list.add(label);
-    }
-    return Array.from(list).sort((a, b) => {
-      if (a === '전체') return -1;
-      if (b === '전체') return 1;
-      return a.localeCompare(b);
-    });
-  }, [wrongNotes]);
-
-  const filteredNotes = useMemo(() => {
-    if (selectedSubject === '전체') return wrongNotes;
-    return wrongNotes.filter((note) => {
-      const sKey = getSubjectKey(note);
-      const label = isSubjectKey(sKey) ? SUBJECT_CONFIG[sKey].label : '기타 과목';
-      return label === selectedSubject;
-    });
-  }, [wrongNotes, selectedSubject]);
-
-  const groupedBySubject = useMemo(() => {
-    const subjectsMap: Record<string, { examDict: Record<string, WrongNote[]>; category: SubjectCategory | 'default' }> = {};
-
-    for (const note of filteredNotes) {
-      const sKey = getSubjectKey(note);
-      const subjectLabel = isSubjectKey(sKey) ? SUBJECT_CONFIG[sKey].label : '기타 과목';
-      const category = isSubjectKey(sKey) ? SUBJECT_CONFIG[sKey].category : 'default';
-
-      if (!subjectsMap[subjectLabel]) {
-        subjectsMap[subjectLabel] = { examDict: {}, category };
-      }
-      if (!subjectsMap[subjectLabel].examDict[note.examTitle]) {
-        subjectsMap[subjectLabel].examDict[note.examTitle] = [];
-      }
-      subjectsMap[subjectLabel].examDict[note.examTitle].push(note);
-    }
-    
-    return Object.entries(subjectsMap).sort(([a], [b]) => {
-      if (a === '기타 과목') return 1;
-      if (b === '기타 과목') return -1;
-      return a.localeCompare(b);
-    });
-  }, [filteredNotes, savedExams]);
 
   return (
     <div className="pb-28">
       {/* Compact Premium Header */}
       <div className="relative overflow-hidden bg-white pt-10 pb-10 border-b border-slate-100">
         <div className="absolute top-0 right-0 -transe-y-1/2 translate-x-1/4 opacity-5">
-          <NotebookPen className="h-48 w-48 text-slate-900" />
+          <FileText className="h-48 w-48 text-slate-900" />
         </div>
         <div className="mx-auto max-w-5xl px-6 relative z-10">
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-lg shadow-rose-200">
-                <Flame className="h-6 w-6" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-outline text-primary">
+                <FileText className="h-6 w-6" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-2xl font-black tracking-tight text-slate-900">오답노트</h1>
-                  <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-[10px] font-black text-rose-600 uppercase tracking-wider">AI Analysis</span>
+                  <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[10px] font-black text-blue-600 uppercase tracking-wider">AI Analysis</span>
                 </div>
-                <p className="mt-0.5 text-[13px] font-bold text-slate-400">틀린 문제와 개념을 다시 확인하여 지식의 빈틈을 채웁니다.</p>
+                <p className="mt-0.5 hidden text-[13px] font-bold text-slate-400 sm:block">틀린 문제와 개념을 다시 확인하여 지식의 빈틈을 채웁니다.</p>
               </div>
             </div>
 
@@ -137,36 +77,77 @@ export function WrongListScreen({
       </div>
 
       <div className="mx-auto max-w-5xl px-6 -mt-5">
-        {/* Compact Filters */}
-        <section className="sticky top-6 z-30 mb-8 rounded-[1.5rem] bg-white/80 p-2.5 shadow-xl shadow-slate-200/50 ring-1 ring-slate-200/50 backdrop-blur-xl">
-          <div className="flex flex-wrap gap-2 px-1">
-            {allSubjects.map((subj) => (
+        {/* Compact Filters - Same style as SavedScreen */}
+        <section className="sticky top-0 z-30 -mx-4 space-y-3 bg-white/90 px-4 py-4 backdrop-blur-md sm:-mx-6 sm:px-6 sm:py-6 sm:rounded-b-[2rem] sm:shadow-lg sm:shadow-slate-200/50">
+          <div className="no-scrollbar flex items-center gap-2 overflow-x-auto pb-1">
+            {state.availableCategories.map((cat) => (
               <button
-                key={subj}
-                onClick={() => setSelectedSubject(subj)}
-                className={`whitespace-nowrap rounded-xl px-4 py-2 text-[13px] font-black transition-all duration-300 ${
-                  selectedSubject === subj
-                    ? 'bg-slate-900 text-white shadow-md'
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                key={cat.id}
+                onClick={() => {
+                  actions.setSelectedCategory(cat.id);
+                  if (cat.id === 'all') {
+                    actions.setSelectedSubject('전체');
+                  }
+                }}
+                className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-2xl px-4 py-2.5 text-[14px] font-black transition-all ${
+                  state.selectedCategory === cat.id
+                    ? 'premium-gradient text-white shadow-lg shadow-blue-900/10'
+                    : 'bg-white text-slate-500 ring-1 ring-outline hover:bg-slate-50'
                 }`}
               >
-                {subj}
+                {cat.label}
               </button>
             ))}
           </div>
+
+          <AnimatePresence mode="wait">
+            {state.selectedCategory !== 'all' && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="no-scrollbar flex items-center gap-2 overflow-x-auto py-1"
+              >
+                <button
+                  onClick={() => actions.setSelectedSubject('전체')}
+                  className={`shrink-0 whitespace-nowrap rounded-xl px-4 py-2 text-[13px] font-black transition-all ${
+                    state.selectedSubject === '전체'
+                      ? 'bg-slate-900 text-white shadow-md'
+                      : 'bg-white text-slate-500 ring-1 ring-outline hover:bg-slate-50'
+                  }`}
+                >
+                  카테고리 전체
+                </button>
+                {state.availableSubjectsInCategory.map((subj) => (
+                  <button
+                    key={subj}
+                    onClick={() => actions.setSelectedSubject(subj)}
+                    className={`shrink-0 whitespace-nowrap rounded-xl px-4 py-2 text-[13px] font-black transition-all ${
+                      state.selectedSubject === subj
+                        ? 'bg-slate-900 text-white shadow-md'
+                        : 'bg-white text-slate-500 ring-1 ring-outline hover:bg-slate-50'
+                    }`}
+                  >
+                    {subj}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </section>
 
-        {groupedBySubject.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-32 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-100">
+        {state.groupedBySubject.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-32 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-100 mt-8">
             <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-slate-50 text-slate-200">
               <Search className="h-10 w-10" />
             </div>
             <p className="text-xl font-black text-slate-900">저장된 오답 데이터가 없습니다.</p>
-            <p className="mt-2 font-bold text-slate-400">학습 평가를 완료하면 오답이 이곳에 차곡차곡 쌓입니다.</p>
+            <p className="mt-2 font-bold text-slate-400">데이터가 존재하지 않거나 필터 조건에 맞는 항목이 없습니다.</p>
           </div>
         ) : (
-          <div className="space-y-12">
-            {groupedBySubject.map(([subjectLabel, { examDict, category }]) => {
+          <div className="space-y-12 mt-8">
+            {state.groupedBySubject.map(([subjectLabel, { examDict, category }]) => {
               const theme = CATEGORY_THEME[category] || CATEGORY_THEME.default;
               return (
                 <section key={subjectLabel} className="space-y-4">
@@ -180,14 +161,14 @@ export function WrongListScreen({
                     </span>
                   </div>
                   
-                  <div className="grid gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {(Object.entries(examDict) as [string, WrongNote[]][]).map(([examTitle, notes], idx) => {
                       const isOpen = openExamTitle === examTitle;
                       return (
                         <article 
                           key={idx} 
                           className={`group relative rounded-3xl bg-white transition-all duration-500 hover:scale-[1.005] ${
-                            isOpen ? 'ring-2 ring-rose-500/10 shadow-xl' : 'shadow-sm shadow-slate-200/40 border border-slate-100'
+                            isOpen ? 'ring-2 ring-blue-500/10 shadow-xl' : 'shadow-sm shadow-slate-200/40 border border-slate-100'
                           } ${openMenuTitle === examTitle ? 'z-40' : 'z-10'}`}
                         >
                           <div className="relative">
@@ -210,9 +191,9 @@ export function WrongListScreen({
                                   <h3 className="line-clamp-1 text-[15px] font-black text-slate-800">{examTitle}</h3>
                                   <div className="flex items-center gap-2">
                                     <div className="h-0.5 w-16 overflow-hidden rounded-full bg-slate-50">
-                                      <div className="h-full w-full bg-rose-400" />
+                                      <div className="h-full w-full bg-blue-400" />
                                     </div>
-                                    <p className="text-[11px] font-black text-rose-500">{notes.length}개의 오답</p>
+                                    <p className="text-[11px] font-black text-blue-500">{notes.length}개의 오답</p>
                                   </div>
                                 </div>
                               </div>
@@ -238,7 +219,7 @@ export function WrongListScreen({
 
                                <button 
                                 onClick={() => setOpenExamTitle(isOpen ? null : examTitle)}
-                                className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-300 ${isOpen ? 'bg-rose-50 text-rose-500 rotate-180' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                                className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-300 ${isOpen ? 'bg-blue-50 text-blue-500 rotate-180' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
                                >
                                 <ChevronDown className="h-4 w-4" />
                                </button>
@@ -256,7 +237,7 @@ export function WrongListScreen({
                                 <div className="my-1 border-t border-slate-50 mx-1.5" />
                                 <button
                                   onClick={(e) => { e.stopPropagation(); onDelete(examTitle); setOpenMenuTitle(null); }}
-                                  className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] font-bold text-rose-500 hover:bg-rose-50"
+                                  className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] font-bold text-slate-500 hover:bg-slate-50"
                                 >
                                   <XCircle className="h-4 w-4" />
                                   리스트에서 삭제
@@ -270,7 +251,7 @@ export function WrongListScreen({
                               {notes.map((note, nIdx) => {
                                 const qNum = note.id.split('-').pop();
                                 return (
-                                  <div key={nIdx} className="group/note relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition-all hover:shadow-md hover:ring-rose-200/50 sm:p-6">
+                                  <div key={nIdx} className="group/note relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition-all hover:shadow-md hover:ring-blue-200/50 sm:p-6">
                                     <div className="flex flex-col gap-4">
                                       <div className="flex items-start gap-4">
                                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-[14px] font-black text-white shadow-md">
@@ -282,14 +263,14 @@ export function WrongListScreen({
                                       </div>
                                       
                                       <div className="grid gap-3 sm:grid-cols-2">
-                                        <div className="relative overflow-hidden rounded-2xl bg-rose-50/30 p-4 ring-1 ring-rose-100/50">
+                                        <div className="relative overflow-hidden rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
                                           <div className="flex items-center gap-2 mb-2">
-                                            <div className="flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-white">
+                                            <div className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-400 text-white">
                                               <XCircle className="h-2.5 w-2.5" />
                                             </div>
-                                            <span className="text-[10px] font-black uppercase tracking-wider text-rose-400">나의 오답</span>
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">나의 오답</span>
                                           </div>
-                                          <p className="text-[14px] font-black text-rose-600">{note.myAnswer}</p>
+                                          <p className="text-[14px] font-black text-slate-600">{note.myAnswer}</p>
                                         </div>
                                         <div className="relative overflow-hidden rounded-2xl bg-emerald-50/30 p-4 ring-1 ring-emerald-100/50">
                                           <div className="flex items-center gap-2 mb-2">
@@ -321,7 +302,7 @@ export function WrongListScreen({
                               <div className="flex flex-col items-center gap-3 pt-2">
                                 <button
                                   onClick={onRetry}
-                                  className="group flex items-center gap-2.5 rounded-full bg-slate-900 px-6 py-3.5 text-[14px] font-black text-white shadow-lg transition-all hover:bg-rose-500 hover:shadow-rose-500/30 active:scale-95"
+                                  className="group flex items-center gap-2.5 rounded-full bg-slate-900 px-6 py-3.5 text-[14px] font-black text-white shadow-lg transition-all hover:bg-blue-600 hover:shadow-blue-500/30 active:scale-95"
                                 >
                                   <span>이 세트의 유사 문제로 다시 학습하기</span>
                                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
