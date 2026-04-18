@@ -10,7 +10,12 @@ import {
   ArrowRight,
   Target,
   Check,
-  ChevronDown
+  ChevronDown,
+  BookOpen,
+  Calculator,
+  Languages,
+  Atom,
+  Quote
 } from 'lucide-react';
 import type { Screen } from '../../lib/examTypes';
 
@@ -18,6 +23,92 @@ interface LandingScreenProps {
   onNavigate: (screen: Screen) => void;
   isAnonymous: boolean;
 }
+
+function ReviewCard({ 
+  subject, 
+  icon: Icon, 
+  color, 
+  bgColor, 
+  content, 
+  school, 
+  name 
+}: { 
+  subject: string;
+  icon: any;
+  color: string;
+  bgColor: string;
+  content: string;
+  school: string;
+  name: string;
+}) {
+  return (
+    <div className="premium-card p-6 flex flex-col h-full bg-white/80 backdrop-blur-sm border-blue-50/50 hover:shadow-xl transition-all duration-500 hover:-translate-y-1">
+      <div className="mb-4 flex items-center justify-between">
+        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${bgColor} ${color}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <Quote className="h-6 w-6 text-slate-100 fill-slate-50" />
+      </div>
+      
+      <div className="mb-2">
+        <span className={`text-xs font-black uppercase tracking-widest ${color}`}>{subject}</span>
+      </div>
+      
+      <div className="flex-1">
+        <p className="text-[14px] font-bold leading-relaxed text-slate-700 break-keep">
+          "{content}"
+        </p>
+      </div>
+      
+      <div className="mt-6 flex items-center gap-3 pt-4 border-t border-slate-50">
+        <div className="h-8 w-8 rounded-full premium-gradient opacity-20 shrink-0" />
+        <div className="min-w-0">
+          <p className="text-[13px] font-black text-slate-900 truncate">{name} 선생님</p>
+          <p className="text-[11px] font-bold text-slate-400 truncate">{school}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const TEACHER_REVIEWS = [
+  {
+    subject: '국어',
+    icon: BookOpen,
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
+    content: '지문 분석 로직이 매우 정교합니다. 학생들이 스스로 취약한 문학/독서 유형을 반복 학습하기에 최적화되어 있네요.',
+    school: '**고등학교',
+    name: '김*수'
+  },
+  {
+    subject: '수학',
+    icon: Calculator,
+    color: 'text-indigo-600',
+    bgColor: 'bg-indigo-50',
+    content: '난이도별 문항 구성이 기출 데이터와 매우 유사합니다. 내신 대비용으로 문항 수 조절이 가능한 점이 혁신적이네요.',
+    school: '**중학교',
+    name: '이*영'
+  },
+  {
+    subject: '영어',
+    icon: Languages,
+    color: 'text-violet-600',
+    bgColor: 'bg-violet-50',
+    content: '영어 독해 지문 삽입 및 순서 배열 문항의 퀄리티가 기성 문제집 못지않습니다. 보충 교재로 사용하기에 손색없습니다.',
+    school: '**고등학교',
+    name: '박*준'
+  },
+  {
+    subject: '과학',
+    icon: Atom,
+    color: 'text-emerald-600',
+    bgColor: 'bg-emerald-50',
+    content: '복잡한 과학 개념을 묻는 선지들이 정확하게 구성되어 있습니다. 개념 확인용 퀴즈를 즉석에서 만들기에 아주 유용합니다.',
+    school: '**고등학교',
+    name: '최*아'
+  }
+];
 
 export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
   return (
@@ -72,7 +163,22 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
         </div>
       </section>
 
+
+      {/* 2. Teacher Reviews Section (New) */}
       <section className="relative z-10 mx-auto mt-[-40px] max-w-6xl px-4 sm:px-6">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {TEACHER_REVIEWS.map((review, idx) => (
+            <ReviewCard key={idx} {...review} />
+          ))}
+        </div>
+      </section>
+
+      {/* 3. Feature Highlights Section (Moved Down) */}
+      <section className="relative mx-auto mt-24 max-w-6xl px-4 sm:px-6">
+        <div className="mb-12 text-center">
+          <h2 className="text-2xl font-black text-slate-800 sm:text-4xl">풀기만 해도 공부가 되는 핵심 기능</h2>
+          <p className="mt-3 text-slate-500 font-medium">더 나은 성적을 위한 가장 스마트한 도구들입니다.</p>
+        </div>
         <div className="grid gap-6 md:grid-cols-3">
           <FeatureCard 
             titleMain="난이도 · 문항 수"
@@ -104,8 +210,8 @@ export function LandingScreen({ onNavigate, isAnonymous }: LandingScreenProps) {
         </div>
       </section>
 
-      {/* 3. Pricing Section */}
-      <section className="mx-auto mt-32 max-w-6xl px-4 sm:px-6">
+      {/* 4. Pricing Section */}
+      <section className="mx-auto mt-40 max-w-6xl px-4 sm:px-6">
         <div className="mb-16 text-center">
           <h2 className="text-3xl font-black tracking-tight text-slate-900 sm:text-5xl">합리적인 학습 비용</h2>
           <p className="mt-4 text-lg font-medium text-slate-500">문제집 1/3 값으로 누리는<br className="sm:hidden" /> 무제한 학습 경험</p>

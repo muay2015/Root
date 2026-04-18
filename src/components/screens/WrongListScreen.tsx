@@ -301,7 +301,7 @@ export function WrongListScreen({
                               
                               <div className="flex flex-col items-center gap-3 pt-2">
                                 <button
-                                  onClick={onRetry}
+                                  onClick={() => onRetry(examTitle, notes)}
                                   className="group flex items-center gap-2.5 rounded-full bg-slate-900 px-6 py-3.5 text-[14px] font-black text-white shadow-lg transition-all hover:bg-blue-600 hover:shadow-blue-500/30 active:scale-95"
                                 >
                                   <span>이 세트의 유사 문제로 다시 학습하기</span>
